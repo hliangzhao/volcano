@@ -1,0 +1,138 @@
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - batch.hliangzhao.io
+  resources:
+  - jobs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - batch.hliangzhao.io
+  resources:
+  - jobs/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - batch.hliangzhao.io
+  resources:
+  - jobs/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - bus.hliangzhao.io
+  resources:
+  - commands
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - bus.hliangzhao.io
+  resources:
+  - commands/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - bus.hliangzhao.io
+  resources:
+  - commands/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - nodeinfo.hliangzhao.io
+  resources:
+  - numatopologies
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - nodeinfo.hliangzhao.io
+  resources:
+  - numatopologies/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - nodeinfo.hliangzhao.io
+  resources:
+  - numatopologies/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - scheduling.hliangzhao.io
+  resources:
+  - podgroups
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - scheduling.hliangzhao.io
+  resources:
+  - podgroups/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - scheduling.hliangzhao.io
+  resources:
+  - podgroups/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - scheduling.hliangzhao.io
+  resources:
+  - queues
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - scheduling.hliangzhao.io
+  resources:
+  - queues/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - scheduling.hliangzhao.io
+  resources:
+  - queues/status
+  verbs:
+  - get
+  - patch
+  - update

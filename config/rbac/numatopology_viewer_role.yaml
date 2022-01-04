@@ -1,0 +1,20 @@
+# permissions for end users to view numatopologies.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: numatopology-viewer-role
+rules:
+- apiGroups:
+  - nodeinfo.hliangzhao.io
+  resources:
+  - numatopologies
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - nodeinfo.hliangzhao.io
+  resources:
+  - numatopologies/status
+  verbs:
+  - get

@@ -1,0 +1,53 @@
+domain: hliangzhao.io
+layout:
+- go.kubebuilder.io/v3
+multigroup: true
+projectName: volcano
+repo: github.com/hliangzhao/volcano
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: hliangzhao.io
+  group: bus
+  kind: Command
+  path: github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: hliangzhao.io
+  group: batch
+  kind: Job
+  path: github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: hliangzhao.io
+  group: nodeinfo
+  kind: Numatopology
+  path: github.com/hliangzhao/volcano/pkg/apis/nodeinfo/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: hliangzhao.io
+  group: scheduling
+  kind: PodGroup
+  path: github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: hliangzhao.io
+  group: scheduling
+  kind: Queue
+  path: github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1
+  version: v1alpha1
+version: "3"

@@ -1,0 +1,10 @@
+apiVersion: scheduling.hliangzhao.io/v1alpha1
+kind: PodGroup
+metadata:
+  name: podgroup-sample
+spec:
+  minMember: 1
+  minResources:
+    cpu: "1000m"
+    memory: "2G"
+  queue: default

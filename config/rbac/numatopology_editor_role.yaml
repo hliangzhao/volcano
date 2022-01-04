@@ -1,0 +1,24 @@
+# permissions for end users to edit numatopologies.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: numatopology-editor-role
+rules:
+- apiGroups:
+  - nodeinfo.hliangzhao.io
+  resources:
+  - numatopologies
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - nodeinfo.hliangzhao.io
+  resources:
+  - numatopologies/status
+  verbs:
+  - get

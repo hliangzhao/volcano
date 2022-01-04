@@ -1,0 +1,24 @@
+# permissions for end users to edit podgroups.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: podgroup-editor-role
+rules:
+- apiGroups:
+  - scheduling.hliangzhao.io
+  resources:
+  - podgroups
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - scheduling.hliangzhao.io
+  resources:
+  - podgroups/status
+  verbs:
+  - get
