@@ -14,25 +14,27 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package scheme
+package kube
 
 import (
-	schedulinginternal "github.com/hliangzhao/volcano/pkg/apis/scheduling"
-	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
-var (
-	Scheme = runtime.NewScheme()
-	Codecs = serializer.NewCodecFactory(Scheme) // used for internal api
-)
-
-func init() {
-	Install(Scheme)
+type ClientOptions struct {
+	Master     string
+	KubeConfig string
+	QPS        float32
+	Burst      int
 }
 
-func Install(scheme *runtime.Scheme) {
-	_ = schedulingv1alpha1.AddToScheme(scheme)
-	_ = schedulinginternal.AddToScheme(scheme)
+// BuildConfig builds a config from ClientOptions.
+func BuildConfig(opt ClientOptions) (*rest.Config, error) {
+	cfg, err := clientcmd.BuildConfigFromFlags(opt.Master, opt.KubeConfig)
+	if err != nil {
+		return nil, err
+	}
+	cfg.QPS = opt.QPS
+	cfg.Burst = opt.Burst
+	return cfg, nil
 }

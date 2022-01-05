@@ -14,25 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package scheme
+package apis
 
 import (
-	schedulinginternal "github.com/hliangzhao/volcano/pkg/apis/scheduling"
-	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"fmt"
+	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
 )
 
-var (
-	Scheme = runtime.NewScheme()
-	Codecs = serializer.NewCodecFactory(Scheme) // used for internal api
-)
-
-func init() {
-	Install(Scheme)
+type Request struct {
+	Namespace  string
+	JobName    string
+	TaskName   string
+	QueueName  string
+	Event      busv1alpha1.Event
+	ExitCode   int32
+	Action     busv1alpha1.Action
+	JobVersion int32
 }
 
-func Install(scheme *runtime.Scheme) {
-	_ = schedulingv1alpha1.AddToScheme(scheme)
-	_ = schedulinginternal.AddToScheme(scheme)
+func (r Request) String() string {
+	return fmt.Sprintf("Queue: %s, Job: %s/%s, Task:%s, Event:%s, ExitCode:%d, Action:%s, JobVersion: %d",
+		r.QueueName, r.Namespace, r.JobName, r.TaskName, r.Event, r.ExitCode, r.Action, r.JobVersion)
 }

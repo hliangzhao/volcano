@@ -14,25 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package scheme
+package framework
 
 import (
-	schedulinginternal "github.com/hliangzhao/volcano/pkg/apis/scheduling"
-	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
+	volcano "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
 )
 
-var (
-	Scheme = runtime.NewScheme()
-	Codecs = serializer.NewCodecFactory(Scheme) // used for internal api
-)
-
-func init() {
-	Install(Scheme)
+type ControllerOption struct {
+	KubeClient            kubernetes.Interface
+	VolcanoClient         volcano.Interface
+	SharedInformerFactory informers.SharedInformerFactory
+	SchedulerNames        []string
+	WorkerNum             uint32
+	MaxRequeueNum         int
 }
 
-func Install(scheme *runtime.Scheme) {
-	_ = schedulingv1alpha1.AddToScheme(scheme)
-	_ = schedulinginternal.AddToScheme(scheme)
+type Controller interface {
+	Name() string
+	Initialize(opt *ControllerOption) error
+	Run(stopCh <-chan struct{})
 }
