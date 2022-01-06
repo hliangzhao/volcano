@@ -29,10 +29,6 @@ SCRIPT_ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
 # --output-base    because this script should also be able to run inside the vendor dir of
 #                  k8s.io/kubernetes. The output-base is needed for the generators to output into the vendor dir
 #                  instead of the $GOPATH directly. For normal projects this can be dropped.
-# bash ${SCRIPT_ROOT}/hack/generate-groups.sh "deepcopy,client,informer,lister" \
-#   github.com/hliangzhao/balancer/pkg/client github.com/hliangzhao/balancer/pkg/apis \
-#   "balancer:v1alpha1" \
-#   --go-header-file ${SCRIPT_ROOT}/hack/boilerplate.go.txt
 
 bash ${SCRIPT_ROOT}/hack/generate-groups.sh "deepcopy,client,informer,lister" \
   github.com/hliangzhao/volcano/pkg/client github.com/hliangzhao/volcano/pkg/apis \

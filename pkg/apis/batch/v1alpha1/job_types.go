@@ -83,8 +83,6 @@ type JobSpec struct {
 	// +optional
 	MaxRetry int32 `json:"maxRetry,omitempty" protobuf:"bytes,9,opt,name=maxRetry"`
 
-	// TODO: why use pointer?
-
 	// ttlSecondsAfterFinished limits the lifetime of a Job that has finished
 	// execution (either Completed or Failed). If this field is set,
 	// ttlSecondsAfterFinished after the Job finishes, it is eligible to be

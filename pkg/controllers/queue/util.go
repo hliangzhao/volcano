@@ -14,25 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package scheme
+package queue
 
 import (
-	schedulinginternal "github.com/hliangzhao/volcano/pkg/apis/scheduling"
-	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
+	schedulingv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1`
+	metav1 `k8s.io/apimachinery/pkg/apis/meta/v1`
 )
 
-var (
-	Scheme = runtime.NewScheme()
-	Codecs = serializer.NewCodecFactory(Scheme) // used for internal api
-)
-
-func init() {
-	Install(Scheme)
-}
-
-func Install(scheme *runtime.Scheme) {
-	_ = schedulingv1alpha1.AddToScheme(scheme)
-	_ = schedulinginternal.AddToScheme(scheme)
+// IsQueueReference judges whether ref is Queue.
+func IsQueueReference(ref *metav1.OwnerReference) bool {
+	if ref == nil {
+		return false
+	}
+	if ref.APIVersion != schedulingv1alpha1.SchemeGroupVersion.String() || ref.Kind != "Queue" {
+		return false
+	}
+	return true
 }

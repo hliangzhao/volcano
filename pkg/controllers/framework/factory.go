@@ -14,25 +14,30 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package scheme
+package framework
 
 import (
-	schedulinginternal "github.com/hliangzhao/volcano/pkg/apis/scheduling"
-	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"fmt"
+	"k8s.io/klog/v2"
 )
 
-var (
-	Scheme = runtime.NewScheme()
-	Codecs = serializer.NewCodecFactory(Scheme) // used for internal api
-)
+var controllers = map[string]Controller{}
 
-func init() {
-	Install(Scheme)
+func ForeachController(fn func(controller Controller)) {
+	for _, controller := range controllers {
+		fn(controller)
+	}
 }
 
-func Install(scheme *runtime.Scheme) {
-	_ = schedulingv1alpha1.AddToScheme(scheme)
-	_ = schedulinginternal.AddToScheme(scheme)
+func RegisterController(controller Controller) error {
+	if controller == nil {
+		return fmt.Errorf("controller is nil")
+	}
+	if _, found := controllers[controller.Name()]; found {
+		return fmt.Errorf("duplicated controller")
+	}
+
+	klog.V(3).Infof("Controller <%s> is registered.", controller.Name())
+	controllers[controller.Name()] = controller
+	return nil
 }
