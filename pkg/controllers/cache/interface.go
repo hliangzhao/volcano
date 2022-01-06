@@ -17,9 +17,9 @@ limitations under the License.
 package cache
 
 import (
-	batchv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1`
-	controllerapis `github.com/hliangzhao/volcano/pkg/controllers/apis`
-	corev1 `k8s.io/api/core/v1`
+	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
+	controllerapis "github.com/hliangzhao/volcano/pkg/controllers/apis"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type Cache interface {

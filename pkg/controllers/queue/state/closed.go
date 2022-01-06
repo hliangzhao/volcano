@@ -14,25 +14,4 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package framework
-
-import (
-	volcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
-	"k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
-)
-
-type ControllerOption struct {
-	KubeClient            kubernetes.Interface
-	VolcanoClient         volcanoclient.Interface
-	SharedInformerFactory informers.SharedInformerFactory
-	SchedulerNames        []string
-	WorkerNum             uint32
-	MaxRequeueNum         int
-}
-
-type Controller interface {
-	Name() string
-	Initialize(opt *ControllerOption) error
-	Run(stopCh <-chan struct{})
-}
+package state

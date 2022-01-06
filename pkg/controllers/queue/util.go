@@ -14,25 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package framework
+package queue
 
 import (
-	volcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
-	"k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
+	schedulingv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1`
+	metav1 `k8s.io/apimachinery/pkg/apis/meta/v1`
 )
 
-type ControllerOption struct {
-	KubeClient            kubernetes.Interface
-	VolcanoClient         volcanoclient.Interface
-	SharedInformerFactory informers.SharedInformerFactory
-	SchedulerNames        []string
-	WorkerNum             uint32
-	MaxRequeueNum         int
-}
-
-type Controller interface {
-	Name() string
-	Initialize(opt *ControllerOption) error
-	Run(stopCh <-chan struct{})
+// IsQueueReference judges whether ref is Queue.
+func IsQueueReference(ref *metav1.OwnerReference) bool {
+	if ref == nil {
+		return false
+	}
+	if ref.APIVersion != schedulingv1alpha1.SchemeGroupVersion.String() || ref.Kind != "Queue" {
+		return false
+	}
+	return true
 }
