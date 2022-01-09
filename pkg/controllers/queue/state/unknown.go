@@ -15,3 +15,47 @@ limitations under the License.
 */
 
 package state
+
+import (
+	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
+	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
+)
+
+type unknownState struct {
+	queue *schedulingv1alpha1.Queue
+}
+
+func (us *unknownState) Execute(action busv1alpha1.Action) error {
+	switch action {
+	case busv1alpha1.OpenQueueAction:
+		return OpenQueue(us.queue, func(status *schedulingv1alpha1.QueueStatus, podGroupList []string) {
+			status.State = schedulingv1alpha1.QueueStateOpen
+		})
+	case busv1alpha1.CloseQueueAction:
+		return CloseQueue(us.queue, func(status *schedulingv1alpha1.QueueStatus, podGroupList []string) {
+			if len(podGroupList) == 0 {
+				status.State = schedulingv1alpha1.QueueStateClosed
+				return
+			}
+			status.State = schedulingv1alpha1.QueueStateClosing
+		})
+	default:
+		return SyncQueue(us.queue, func(status *schedulingv1alpha1.QueueStatus, podGroupList []string) {
+			specState := us.queue.Status.State
+			if specState == schedulingv1alpha1.QueueStateOpen {
+				status.State = schedulingv1alpha1.QueueStateOpen
+				return
+			}
+			if specState == schedulingv1alpha1.QueueStateClosed {
+				if len(podGroupList) == 0 {
+					status.State = schedulingv1alpha1.QueueStateClosed
+					return
+				}
+				status.State = schedulingv1alpha1.QueueStateClosing
+
+				return
+			}
+			status.State = schedulingv1alpha1.QueueStateUnknown
+		})
+	}
+}

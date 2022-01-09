@@ -22,6 +22,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// ControllerOption defines the options that a controller should have.
 type ControllerOption struct {
 	KubeClient            kubernetes.Interface
 	VolcanoClient         volcanoclient.Interface
@@ -31,6 +32,7 @@ type ControllerOption struct {
 	MaxRequeueNum         int
 }
 
+// Controller is the interface of all controllers of the apis in volcano.
 type Controller interface {
 	Name() string
 	Initialize(opt *ControllerOption) error

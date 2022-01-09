@@ -17,8 +17,8 @@ limitations under the License.
 package state
 
 import (
-	busv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1`
-	schedulingv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1`
+	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
+	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
 )
 
 type State interface {
@@ -35,10 +35,17 @@ var (
 	CloseQueue QueueActionFn
 )
 
+// NewState transforms the input queue into new state.
 func NewState(queue *schedulingv1alpha1.Queue) State {
 	switch queue.Status.State {
 	case "", schedulingv1alpha1.QueueStateOpen:
-		// TODO
+		return &openState{queue: queue}
+	case schedulingv1alpha1.QueueStateClosed:
+		return &closedState{queue: queue}
+	case schedulingv1alpha1.QueueStateClosing:
+		return &closingState{queue: queue}
+	case schedulingv1alpha1.QueueStateUnknown:
+		return &unknownState{queue: queue}
 	}
 	return nil
 }
