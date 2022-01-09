@@ -330,7 +330,6 @@ func (jc *jobCache) processCleanupJob() bool {
 }
 
 func (jc *jobCache) worker() {
-	// TODO: why write in this way?
 	for jc.processCleanupJob() {
 	}
 }

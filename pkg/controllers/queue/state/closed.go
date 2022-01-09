@@ -15,3 +15,38 @@ limitations under the License.
 */
 
 package state
+
+import (
+	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
+	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
+)
+
+type closedState struct {
+	queue *schedulingv1alpha1.Queue
+}
+
+func (cs *closedState) Execute(action busv1alpha1.Action) error {
+	switch action {
+	case busv1alpha1.OpenQueueAction:
+		return OpenQueue(cs.queue, func(status *schedulingv1alpha1.QueueStatus, pgList []string) {
+			status.State = schedulingv1alpha1.QueueStateOpen
+		})
+	case busv1alpha1.CloseQueueAction:
+		return SyncQueue(cs.queue, func(status *schedulingv1alpha1.QueueStatus, pgList []string) {
+			status.State = schedulingv1alpha1.QueueStateClosed
+		})
+	default:
+		return SyncQueue(cs.queue, func(status *schedulingv1alpha1.QueueStatus, pgList []string) {
+			specState := cs.queue.Status.State
+			if specState == schedulingv1alpha1.QueueStateOpen {
+				status.State = schedulingv1alpha1.QueueStateOpen
+				return
+			}
+			if specState == schedulingv1alpha1.QueueStateClosed {
+				status.State = schedulingv1alpha1.QueueStateClosed
+				return
+			}
+			status.State = schedulingv1alpha1.QueueStateUnknown
+		})
+	}
+}

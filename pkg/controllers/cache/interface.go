@@ -22,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// Cache is a local store for controllers.
 type Cache interface {
 	Run(stopCh <-chan struct{})
 

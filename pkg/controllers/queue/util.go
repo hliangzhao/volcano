@@ -17,8 +17,8 @@ limitations under the License.
 package queue
 
 import (
-	schedulingv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1`
-	metav1 `k8s.io/apimachinery/pkg/apis/meta/v1`
+	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // IsQueueReference judges whether ref is Queue.

@@ -41,11 +41,10 @@ type pgController struct {
 	podInformer coreinformersv1.PodInformer
 	pgInformer  schedulinginformerv1alpha1.PodGroupInformer
 
-	// local stores
 	podLister corelistersv1.PodLister
-	podSynced func() bool
+	podSynced func() bool // TODO: change to cache.InformerSynced
 	pgLister  schedulinglisterv1alpha1.PodGroupLister
-	pgSynced  func() bool
+	pgSynced  func() bool // TODO: change to cache.InformerSynced
 
 	// work queue
 	queue workqueue.RateLimitingInterface

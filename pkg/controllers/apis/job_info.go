@@ -22,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// JobInfo is a wrapper of job, which contains more structure information of job.
 type JobInfo struct {
 	Namespace string
 	Name      string
@@ -29,6 +30,7 @@ type JobInfo struct {
 	Pods      map[string]map[string]*corev1.Pod // a job consists of multiple tasks, which has multiple pods
 }
 
+// Clone deeply copies ji and returns the result.
 func (ji *JobInfo) Clone() *JobInfo {
 	clonedJi := &JobInfo{
 		Namespace: ji.Namespace,
@@ -46,12 +48,14 @@ func (ji *JobInfo) Clone() *JobInfo {
 	return clonedJi
 }
 
+// SetJob updates ji's information with given job.
 func (ji *JobInfo) SetJob(job *batchv1alpha1.Job) {
 	ji.Name = job.Name
 	ji.Namespace = job.Namespace
 	ji.Job = job
 }
 
+// AddPod adds the input pod to the right place.
 func (ji *JobInfo) AddPod(pod *corev1.Pod) error {
 	// TODO: what if the job has multiple tasks? How the TaskSpecKey is used?
 	taskName, found := pod.Annotations[batchv1alpha1.TaskSpecKey]
