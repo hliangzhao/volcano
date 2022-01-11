@@ -25,6 +25,8 @@ import (
 	"math"
 )
 
+/* The file provides Resource info. */
+
 const (
 	// GPUResourceName need to follow
 	// https://github.com/NVIDIA/k8s-device-plugin/blob/66a35b71ac4b5cbfb04714678b548bd77e5ba719/server.go#L20

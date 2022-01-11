@@ -16,18 +16,6 @@ limitations under the License.
 
 package conf
 
-// SchedulerConfiguration defines the configuration of scheduler.
-type SchedulerConfiguration struct {
-	// Actions defines the actions list of scheduler in order
-	Actions string `yaml:"actions"`
-
-	// Tiers defines plugins in different tiers
-	Tiers []Tier `yaml:"tiers"`
-
-	// Configurations defines configurations for actions
-	Configurations []Configuration `yaml:"configurations"`
-}
-
 // Tier defines plugin tier
 type Tier struct {
 	Plugins []PluginOption `yaml:"plugins"`
@@ -40,6 +28,18 @@ type Configuration struct {
 
 	// Arguments defines the different arguments that can be given to specified action
 	Arguments map[string]string `yaml:"arguments"`
+}
+
+// SchedulerConfiguration defines the configuration of scheduler.
+type SchedulerConfiguration struct {
+	// Actions defines the actions list of scheduler in order
+	Actions string `yaml:"actions"`
+
+	// Tiers defines plugins in different tiers
+	Tiers []Tier `yaml:"tiers"`
+
+	// Configurations defines configurations for actions
+	Configurations []Configuration `yaml:"configurations"`
 }
 
 // PluginOption defines the options of plugin

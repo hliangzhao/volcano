@@ -14,17 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package framework
+package apis
 
-type Action interface {
-	Name() string
-	Initialize() // init plugins
-	Execute(sess *Session)
-	UnInitialize() // un-init plugins
-}
+// TaskStatus defines the status of a task/pod.
+type TaskStatus int
 
-type Plugin interface {
-	Name() string
-	OnSessionOpen(sess *Session)
-	OnSessionClose(sess *Session)
-}
+// TODO
