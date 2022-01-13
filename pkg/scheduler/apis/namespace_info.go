@@ -23,8 +23,6 @@ import (
 	"k8s.io/klog/v2"
 )
 
-type NamespaceName string
-
 const (
 	// NamespaceWeightKey is the key in ResourceQuota.spec.hard indicating the weight of this namespace
 	NamespaceWeightKey = "volcano.sh/namespace.weight"
@@ -32,6 +30,8 @@ const (
 	// DefaultNamespaceWeight is the default weight of namespace
 	DefaultNamespaceWeight = 1
 )
+
+type NamespaceName string
 
 type NamespaceInfo struct {
 	// Name is the name of this namespace

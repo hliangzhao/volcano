@@ -141,7 +141,7 @@ type TaskSpec struct {
 	// +optional
 	Policies []LifecyclePolicy `json:"policies,omitempty" protobuf:"bytes,5,opt,name=policies"`
 
-	// Specifies the topology policy of task
+	// Specifies the NUMA topology policy of task
 	// +optional
 	TopologyPolicy NumaPolicy `json:"topologyPolicy,omitempty" protobuf:"bytes,6,opt,name=topologyPolicy"`
 

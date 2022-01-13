@@ -64,6 +64,7 @@ func getTaskID(pod *corev1.Pod) TaskID {
 	return ""
 }
 
+// TaskInfo has all info of a task
 type TaskInfo struct {
 	UID TaskID
 	Job JobID
@@ -271,4 +272,12 @@ type tasksMap map[TaskID]*TaskInfo
 // NodeResourceMap stores resource in a node
 type NodeResourceMap map[string]*Resource
 
-// TODO: JobInfo
+// JobInfo has all info of a job
+type JobInfo struct {
+	UID JobID
+
+	Name string
+	Namespace string
+
+	// TODO
+}
