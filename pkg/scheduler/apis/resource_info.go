@@ -49,10 +49,10 @@ const (
 
 // Resource defines all the resource type
 type Resource struct {
-	MilliCPU float64
-	Memory   float64
+	MilliCPU float64 // CPU usage
+	Memory   float64 // Memory usage
 
-	ScalarResources map[corev1.ResourceName]float64
+	ScalarResources map[corev1.ResourceName]float64 // resources other than CPU and Memory
 
 	// MaxTaskNum is only used by predicates; it should NOT
 	// be accounted in other operators, e.g. Add.
@@ -61,6 +61,10 @@ type Resource struct {
 
 func EmptyResource() *Resource {
 	return &Resource{}
+}
+
+func GetMinResource() float64 {
+	return minResource
 }
 
 // IsScalarResourceName validates the resource for Extended, Hugepages, Native and AttachableVolume resources
@@ -83,6 +87,7 @@ func (r *Resource) AddScalar(name corev1.ResourceName, quantity float64) {
 	r.SetScalar(name, r.ScalarResources[name]+quantity)
 }
 
+// NewResource returns a newly created Resource.
 func NewResource(resList corev1.ResourceList) *Resource {
 	r := EmptyResource()
 	for name, quantity := range resList {
@@ -127,6 +132,7 @@ func ResQuantity2Float64(resName corev1.ResourceName, quantity resource.Quantity
 	return result
 }
 
+// Clone deeply copies a Resource instance from r.
 func (r *Resource) Clone() *Resource {
 	clone := &Resource{
 		MilliCPU:   r.MilliCPU,
@@ -153,7 +159,7 @@ func (r *Resource) String() string {
 // ResourceNameList struct defines resource name collection
 type ResourceNameList []corev1.ResourceName
 
-// ResourceNames collects all resource names in r.
+// ResourceNames collects all used resource names in r.
 func (r *Resource) ResourceNames() ResourceNameList {
 	resNames := ResourceNameList{}
 
@@ -172,7 +178,7 @@ func (r *Resource) ResourceNames() ResourceNameList {
 	return resNames
 }
 
-// Get returns the quantity of given resource name
+// Get returns the quantity of given resource name from r.
 func (r *Resource) Get(resName corev1.ResourceName) float64 {
 	switch resName {
 	case corev1.ResourceCPU:
@@ -187,7 +193,7 @@ func (r *Resource) Get(resName corev1.ResourceName) float64 {
 	}
 }
 
-// IsEmpty returns false if any kind of resource is not less than min value, otherwise returns true
+// IsEmpty returns false if ANY kind of resource is NOT less than min value, otherwise returns true
 func (r *Resource) IsEmpty() bool {
 	if !(r.MilliCPU < minResource && r.Memory < minResource) {
 		return false
@@ -233,7 +239,8 @@ func (r *Resource) Add(rr *Resource) *Resource {
 
 // Less return true only on condition that all dimensions of resources in r are less than that of rr,
 // Otherwise returns false.
-// @param defaultValue "default value for resource dimension not defined in ScalarResources. Its value can only be one of 'Zero' and 'Infinity'".
+// @param defaultValue "default value for resource dimension not defined in ScalarResources.
+// Its value can only be one of 'Zero' and 'Infinity'".
 func (r *Resource) Less(rr *Resource, defaultVal DimensionDefaultValue) bool {
 	lessFunc := func(l, r float64) bool {
 		return l < r
@@ -260,7 +267,8 @@ func (r *Resource) Less(rr *Resource, defaultVal DimensionDefaultValue) bool {
 
 // LessEqual returns true only on condition that all dimensions of resources in r are less than or equal with that of rr,
 // Otherwise returns false.
-// @param defaultValue "default value for resource dimension not defined in ScalarResources. Its value can only be one of 'Zero' and 'Infinity'".
+// @param defaultValue "default value for resource dimension not defined in ScalarResources.
+// Its value can only be one of 'Zero' and 'Infinity'".
 func (r *Resource) LessEqual(rr *Resource, defaultVal DimensionDefaultValue) bool {
 	lessEqualFunc := func(l, r, diff float64) bool {
 		if l < r || math.Abs(l-r) < diff {
@@ -290,7 +298,8 @@ func (r *Resource) LessEqual(rr *Resource, defaultVal DimensionDefaultValue) boo
 
 // LessPartly returns true if there exists any dimension whose resource amount in r is less than that in rr.
 // Otherwise, returns false.
-// @param defaultValue "default value for resource dimension not defined in ScalarResources. Its value can only be one of 'Zero' and 'Infinity'".
+// @param defaultValue "default value for resource dimension not defined in ScalarResources.
+// Its value can only be one of 'Zero' and 'Infinity'".
 func (r *Resource) LessPartly(rr *Resource, defaultVal DimensionDefaultValue) bool {
 	lessFunc := func(l, r float64) bool {
 		return l < r
@@ -314,7 +323,8 @@ func (r *Resource) LessPartly(rr *Resource, defaultVal DimensionDefaultValue) bo
 
 // LessEqualPartly returns true if there exists any dimension whose resource amount in r is less than or equal with that in rr.
 // Otherwise, returns false.
-// @param defaultValue "default value for resource dimension not defined in ScalarResources. Its value can only be one of 'Zero' and 'Infinity'".
+// @param defaultValue "default value for resource dimension not defined in ScalarResources.
+// Its value can only be one of 'Zero' and 'Infinity'".
 func (r *Resource) LessEqualPartly(rr *Resource, defaultVal DimensionDefaultValue) bool {
 	lessEqualFunc := func(l, r, diff float64) bool {
 		if l < r || math.Abs(l-r) < diff {
@@ -447,7 +457,8 @@ func (r *Resource) Equal(rr *Resource, defaultVal DimensionDefaultValue) bool {
 }
 
 // setDefaultValue sets default value for resource dimension not defined of ScalarResource in leftResource and rightResource
-// @param defaultValue "default value for resource dimension not defined in ScalarResources. It can only be one of 'Zero' or 'Infinity'"
+// @param defaultValue "default value for resource dimension not defined in ScalarResources.
+// It can only be one of 'Zero' or 'Infinity'"
 func (r *Resource) setDefaultValue(leftResource, rightResource *Resource, defaultVal DimensionDefaultValue) {
 	if leftResource.ScalarResources == nil {
 		leftResource.ScalarResources = map[corev1.ResourceName]float64{}
@@ -524,7 +535,8 @@ func (r *Resource) Diff(rr *Resource, defaultVal DimensionDefaultValue) (*Resour
 // e.g r resource is <cpu 2000.00, memory 4047845376.00, hugepages-2Mi 0.00, hugepages-1Gi 0.00>
 // res resource is <cpu 3000.00, memory 1000.00>
 // return r resource is <cpu 2000.00, memory 1000.00, hugepages-2Mi 0.00, hugepages-1Gi 0.00>
-// @param defaultValue "default value for resource dimension not defined in ScalarResources. Its value can only be one of 'Zero' and 'Infinity'"
+// @param defaultValue "default value for resource dimension not defined in ScalarResources.
+// Its value can only be one of 'Zero' and 'Infinity'"
 func (r *Resource) MinDimensionResource(rr *Resource, defaultVal DimensionDefaultValue) *Resource {
 	if rr.MilliCPU < r.MilliCPU {
 		r.MilliCPU = rr.MilliCPU
@@ -587,10 +599,6 @@ func ParseResourceList(m map[string]string) (corev1.ResourceList, error) {
 		}
 	}
 	return rl, nil
-}
-
-func GetMinResource() float64 {
-	return minResource
 }
 
 // Contains judges whether rrl is subset of rl

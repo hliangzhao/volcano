@@ -17,7 +17,6 @@ limitations under the License.
 package apis
 
 const (
-
 	// VolcanoGPUResource extended gpu resource
 	VolcanoGPUResource = "volcano.sh/gpu-memory"
 	// VolcanoGPUNumber virtual GPU card number

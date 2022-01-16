@@ -17,9 +17,9 @@ limitations under the License.
 package apis
 
 import (
-	`github.com/hliangzhao/volcano/pkg/apis/scheduling`
-	schedulingv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1`
-	`k8s.io/apimachinery/pkg/types`
+	"github.com/hliangzhao/volcano/pkg/apis/scheduling"
+	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type QueueID types.UID
