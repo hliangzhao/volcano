@@ -17,9 +17,9 @@ limitations under the License.
 package apis
 
 import (
-	`fmt`
-	corev1 `k8s.io/api/core/v1`
-	`k8s.io/client-go/tools/cache`
+	"fmt"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/cache"
 )
 
 func PodKey(pod *corev1.Pod) TaskID {
@@ -45,7 +45,7 @@ func getTaskStatus(pod *corev1.Pod) TaskStatus {
 			return Pending
 		}
 		return Bound
-	case corev1.PodUnknown: // this case could be removed
+	case corev1.PodUnknown: // TODO: this case could be removed
 		return Unknown
 	case corev1.PodSucceeded:
 		return Succeeded

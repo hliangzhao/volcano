@@ -109,8 +109,8 @@ func (info *NumaTopoInfo) DeepCopy() *NumaTopoInfo {
 
 // Compare is the function to show the change of the resource on kubelet
 // return val:
-// - true: at least one resource on kubelet is getting more or no change
-// - false: otherwise
+// - true: at least one resource on kubelet is getting more or no change;
+// - false: otherwise.
 func (info *NumaTopoInfo) Compare(newInfo *NumaTopoInfo) bool {
 	for resName := range info.NumaResMap {
 		oldSize := info.NumaResMap[resName].Allocatable.Size()
@@ -183,7 +183,33 @@ func (info *NumaTopoInfo) RemoveTask(ti *TaskInfo) {
 	}
 }
 
-// TODO: add two func: GenerateNodeResNumaSets & GenerateNumaNodes
+// GenerateNodeResNumaSets return the idle resource sets of all node
+func GenerateNodeResNumaSets(nodes map[string]*NodeInfo) map[string]ResNumaSets {
+	nodeSlice := make(map[string]ResNumaSets)
+	for _, node := range nodes {
+		if node.NumaSchedulerInfo == nil {
+			continue
+		}
+		resMaps := make(ResNumaSets)
+		for resName, resMap := range node.NumaSchedulerInfo.NumaResMap {
+			resMaps[resName] = resMap.Allocatable.Clone()
+		}
+		nodeSlice[node.Name] = resMaps
+	}
+	return nodeSlice
+}
+
+// GenerateNumaNodes return the numa IDs of all node
+func GenerateNumaNodes(nodes map[string]*NodeInfo) map[string][]int {
+	nodeNumaMap := make(map[string][]int)
+	for _, node := range nodes {
+		if node.NumaSchedulerInfo == nil {
+			continue
+		}
+		nodeNumaMap[node.Name] = node.NumaSchedulerInfo.CPUDetail.NUMANodes().ToSlice()
+	}
+	return nodeNumaMap
+}
 
 // Allocate is to remove the allocated resource which is assigned to task
 func (resSets ResNumaSets) Allocate(taskSets ResNumaSets) {

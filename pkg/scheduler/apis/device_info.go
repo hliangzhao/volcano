@@ -16,7 +16,7 @@ limitations under the License.
 
 package apis
 
-import corev1 `k8s.io/api/core/v1`
+import corev1 "k8s.io/api/core/v1"
 
 // GPUDevice include gpu id, memory and the pods that are sharing it.
 type GPUDevice struct {
