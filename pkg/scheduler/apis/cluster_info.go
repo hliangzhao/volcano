@@ -18,14 +18,16 @@ package apis
 
 import "fmt"
 
+// TODO: fully checked
+
 // ClusterInfo is a snapshot of cluster by cache.
 type ClusterInfo struct {
 	Jobs           map[JobID]*JobInfo
 	Nodes          map[string]*NodeInfo
-	Queues         map[QueueID]*QueueInfo
-	NamespaceInfo  map[NamespaceName]*NamespaceInfo
 	RevocableNodes map[string]*NodeInfo
 	NodeList       []string
+	Queues         map[QueueID]*QueueInfo
+	NamespaceInfo  map[NamespaceName]*NamespaceInfo
 }
 
 func (ci ClusterInfo) String() string {
@@ -37,6 +39,7 @@ func (ci ClusterInfo) String() string {
 			str += fmt.Sprintf("\t %s: idle(%v) used(%v) allocatable(%v) pods(%d)\n",
 				n.Name, n.Idle, n.Used, n.Allocatable, len(n.Tasks))
 
+			// list each pod on this node
 			i := 0
 			for _, p := range n.Tasks {
 				str += fmt.Sprintf("\t\t %d: %v\n", i, p)
@@ -51,6 +54,7 @@ func (ci ClusterInfo) String() string {
 			str += fmt.Sprintf("\t Job(%s) name(%s) minAvailable(%v)\n",
 				job.UID, job.Name, job.MinAvailable)
 
+			// list each task of this job
 			i := 0
 			for _, task := range job.Tasks {
 				str += fmt.Sprintf("\t\t %d: %v\n", i, task)
@@ -61,6 +65,7 @@ func (ci ClusterInfo) String() string {
 
 	if len(ci.NamespaceInfo) != 0 {
 		str += "Namespaces:\n"
+		// multi-ns are supported
 		for _, ns := range ci.NamespaceInfo {
 			str += fmt.Sprintf("\t Namespace(%s) Weight(%v)\n",
 				ns.Name, ns.Weight)

@@ -23,6 +23,8 @@ import (
 	"k8s.io/klog/v2"
 )
 
+// TODO: fully checked
+
 const (
 	// NamespaceWeightKey is the key in ResourceQuota.spec.hard indicating the weight of this namespace
 	NamespaceWeightKey = "volcano.sh/namespace.weight"
@@ -108,7 +110,7 @@ func (nc *NamespaceCollection) Delete(quota *corev1.ResourceQuota) {
 	nc.deleteWeight(itemFromQuota(quota))
 }
 
-// Snapshot will clone a NamespaceInfo without Heap according NamespaceCollection
+// Snapshot will clone a NamespaceInfo without Heap according NamespaceCollection.
 func (nc *NamespaceCollection) Snapshot() *NamespaceInfo {
 	var weight int64 = DefaultNamespaceWeight
 

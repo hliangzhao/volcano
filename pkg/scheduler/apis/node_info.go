@@ -20,6 +20,7 @@ import (
 	"fmt"
 	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 	"strconv"
 )
@@ -156,6 +157,15 @@ func (ni *NodeInfo) SetNode(node *corev1.Node) {
 	}
 
 	ni.setNode(node)
+}
+
+// PodKey returns "<namespace>/<name>".
+func PodKey(pod *corev1.Pod) TaskID {
+	key, err := cache.MetaNamespaceKeyFunc(pod)
+	if err != nil {
+		return TaskID(fmt.Sprintf("%v/%v", pod.Namespace, pod.Name))
+	}
+	return TaskID(key)
 }
 
 // AddTask is used to add a task in nodeInfo object.

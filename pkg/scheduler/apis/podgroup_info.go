@@ -18,6 +18,8 @@ package apis
 
 import "github.com/hliangzhao/volcano/pkg/apis/scheduling"
 
+// TODO: fully checked
+
 // PodGroupPhase is the phase of a pod group at the current time.
 type PodGroupPhase string
 

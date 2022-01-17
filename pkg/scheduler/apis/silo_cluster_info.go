@@ -21,9 +21,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+// TODO: fully checked
+
 type ClusterID types.UID
 
-// SiloClusterInfo will have all details about queue
+// SiloClusterInfo will have all details about queue.
 type SiloClusterInfo struct {
 	UID     ClusterID
 	Cluster *scheduling.Cluster

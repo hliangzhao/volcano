@@ -24,6 +24,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+// TODO: fully checked
+
+// buildNode creates a node.
 func buildNode(name string, alloc corev1.ResourceList) *corev1.Node {
 	return &corev1.Node{
 		ObjectMeta: metav1.ObjectMeta{
@@ -36,7 +39,10 @@ func buildNode(name string, alloc corev1.ResourceList) *corev1.Node {
 	}
 }
 
-func buildPod(ns, n, nn string, p corev1.PodPhase, req corev1.ResourceList, owner []metav1.OwnerReference, labels map[string]string) *corev1.Pod {
+// buildPod creates a pod.
+func buildPod(ns, n, nn string, p corev1.PodPhase, req corev1.ResourceList,
+	owner []metav1.OwnerReference, labels map[string]string) *corev1.Pod {
+
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			UID:             types.UID(fmt.Sprintf("%v-%v", ns, n)),

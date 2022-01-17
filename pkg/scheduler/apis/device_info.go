@@ -18,16 +18,18 @@ package apis
 
 import corev1 "k8s.io/api/core/v1"
 
-// GPUDevice include gpu id, memory and the pods that are sharing it.
+// TODO: fully checked
+
+// GPUDevice include gpu id, memory and the pods who are sharing it.
 type GPUDevice struct {
 	ID int
-	// The pods that are sharing this GPU
+	// The pods who are sharing this GPU
 	PodMap map[string]*corev1.Pod
 	// memory per card
 	Memory uint
 }
 
-// NewGPUDevice creates a device
+// NewGPUDevice creates a GPU device.
 func NewGPUDevice(id int, mem uint) *GPUDevice {
 	return &GPUDevice{
 		ID:     id,
@@ -58,6 +60,8 @@ func GetGPUResourceOfPod(pod *corev1.Pod) uint {
 func (g *GPUDevice) getUsedGPUMemory() uint {
 	res := uint(0)
 	for _, pod := range g.PodMap {
+		// in PodMap, the pod could only in three cases: succeed, failed, and running
+		// apparently we only count on the running pods
 		if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
 			continue
 		} else {

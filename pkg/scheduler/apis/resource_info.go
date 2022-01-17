@@ -25,7 +25,7 @@ import (
 	"math"
 )
 
-/* The file provides Resource info. */
+// TODO: fully checked
 
 const (
 	// GPUResourceName need to follow
@@ -47,7 +47,7 @@ const (
 	Infinity DimensionDefaultValue = -1
 )
 
-// Resource defines all the resource type
+// Resource defines all the resource type.
 type Resource struct {
 	MilliCPU float64 // CPU usage
 	Memory   float64 // Memory usage
@@ -67,8 +67,8 @@ func GetMinResource() float64 {
 	return minResource
 }
 
-// IsScalarResourceName validates the resource for Extended, Hugepages, Native and AttachableVolume resources
-// NOTE: the func is copied from older version of `k8s.io/kubernetes/pkg/apis/core/v1/helper`
+// IsScalarResourceName validates the resource for Extended, Hugepages, Native and AttachableVolume resources.
+// NOTE: the func is copied from older version of `k8s.io/kubernetes/pkg/apis/core/v1/helper`.
 func IsScalarResourceName(name corev1.ResourceName) bool {
 	return v1helper.IsExtendedResourceName(name) || v1helper.IsHugePageResourceName(name) ||
 		v1helper.IsPrefixedNativeResource(name) || v1helper.IsAttachableVolumeResourceName(name)
@@ -108,7 +108,7 @@ func NewResource(resList corev1.ResourceList) *Resource {
 	return r
 }
 
-// ResFloat642Quantity transforms float64 to resource.Quantity
+// ResFloat642Quantity transforms float64 to resource.Quantity.
 func ResFloat642Quantity(resName corev1.ResourceName, resQuantity float64) resource.Quantity {
 	var result *resource.Quantity
 	switch resName {
@@ -120,7 +120,7 @@ func ResFloat642Quantity(resName corev1.ResourceName, resQuantity float64) resou
 	return *result
 }
 
-// ResQuantity2Float64 transforms resource.Quantity to float64
+// ResQuantity2Float64 transforms resource.Quantity to float64.
 func ResQuantity2Float64(resName corev1.ResourceName, quantity resource.Quantity) float64 {
 	var result float64
 	switch resName {
@@ -156,7 +156,7 @@ func (r *Resource) String() string {
 	return str
 }
 
-// ResourceNameList struct defines resource name collection
+// ResourceNameList struct defines resource name collection.
 type ResourceNameList []corev1.ResourceName
 
 // ResourceNames collects all used resource names in r.
@@ -193,7 +193,7 @@ func (r *Resource) Get(resName corev1.ResourceName) float64 {
 	}
 }
 
-// IsEmpty returns false if ANY kind of resource is NOT less than min value, otherwise returns true
+// IsEmpty returns false if ANY kind of resource is NOT less than min value, otherwise returns true.
 func (r *Resource) IsEmpty() bool {
 	if !(r.MilliCPU < minResource && r.Memory < minResource) {
 		return false
@@ -206,7 +206,7 @@ func (r *Resource) IsEmpty() bool {
 	return true
 }
 
-// IsZero returns false if the given kind of resource is not less than min value
+// IsZero returns false if the given kind of resource is not less than min value.
 func (r *Resource) IsZero(resName corev1.ResourceName) bool {
 	switch resName {
 	case corev1.ResourceCPU:
@@ -406,7 +406,7 @@ func (r *Resource) SetMaxResource(rr *Resource) {
 	}
 }
 
-// FitDelta Computes the delta between a resource object representing available
+// FitDelta Computes the delta between a resource object representing available.
 // resources an operand representing resources being requested.
 // Any field that is less than 0 after the operation represents an insufficient resource.
 func (r *Resource) FitDelta(rr *Resource) *Resource {
@@ -456,9 +456,9 @@ func (r *Resource) Equal(rr *Resource, defaultVal DimensionDefaultValue) bool {
 	return true
 }
 
-// setDefaultValue sets default value for resource dimension not defined of ScalarResource in leftResource and rightResource
+// setDefaultValue sets default value for resource dimension not defined of ScalarResource in leftResource and rightResource.
 // @param defaultValue "default value for resource dimension not defined in ScalarResources.
-// It can only be one of 'Zero' or 'Infinity'"
+// It can only be one of 'Zero' or 'Infinity'".
 func (r *Resource) setDefaultValue(leftResource, rightResource *Resource, defaultVal DimensionDefaultValue) {
 	if leftResource.ScalarResources == nil {
 		leftResource.ScalarResources = map[corev1.ResourceName]float64{}
@@ -490,8 +490,8 @@ func (r *Resource) setDefaultValue(leftResource, rightResource *Resource, defaul
 	}
 }
 
-// Diff calculates the difference between two resource object
-// Note: if `defaultValue` equals `Infinity`, the difference between two values will be `Infinity`, marked as -1
+// Diff calculates the difference between two resource object.
+// Note: if `defaultValue` equals `Infinity`, the difference between two values will be `Infinity`, marked as -1.
 func (r *Resource) Diff(rr *Resource, defaultVal DimensionDefaultValue) (*Resource, *Resource) {
 	leftRes, rightRes := r.Clone(), rr.Clone()
 	increasedVal, decreasedVal := EmptyResource(), EmptyResource()
@@ -533,10 +533,10 @@ func (r *Resource) Diff(rr *Resource, defaultVal DimensionDefaultValue) (*Resour
 
 // MinDimensionResource is used to reset the r resource dimension which is less than rr.
 // e.g r resource is <cpu 2000.00, memory 4047845376.00, hugepages-2Mi 0.00, hugepages-1Gi 0.00>
-// res resource is <cpu 3000.00, memory 1000.00>
-// return r resource is <cpu 2000.00, memory 1000.00, hugepages-2Mi 0.00, hugepages-1Gi 0.00>
+// res resource is <cpu 3000.00, memory 1000.00>,
+// return r resource is <cpu 2000.00, memory 1000.00, hugepages-2Mi 0.00, hugepages-1Gi 0.00>.
 // @param defaultValue "default value for resource dimension not defined in ScalarResources.
-// Its value can only be one of 'Zero' and 'Infinity'"
+// Its value can only be one of 'Zero' and 'Infinity'".
 func (r *Resource) MinDimensionResource(rr *Resource, defaultVal DimensionDefaultValue) *Resource {
 	if rr.MilliCPU < r.MilliCPU {
 		r.MilliCPU = rr.MilliCPU
@@ -573,7 +573,7 @@ func (r *Resource) MinDimensionResource(rr *Resource, defaultVal DimensionDefaul
 	return r
 }
 
-// ParseResourceList parses the given configuration map into an API
+// ParseResourceList parses the given configuration map into an API.
 // ResourceList or returns an error.
 func ParseResourceList(m map[string]string) (corev1.ResourceList, error) {
 	if len(m) == 0 {
@@ -601,7 +601,7 @@ func ParseResourceList(m map[string]string) (corev1.ResourceList, error) {
 	return rl, nil
 }
 
-// Contains judges whether rrl is subset of rl
+// Contains judges whether rrl is subset of rl.
 func (rl ResourceNameList) Contains(rrl ResourceNameList) bool {
 	for _, rightResName := range ([]corev1.ResourceName)(rrl) {
 		isResExist := false

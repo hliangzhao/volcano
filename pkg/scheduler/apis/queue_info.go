@@ -22,6 +22,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+// TODO: fully checked
+
 type QueueID types.UID
 
 type QueueInfo struct {
@@ -64,7 +66,7 @@ func (q *QueueInfo) Clone() *QueueInfo {
 	}
 }
 
-// Reclaimable return whether queue is reclaimable
+// Reclaimable returns true if queue is reclaimable.
 func (q *QueueInfo) Reclaimable() bool {
 	if q == nil {
 		return false

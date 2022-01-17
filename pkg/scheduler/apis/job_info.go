@@ -34,9 +34,41 @@ import (
 	"time"
 )
 
-/* The file provides Task info and Job info. */
+// TODO: fully checked
 
-// DisruptionBudget define job min pod available and max pod unavailable value
+// JobWaitingTime is the maximum waiting time that a job could stay Pending in service level agreement.
+// When job waits longer than waiting time, it should be inqueue at once, and cluster should reserve resources for it.
+const JobWaitingTime = "sla-waiting-time"
+
+/* TaskID related */
+
+type TaskID types.UID
+
+// getTaskID returns the task that this pod belongs to.
+func getTaskID(pod *corev1.Pod) TaskID {
+	if taskSpec, found := pod.Annotations[batchv1alpha1.TaskSpecKey]; found && len(taskSpec) != 0 {
+		return TaskID(taskSpec)
+	}
+	return ""
+}
+
+/* JobID related */
+
+type JobID types.UID
+
+// getJobID returns the job that this pod belongs to. NOTE that a job is wrapped as a podgroup.
+func getJobID(pod *corev1.Pod) JobID {
+	if groupName, found := pod.Annotations[schedulingv1alpha1.KubeGroupNameAnnotationKey]; found && len(groupName) != 0 {
+		// Make sure Pod and PodGroup belong to the same namespace.
+		jobId := fmt.Sprintf("%s/%s", pod.Namespace, groupName)
+		return JobID(jobId)
+	}
+	return ""
+}
+
+/* DisruptionBudget related */
+
+// DisruptionBudget define job min pod available and max pod unavailable value.
 type DisruptionBudget struct {
 	MinAvailable   string
 	MaxUnavailable string
@@ -56,29 +88,54 @@ func (db *DisruptionBudget) Clone() *DisruptionBudget {
 	}
 }
 
-// JobWaitingTime is maximum waiting time that a job could stay Pending in service level agreement.
-// When job waits longer than waiting time, it should be inqueue at once, and cluster should reserve resources for it
-const JobWaitingTime = "sla-waiting-time"
+/* TransactionContext related */
 
-type TaskID types.UID
-
-func getTaskID(pod *corev1.Pod) TaskID {
-	if taskSpec, found := pod.Annotations[batchv1alpha1.TaskSpecKey]; found && len(taskSpec) != 0 {
-		return TaskID(taskSpec)
-	}
-	return ""
+// TransactionContext holds all the fields that needed by the scheduling transaction.
+type TransactionContext struct {
+	NodeName string
+	Status   TaskStatus
 }
 
-// TaskInfo has all info of a task
+func (tx *TransactionContext) Clone() *TransactionContext {
+	if tx == nil {
+		return nil
+	}
+	clone := *tx
+	return &clone
+}
+
+/* TopologyInfo related */
+
+type TopologyInfo struct {
+	Policy string
+	ResMap map[int]corev1.ResourceList // key: NUMA ID
+}
+
+func (info *TopologyInfo) Clone() *TopologyInfo {
+	copyInfo := &TopologyInfo{
+		Policy: info.Policy,
+		ResMap: map[int]corev1.ResourceList{},
+	}
+
+	for numaId, resList := range info.ResMap {
+		copyInfo.ResMap[numaId] = resList.DeepCopy()
+	}
+
+	return copyInfo
+}
+
+/* TaskInfo related */
+
+// TaskInfo has all info of a task.
 type TaskInfo struct {
 	UID TaskID
-	Job JobID
+	Job JobID // the job that this task belongs to
 
 	Name      string
 	Namespace string
 
-	InitResReq *Resource
-	ResReq     *Resource
+	InitResReq *Resource // resource requests of init containers
+	ResReq     *Resource // resource requests of containers
 
 	TransactionContext
 	LastTx *TransactionContext
@@ -88,20 +145,20 @@ type TaskInfo struct {
 	Preemptable bool
 	BestEffort  bool
 
-	// RevocableZone support set volcano.sh/revocable-zone annotation or label for pod/podgroup
-	// we only support empty value or * value for this version, and we will support specify revocable zone name for future release
-	// empty value means workload can not use revocable node
-	// * value means workload can use all the revocable node for during node active revocable time.
+	// RevocableZone supports setting volcano.sh/revocable-zone annotation or label for pod/podgroup.
+	// We only support empty value or * value for this version, and we will support specify revocable zone name for future release.
+	// Empty value means workload can not use revocable node.
+	// "*" value means workload can use all the revocable nodes during node active revocable time.
 	RevocableZone string
 
 	NumaInfo   *TopologyInfo
 	PodVolumes *volumebinding.PodVolumes
-	Pod        *corev1.Pod
+	Pod        *corev1.Pod // (TODO: a task may consist of multiple pods, why not use slice here?)
 }
 
 func NewTaskInfo(pod *corev1.Pod) *TaskInfo {
 	initResReq := GetPodResourceRequest(pod)
-	reqReq := initResReq
+	resReq := initResReq
 
 	bestEffort := initResReq.IsEmpty()
 	preemptable := GetPodPreemptable(pod)
@@ -116,7 +173,7 @@ func NewTaskInfo(pod *corev1.Pod) *TaskInfo {
 		Name:       pod.Name,
 		Namespace:  pod.Namespace,
 		InitResReq: initResReq,
-		ResReq:     reqReq,
+		ResReq:     resReq,
 		TransactionContext: TransactionContext{
 			NodeName: pod.Spec.NodeName,
 			Status:   getTaskStatus(pod),
@@ -140,89 +197,6 @@ func NewTaskInfo(pod *corev1.Pod) *TaskInfo {
 	}
 
 	return ti
-}
-
-// TransactionContext holds all the fields that needed by scheduling transaction
-type TransactionContext struct {
-	NodeName string
-	Status   TaskStatus
-}
-
-func (tx *TransactionContext) Clone() *TransactionContext {
-	if tx == nil {
-		return nil
-	}
-	clone := *tx
-	return &clone
-}
-
-type TopologyInfo struct {
-	Policy string
-	ResMap map[int]corev1.ResourceList // key: NUMA ID
-}
-
-func (info *TopologyInfo) Clone() *TopologyInfo {
-	copyInfo := &TopologyInfo{
-		Policy: info.Policy,
-		ResMap: map[int]corev1.ResourceList{},
-	}
-
-	for numaId, resList := range info.ResMap {
-		copyInfo.ResMap[numaId] = resList.DeepCopy()
-	}
-
-	return copyInfo
-}
-
-type JobID types.UID
-
-func getJobID(pod *corev1.Pod) JobID {
-	if groupName, found := pod.Annotations[schedulingv1alpha1.KubeGroupNameAnnotationKey]; found && len(groupName) != 0 {
-		// Make sure Pod and PodGroup belong to the same namespace.
-		jobId := fmt.Sprintf("%s/%s", pod.Namespace, groupName)
-		return JobID(jobId)
-	}
-	return ""
-}
-
-const TaskPriorityAnnotation = "volcano.sh/task-priority"
-
-// GetTransactionContext get transaction context of a task
-func (ti *TaskInfo) GetTransactionContext() TransactionContext {
-	return ti.TransactionContext
-}
-
-// GenerateLastTxContext generate and set context of last transaction for a task
-func (ti *TaskInfo) GenerateLastTxContext() {
-	ctx := ti.GetTransactionContext()
-	ti.LastTx = &ctx
-}
-
-// ClearLastTxContext clear context of last transaction for a task
-func (ti *TaskInfo) ClearLastTxContext() {
-	ti.LastTx = nil
-}
-
-func (ti *TaskInfo) SetPodResourceDecision() error {
-	if ti.NumaInfo == nil || len(ti.NumaInfo.ResMap) == 0 {
-		return nil
-	}
-
-	klog.V(4).Infof("%v/%v resource decision: %v", ti.Namespace, ti.Name, ti.NumaInfo.ResMap)
-	decision := PodResourceDecision{
-		NumaResources: ti.NumaInfo.ResMap,
-	}
-	layout, err := json.Marshal(&decision)
-	if err != nil {
-		return err
-	}
-
-	metav1.SetMetaDataAnnotation(&ti.Pod.ObjectMeta, TopologyDecisionAnnotation, string(layout[:]))
-	return nil
-}
-
-func (ti *TaskInfo) UnsetPodResourceDecision() {
-	delete(ti.Pod.Annotations, TopologyDecisionAnnotation)
 }
 
 // Clone is used for cloning a task
@@ -250,6 +224,49 @@ func (ti *TaskInfo) Clone() *TaskInfo {
 	}
 }
 
+const TaskPriorityAnnotation = "volcano.sh/task-priority"
+
+// GetTransactionContext gets transaction context of a task。
+func (ti *TaskInfo) GetTransactionContext() TransactionContext {
+	return ti.TransactionContext
+}
+
+// GenerateLastTxContext generates and sets context of last transaction for a task.
+func (ti *TaskInfo) GenerateLastTxContext() {
+	ctx := ti.GetTransactionContext()
+	ti.LastTx = &ctx
+}
+
+// ClearLastTxContext clears context of last transaction for a task.
+func (ti *TaskInfo) ClearLastTxContext() {
+	ti.LastTx = nil
+}
+
+// SetPodResourceDecision sets the TopologyDecisionAnnotation annotation for the pod that wrapped by this TaskInfo.
+func (ti *TaskInfo) SetPodResourceDecision() error {
+	if ti.NumaInfo == nil || len(ti.NumaInfo.ResMap) == 0 {
+		return nil
+	}
+
+	klog.V(4).Infof("%v/%v resource decision: %v", ti.Namespace, ti.Name, ti.NumaInfo.ResMap)
+	decision := PodResourceDecision{
+		NumaResources: ti.NumaInfo.ResMap,
+	}
+	layout, err := json.Marshal(&decision)
+	if err != nil {
+		return err
+	}
+
+	metav1.SetMetaDataAnnotation(&ti.Pod.ObjectMeta, TopologyDecisionAnnotation, string(layout[:]))
+	return nil
+}
+
+// UnsetPodResourceDecision unsets the TopologyDecisionAnnotation annotation for the pod that wrapped by this TaskInfo.
+func (ti *TaskInfo) UnsetPodResourceDecision() {
+	delete(ti.Pod.Annotations, TopologyDecisionAnnotation)
+}
+
+// GetTaskSpecKey gets the task key (<namespace>/<name>) of ti.
 func (ti *TaskInfo) GetTaskSpecKey() TaskID {
 	if ti.Pod == nil {
 		return ""
@@ -275,6 +292,7 @@ func (ti TaskInfo) String() string {
 type tasksMap map[TaskID]*TaskInfo
 
 // NodeResourceMap stores resource in a node
+// TODO: this type seems useless
 type NodeResourceMap map[string]*Resource
 
 // JobInfo has all info of a job
@@ -284,24 +302,25 @@ type JobInfo struct {
 	Name      string
 	Namespace string
 
-	Queue        QueueID
+	Queue        QueueID // the queue that this job (this podgroup) is put in
 	Priority     int32
-	MinAvailable int32
+	MinAvailable int32 // min num of ready tasks to run this job
 	WaitingTime  *time.Duration
 
 	JobFitErrors   string
 	NodesFitErrors map[TaskID]*FitErrors
 
-	TaskStatusIndex       map[TaskStatus]tasksMap
-	Tasks                 tasksMap
-	TaskMinAvailable      map[TaskID]int32
-	TaskMinAvailableTotal int32
+	TaskStatusIndex       map[TaskStatus]tasksMap // task scheduling status map
+	Tasks                 tasksMap                // all tasks in this job
+	TaskMinAvailable      map[TaskID]int32        // min available number of pods of each task
+	TaskMinAvailableTotal int32                   // required total min available pods num
+	Budget                *DisruptionBudget
 
 	Allocated    *Resource
 	TotalRequest *Resource
 
 	CreationTimestamp metav1.Time
-	PodGroup          *PodGroup
+	PodGroup          *PodGroup // the podgroup that this job wraps
 
 	ScheduleStartTimestamp metav1.Time
 
@@ -310,12 +329,11 @@ type JobInfo struct {
 	// RevocableZone support set volcano.sh/revocable-zone annotation or label for pod/podgroup.
 	// We only support empty value or * value for this version, and we will support specify revocable zone name for future release.
 	// Empty value means workload can not use revocable node;
-	// * value means workload can use all the revocable node for during node active revocable time.
+	// "*" value means workload can use all the revocable node for during node active revocable time.
 	RevocableZone string
-	Budget        *DisruptionBudget
 }
 
-// NewJobInfo creates a new jobInfo for set of tasks
+// NewJobInfo creates a new jobInfo for a set of tasks.
 func NewJobInfo(uid JobID, tasks ...*TaskInfo) *JobInfo {
 	job := &JobInfo{
 		UID:            uid,
@@ -389,7 +407,7 @@ func (ji JobInfo) String() string {
 		ji.Budget.MinAvailable, ji.Budget.MaxUnavailable) + res
 }
 
-// SetPodGroup sets podGroup details to a job (a job is wrapped as a podgroup when scheduling).
+// SetPodGroup sets the podgroup details to ji.
 func (ji *JobInfo) SetPodGroup(pg *PodGroup) {
 	ji.Name = pg.Name
 	ji.Namespace = pg.Namespace
@@ -418,10 +436,15 @@ func (ji *JobInfo) SetPodGroup(pg *PodGroup) {
 	ji.PodGroup = pg
 }
 
-// UnsetPodGroup removes podGroup details from a job
+// UnsetPodGroup removes podgroup details from ji.
 func (ji *JobInfo) UnsetPodGroup() {
 	ji.PodGroup = nil
 }
+
+/*
+The following four extract* functions read from the annotations and labels
+of the input podgroup and returns the parsed value.
+*/
 
 // extractWaitingTime reads sla waiting time for job from podgroup annotations
 // TODO: should also read from given field in volcano job spec
@@ -500,7 +523,7 @@ func (ji *JobInfo) extractBudget(pg *PodGroup) *DisruptionBudget {
 	return NewDisruptionBudget("", "")
 }
 
-// GetMinResources return the min resources of podgroup.
+// GetMinResources return the min resources of ji.PodGroup.
 func (ji *JobInfo) GetMinResources() *Resource {
 	if ji.PodGroup.Spec.MinResources == nil {
 		return EmptyResource()
@@ -508,7 +531,9 @@ func (ji *JobInfo) GetMinResources() *Resource {
 	return NewResource(*ji.PodGroup.Spec.MinResources)
 }
 
-// addTaskIndex adds ti to ji.TaskStatusIndex
+/* The following four functions add or delete a specific task to and from ji. */
+
+// addTaskIndex adds ti to ji.TaskStatusIndex.
 func (ji *JobInfo) addTaskIndex(ti *TaskInfo) {
 	if _, found := ji.TaskStatusIndex[ti.Status]; !found {
 		ji.TaskStatusIndex[ti.Status] = tasksMap{}
@@ -516,7 +541,7 @@ func (ji *JobInfo) addTaskIndex(ti *TaskInfo) {
 	ji.TaskStatusIndex[ti.Status][ti.UID] = ti
 }
 
-// AddTaskInfo is used to add a task to a job
+// AddTaskInfo adds a task to ji.
 func (ji *JobInfo) AddTaskInfo(ti *TaskInfo) {
 	ji.Tasks[ti.UID] = ti
 	ji.addTaskIndex(ti)
@@ -524,27 +549,6 @@ func (ji *JobInfo) AddTaskInfo(ti *TaskInfo) {
 	if AllocatedStatus(ti.Status) {
 		ji.Allocated.Add(ti.ResReq)
 	}
-}
-
-// UpdateTaskStatus is used to update task's status in a job.
-// If error occurs both task and job are guaranteed to be in the original state.
-func (ji *JobInfo) UpdateTaskStatus(task *TaskInfo, status TaskStatus) error {
-	if err := validateStatusUpdate(task.Status, status); err != nil {
-		return err
-	}
-
-	// First remove the task (if exist) from the task list.
-	if _, found := ji.Tasks[task.UID]; found {
-		if err := ji.DeleteTaskInfo(task); err != nil {
-			return err
-		}
-	}
-
-	// Update task's status to the target status once task addition is guaranteed to succeed.
-	task.Status = status
-	ji.AddTaskInfo(task)
-
-	return nil
 }
 
 // deleteTaskIndex removes ti from ji.TaskStatusIndex
@@ -573,9 +577,32 @@ func (ji *JobInfo) DeleteTaskInfo(ti *TaskInfo) error {
 		ti.Namespace, ti.Name, ji.Namespace, ji.Name)
 }
 
-// IsPending returns whether job is in pending status
+// UpdateTaskStatus updates task's status in a job (Delete-then-Add).
+// If error occurs both task and job are guaranteed to be in the original state.
+func (ji *JobInfo) UpdateTaskStatus(task *TaskInfo, status TaskStatus) error {
+	if err := validateStatusUpdate(task.Status, status); err != nil {
+		return err
+	}
+
+	// First remove the task (if exist) from the task list.
+	if _, found := ji.Tasks[task.UID]; found {
+		if err := ji.DeleteTaskInfo(task); err != nil {
+			return err
+		}
+	}
+
+	// Update task's status to the target status once task addition is guaranteed to succeed.
+	task.Status = status
+	ji.AddTaskInfo(task)
+
+	return nil
+}
+
+// IsPending returns whether job is pending.
 func (ji *JobInfo) IsPending() bool {
-	if ji.PodGroup == nil || ji.PodGroup.Status.Phase == scheduling.PodGroupPending || ji.PodGroup.Status.Phase == "" {
+	if ji.PodGroup == nil ||
+		ji.PodGroup.Status.Phase == scheduling.PodGroupPending ||
+		ji.PodGroup.Status.Phase == "" {
 		return true
 	}
 	return false
@@ -583,22 +610,22 @@ func (ji *JobInfo) IsPending() bool {
 
 // ReadyTaskNum returns the number of tasks that are ready or that is best-effort.
 func (ji *JobInfo) ReadyTaskNum() int32 {
-	occupied := 0
-	occupied += len(ji.TaskStatusIndex[Bound])
-	occupied += len(ji.TaskStatusIndex[Binding])
-	occupied += len(ji.TaskStatusIndex[Running])
-	occupied += len(ji.TaskStatusIndex[Allocated])
-	occupied += len(ji.TaskStatusIndex[Succeeded])
+	ready := 0
+	ready += len(ji.TaskStatusIndex[Bound])
+	ready += len(ji.TaskStatusIndex[Binding])
+	ready += len(ji.TaskStatusIndex[Running])
+	ready += len(ji.TaskStatusIndex[Allocated])
+	ready += len(ji.TaskStatusIndex[Succeeded])
 
 	if tasks, found := ji.TaskStatusIndex[Pending]; found {
 		for _, task := range tasks {
 			if task.BestEffort {
-				occupied++
+				ready++
 			}
 		}
 	}
 
-	return int32(occupied)
+	return int32(ready)
 }
 
 // WaitingTaskNum returns the number of tasks that are pipelined.
@@ -608,13 +635,13 @@ func (ji *JobInfo) WaitingTaskNum() int32 {
 
 // ValidTaskNum returns the number of tasks that are valid.
 func (ji *JobInfo) ValidTaskNum() int32 {
-	occupied := 0
+	valid := 0
 	for status, tasks := range ji.TaskStatusIndex {
 		if AllocatedStatus(status) || status == Succeeded || status == Pipelined || status == Pending {
-			occupied += len(tasks)
+			valid += len(tasks)
 		}
 	}
-	return int32(occupied)
+	return int32(valid)
 }
 
 // Ready returns whether job is ready for run
@@ -622,7 +649,7 @@ func (ji *JobInfo) Ready() bool {
 	return ji.ReadyTaskNum() >= ji.MinAvailable
 }
 
-// TaskSchedulingReason get detailed reason and message of the given task
+// TaskSchedulingReason get detailed reason and message of the given task's scheduling result.
 // It returns detailed reason and message for tasks based on last scheduling transaction.
 func (ji *JobInfo) TaskSchedulingReason(tid TaskID) (reason, msg string) {
 	taskInfo, exists := ji.Tasks[tid]
@@ -655,9 +682,9 @@ func (ji *JobInfo) TaskSchedulingReason(tid TaskID) (reason, msg string) {
 	}
 }
 
-// FitError returns detailed information on why a job's task failed to fit on
-// each available node
+// FitError returns detailed information on why a job's tasks failed to fit on each available node.
 func (ji *JobInfo) FitError() string {
+	// sort tasks by status num
 	sortReasonsHistogram := func(reasons map[string]int) []string {
 		var reasonStrings []string
 		for k, v := range reasons {
@@ -667,7 +694,7 @@ func (ji *JobInfo) FitError() string {
 		return reasonStrings
 	}
 
-	// Stat histogram for all tasks of the job
+	// stat histogram for all tasks of the job
 	reasons := make(map[string]int)
 	for status, taskMap := range ji.TaskStatusIndex {
 		reasons[status.String()] += len(taskMap)
@@ -675,7 +702,7 @@ func (ji *JobInfo) FitError() string {
 	reasons["minAvailable"] = int(ji.MinAvailable)
 	reasonMsg := fmt.Sprintf("%v, %v", scheduling.PodGroupNotReady, strings.Join(sortReasonsHistogram(reasons), ", "))
 
-	// Stat histogram for pending tasks only
+	// stat histogram for pending tasks only
 	reasons = map[string]int{}
 	for uid := range ji.TaskStatusIndex[Pending] {
 		reason, _ := ji.TaskSchedulingReason(uid)
@@ -689,7 +716,9 @@ func (ji *JobInfo) FitError() string {
 }
 
 // CheckTaskMinAvailable returns whether each task of job is valid.
+// This func checks min tasks num.
 func (ji *JobInfo) CheckTaskMinAvailable() bool {
+	// pg.Spec.MinMember < sum(pg.Spec.MinTaskMember), then this job is valid to run
 	if ji.MinAvailable < ji.TaskMinAvailableTotal {
 		return true
 	}
@@ -704,8 +733,8 @@ func (ji *JobInfo) CheckTaskMinAvailable() bool {
 	}
 
 	klog.V(4).Infof("job %s/%s actual: %+v, ji.TaskMinAvailable: %+v", ji.Name, ji.Namespace, actual, ji.TaskMinAvailable)
-	for task, minAval := range ji.TaskMinAvailable {
-		if act, ok := actual[task]; !ok || act < minAval {
+	for taskID, minAvail := range ji.TaskMinAvailable {
+		if act, ok := actual[taskID]; !ok || act < minAvail {
 			return false
 		}
 	}
@@ -714,10 +743,13 @@ func (ji *JobInfo) CheckTaskMinAvailable() bool {
 }
 
 // CheckTaskMinAvailableReady return ready pods meet task min available.
+// This func checks min pods num.
 func (ji *JobInfo) CheckTaskMinAvailableReady() bool {
+	// pg.Spec.MinMember < sum(pg.Spec.MinTaskMember), then this job is valid to run
 	if ji.MinAvailable < ji.TaskMinAvailableTotal {
 		return true
 	}
+
 	occupiedMap := map[TaskID]int32{}
 	for status, tasks := range ji.TaskStatusIndex {
 		if AllocatedStatus(status) || status == Succeeded {
@@ -744,10 +776,14 @@ func (ji *JobInfo) CheckTaskMinAvailableReady() bool {
 	return true
 }
 
+// CheckTaskMinAvailablePipelined return ready pods meet task min available.
+// Different from the above function, Pipelined tasks are viewed as valid.
 func (ji *JobInfo) CheckTaskMinAvailablePipelined() bool {
+	// pg.Spec.MinMember < sum(pg.Spec.MinTaskMember), then this job is valid to run
 	if ji.MinAvailable < ji.TaskMinAvailableTotal {
 		return true
 	}
+
 	occupiedMap := map[TaskID]int32{}
 	for status, tasks := range ji.TaskStatusIndex {
 		if AllocatedStatus(status) || status == Succeeded || status == Pipelined {

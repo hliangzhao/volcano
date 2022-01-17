@@ -24,6 +24,8 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpuset"
 )
 
+// TODO: fully checked
+
 type NumaChangeFlag int
 
 const (
@@ -43,7 +45,7 @@ type PodResourceDecision struct {
 	NumaResources map[int]corev1.ResourceList `json:"numa,omitempty"`
 }
 
-// ResourceInfo is the allocatable information for the resource
+// ResourceInfo is the allocatable information for the resource.
 type ResourceInfo struct {
 	Allocatable        cpuset.CPUSet
 	Capacity           int
@@ -51,7 +53,7 @@ type ResourceInfo struct {
 	UsedPerNuma        map[int]float64 // key: NUMA id
 }
 
-// NumaTopoInfo is the information about topology manager on the node
+// NumaTopoInfo is the information about topology manager on the node.
 type NumaTopoInfo struct {
 	Namespace   string
 	Name        string
@@ -124,14 +126,14 @@ func (info *NumaTopoInfo) Compare(newInfo *NumaTopoInfo) bool {
 
 type ResNumaSets map[string]cpuset.CPUSet
 
-// Allocate is the function to remove the allocated resource
+// Allocate is the function to remove the allocated resource.
 func (info *NumaTopoInfo) Allocate(resSets ResNumaSets) {
 	for resName := range resSets {
 		info.NumaResMap[resName].Allocatable = info.NumaResMap[resName].Allocatable.Difference(resSets[resName])
 	}
 }
 
-// Release is the function to release the allocated resource
+// Release is the function to release the allocated resource.
 func (info *NumaTopoInfo) Release(resSets ResNumaSets) {
 	for resName := range resSets {
 		info.NumaResMap[resName].Allocatable = info.NumaResMap[resName].Allocatable.Union(resSets[resName])
@@ -153,7 +155,7 @@ func GetPodResourceNumaInfo(ti *TaskInfo) map[int]corev1.ResourceList {
 	return decision.NumaResources
 }
 
-// AddTask is the function to update the used resource of per numa node
+// AddTask is the function to update the used resource of per numa node.
 func (info *NumaTopoInfo) AddTask(ti *TaskInfo) {
 	decision := GetPodResourceNumaInfo(ti)
 	if decision == nil {
@@ -168,7 +170,7 @@ func (info *NumaTopoInfo) AddTask(ti *TaskInfo) {
 	}
 }
 
-// RemoveTask is the function to update the used resource of per numa node
+// RemoveTask is the function to update the used resource of per numa node.
 func (info *NumaTopoInfo) RemoveTask(ti *TaskInfo) {
 	decision := GetPodResourceNumaInfo(ti)
 	if decision == nil {
@@ -183,7 +185,7 @@ func (info *NumaTopoInfo) RemoveTask(ti *TaskInfo) {
 	}
 }
 
-// GenerateNodeResNumaSets return the idle resource sets of all node
+// GenerateNodeResNumaSets return the idle resource sets of all node.
 func GenerateNodeResNumaSets(nodes map[string]*NodeInfo) map[string]ResNumaSets {
 	nodeSlice := make(map[string]ResNumaSets)
 	for _, node := range nodes {
@@ -199,7 +201,7 @@ func GenerateNodeResNumaSets(nodes map[string]*NodeInfo) map[string]ResNumaSets 
 	return nodeSlice
 }
 
-// GenerateNumaNodes return the numa IDs of all node
+// GenerateNumaNodes return the numa IDs of all node.
 func GenerateNumaNodes(nodes map[string]*NodeInfo) map[string][]int {
 	nodeNumaMap := make(map[string][]int)
 	for _, node := range nodes {
@@ -211,7 +213,7 @@ func GenerateNumaNodes(nodes map[string]*NodeInfo) map[string][]int {
 	return nodeNumaMap
 }
 
-// Allocate is to remove the allocated resource which is assigned to task
+// Allocate is to remove the allocated resource which is assigned to task.
 func (resSets ResNumaSets) Allocate(taskSets ResNumaSets) {
 	for resName := range taskSets {
 		if _, ok := resSets[resName]; !ok {
@@ -221,7 +223,7 @@ func (resSets ResNumaSets) Allocate(taskSets ResNumaSets) {
 	}
 }
 
-// Release is to reclaim the allocated resource which is assigned to task
+// Release is to reclaim the allocated resource which is assigned to task.
 func (resSets ResNumaSets) Release(taskSets ResNumaSets) {
 	for resName := range taskSets {
 		if _, ok := resSets[resName]; !ok {
@@ -231,7 +233,7 @@ func (resSets ResNumaSets) Release(taskSets ResNumaSets) {
 	}
 }
 
-// Clone is the copy action
+// Clone is the copy action.
 func (resSets ResNumaSets) Clone() ResNumaSets {
 	newSets := make(ResNumaSets)
 	for resName := range resSets {

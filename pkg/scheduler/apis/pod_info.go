@@ -27,6 +27,8 @@ import (
 	"time"
 )
 
+// TODO: fully checked
+
 // Refer k8s.io/kubernetes/pkg/scheduler/algorithm/predicates/predicates.go#GetResourceRequest.
 //
 // GetResourceRequest returns a *Resource that covers the largest width in each resource dimension.
@@ -66,7 +68,7 @@ func GetPodResourceWithoutInitContainers(pod *corev1.Pod) *Resource {
 	return result
 }
 
-// GetPodResourceRequest returns all the resource required for that pod
+// GetPodResourceRequest returns all the resource required for that pod.
 func GetPodResourceRequest(pod *corev1.Pod) *Resource {
 	result := GetPodResourceWithoutInitContainers(pod)
 	for _, container := range pod.Spec.InitContainers {
@@ -75,7 +77,7 @@ func GetPodResourceRequest(pod *corev1.Pod) *Resource {
 	return result
 }
 
-// GetPodPreemptable return volcano.sh/preemptable value for pod
+// GetPodPreemptable return volcano.sh/preemptable value for pod.
 func GetPodPreemptable(pod *corev1.Pod) bool {
 	// check annotations
 	if len(pod.Annotations) > 0 {
@@ -104,7 +106,7 @@ func GetPodPreemptable(pod *corev1.Pod) bool {
 	return false
 }
 
-// GetPodRevocableZone return volcano.sh/revocable-zone value for pod/podgroup
+// GetPodRevocableZone return volcano.sh/revocable-zone value for pod/podgroup.
 func GetPodRevocableZone(pod *corev1.Pod) string {
 	if len(pod.Annotations) > 0 {
 		if value, found := pod.Annotations[schedulingv1alpha1.RevocableZone]; found {
@@ -122,7 +124,7 @@ func GetPodRevocableZone(pod *corev1.Pod) string {
 	return ""
 }
 
-// GetPodTopologyInfo return volcano.sh/numa-topology-policy value for pod
+// GetPodTopologyInfo return volcano.sh/numa-topology-policy value for pod.
 func GetPodTopologyInfo(pod *corev1.Pod) *TopologyInfo {
 	info := TopologyInfo{
 		ResMap: map[int]corev1.ResourceList{},

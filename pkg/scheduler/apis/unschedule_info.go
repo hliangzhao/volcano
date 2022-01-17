@@ -22,6 +22,8 @@ import (
 	"strings"
 )
 
+// TODO: fully checked
+
 const (
 	// NodePodNumberExceeded means pods in node exceed the allocatable pod number
 	NodePodNumberExceeded = "node(s) pod number exceeded"
@@ -40,7 +42,7 @@ const (
 	PodReasonUnschedulable = "Unschedulable"
 
 	// PodReasonSchedulable reason in PodScheduled PodCondition means that the scheduler
-	// can schedule the pod right now, but not bind yet
+	// can schedule the pod right now, but not bind yet.
 	PodReasonSchedulable = "Schedulable"
 
 	// PodReasonUndetermined reason in PodScheduled PodCondition means that the scheduler
@@ -48,7 +50,7 @@ const (
 	PodReasonUndetermined = "Undetermined"
 )
 
-// FitError describe the reason why task could not fit that node
+// FitError describes the reason why task could not fit that node
 type FitError struct {
 	taskNamespace string
 	taskName      string
@@ -56,12 +58,12 @@ type FitError struct {
 	Reasons       []string
 }
 
-// NewFitError return FitError by message
-func NewFitError(task *TaskInfo, node *NodeInfo, msg ...string) *FitError {
+// NewFitError creates FitError with msg.
+func NewFitError(ti *TaskInfo, ni *NodeInfo, msg ...string) *FitError {
 	return &FitError{
-		taskName:      task.Name,
-		taskNamespace: task.Namespace,
-		NodeName:      node.Name,
+		taskName:      ti.Name,
+		taskNamespace: ti.Namespace,
+		NodeName:      ni.Name,
 		Reasons:       msg,
 	}
 }
@@ -72,10 +74,10 @@ func (fe *FitError) Error() string {
 		fe.taskNamespace, fe.taskName, fe.NodeName, strings.Join(fe.Reasons, ", "))
 }
 
-// FitErrors is set of FitError on many nodes
+// FitErrors is the set of FitError of multiple nodes.
 type FitErrors struct {
 	nodes map[string]*FitError
-	err   string
+	err   string // common err msg
 }
 
 func NewFitErrors() *FitErrors {
@@ -84,12 +86,12 @@ func NewFitErrors() *FitErrors {
 	return f
 }
 
-// SetError sets the common error message in FitErrors
+// SetError sets the common error message in FitErrors.
 func (f *FitErrors) SetError(err string) {
 	f.err = err
 }
 
-// SetNodeError sets the node error in FitErrors
+// SetNodeError sets the node error in FitErrors.
 func (f *FitErrors) SetNodeError(nodeName string, err error) {
 	var fe *FitError
 	switch obj := err.(type) {
@@ -105,7 +107,7 @@ func (f *FitErrors) SetNodeError(nodeName string, err error) {
 	f.nodes[nodeName] = fe
 }
 
-// Error returns the final error message
+// Error returns the final error message.
 func (f *FitErrors) Error() string {
 	reasons := make(map[string]int)
 

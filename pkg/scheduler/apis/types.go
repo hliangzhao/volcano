@@ -17,14 +17,19 @@ limitations under the License.
 package apis
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	k8sframework "k8s.io/kubernetes/pkg/scheduler/framework"
 )
 
-// TaskStatus defines the status of a task/pod.
+// TODO: fully checked
+
+/* This file includes TaskStatus and NodePhase. */
+
+// TaskStatus defines the status of a task (a pod).
 type TaskStatus int
 
 const (
-	// Pending means the task is pending in the apiserver.
+	// Pending means the task is pending in the api-server.
 	Pending TaskStatus = 1 << iota
 
 	// Allocated means the scheduler assigns a host to it.
@@ -82,7 +87,52 @@ func (ts TaskStatus) String() string {
 	}
 }
 
-// NodePhase defines the phase of node.
+// getTaskStatus returns current status of the input pod.
+func getTaskStatus(pod *corev1.Pod) TaskStatus {
+	switch pod.Status.Phase {
+	case corev1.PodRunning:
+		if pod.DeletionTimestamp != nil {
+			return Releasing
+		}
+		return Running
+	case corev1.PodPending:
+		if pod.DeletionTimestamp != nil {
+			return Releasing
+		}
+		if len(pod.Spec.NodeName) == 0 {
+			return Pending
+		}
+		return Bound
+	case corev1.PodUnknown: // TODO: this case could be removed
+		return Unknown
+	case corev1.PodSucceeded:
+		return Succeeded
+	case corev1.PodFailed:
+		return Failed
+	}
+	return Unknown
+}
+
+// AllocatedStatus checks whether the task is scheduled to a node.
+// If a node has been scheduled to the task, returns true; otherwise, returns false.
+func AllocatedStatus(status TaskStatus) bool {
+	switch status {
+	case Bound, Binding, Running, Allocated:
+		// scheduled
+		return true
+	default:
+		// not scheduled
+		return false
+	}
+}
+
+// validateStatusUpdate validates whether the status transfer is valid.
+func validateStatusUpdate(oldStatus, newStatus TaskStatus) error {
+	// TODO: this func seems not implemented?
+	return nil
+}
+
+// NodePhase defines the phase of a node.
 type NodePhase int
 
 const (
@@ -99,15 +149,10 @@ func (np NodePhase) String() string {
 	case NotReady:
 		return "NotReady"
 	}
-
 	return "Unknown"
 }
 
-// validateStatusUpdate validates whether the status transfer is valid.
-func validateStatusUpdate(oldStatus, newStatus TaskStatus) error {
-	// TODO: this func seems not implemented?
-	return nil
-}
+// TODO:  the following functions not used until now
 
 // LessFn is the func declaration used by sort or priority queue.
 type LessFn func(interface{}, interface{}) bool
