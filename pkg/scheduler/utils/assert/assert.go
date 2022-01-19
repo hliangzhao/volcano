@@ -39,7 +39,7 @@ func init() {
 	}
 }
 
-// Assert check condition, if condition is false, print message by log or panic
+// Assert checks condition, if condition is false, print message by log or panic.
 func Assert(condition bool, msg string) {
 	if condition {
 		return
@@ -50,7 +50,7 @@ func Assert(condition bool, msg string) {
 	klog.Errorf("%s, %s", msg, debug.Stack())
 }
 
-// Assertf check condition, if condition is false, print message using Assert
+// Assertf check condition, if condition is false, print message using Assert.
 func Assertf(condition bool, format string, args ...interface{}) {
 	if condition {
 		return

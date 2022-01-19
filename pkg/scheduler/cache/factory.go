@@ -14,17 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package framework
+package cache
 
-type Action interface {
-	Name() string
-	Initialize() // install plugins
-	Execute(sess *Session)
-	UnInitialize() // uninstall plugins
+var bindMethodMap Binder
+
+// RegisterBindMethod register Bind Method
+func RegisterBindMethod(binder Binder) {
+	bindMethodMap = binder
 }
 
-type Plugin interface {
-	Name() string
-	OnSessionOpen(sess *Session)
-	OnSessionClose(sess *Session)
+func GetBindMethod() Binder {
+	return bindMethodMap
+}
+
+func init() {
+	RegisterBindMethod(NewBinder())
 }

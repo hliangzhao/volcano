@@ -81,7 +81,7 @@ func (a Arguments) GetBool(ptr *bool, key string) {
 	*ptr = value
 }
 
-// GetArgOfActionFromConf return argument of action reading from configuration of schedule
+// GetArgOfActionFromConf returns argument of action reading from configuration of schedule.
 func GetArgOfActionFromConf(configs []conf.Configuration, actionName string) Arguments {
 	for _, c := range configs {
 		if c.Name == actionName {

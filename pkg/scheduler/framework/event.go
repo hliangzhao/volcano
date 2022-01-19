@@ -16,15 +16,13 @@ limitations under the License.
 
 package framework
 
-type Action interface {
-	Name() string
-	Initialize() // install plugins
-	Execute(sess *Session)
-	UnInitialize() // uninstall plugins
+import "github.com/hliangzhao/volcano/pkg/scheduler/apis"
+
+type Event struct {
+	Task *apis.TaskInfo
 }
 
-type Plugin interface {
-	Name() string
-	OnSessionOpen(sess *Session)
-	OnSessionClose(sess *Session)
+type EventHandler struct {
+	AllocateFunc   func(e *Event)
+	DeallocateFunc func(e *Event)
 }

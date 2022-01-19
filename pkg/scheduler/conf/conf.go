@@ -16,12 +16,12 @@ limitations under the License.
 
 package conf
 
-// Tier defines plugin tier
+// Tier defines plugin tier.
 type Tier struct {
 	Plugins []PluginOption `yaml:"plugins"`
 }
 
-// Configuration is configuration of action
+// Configuration is configuration of action.
 type Configuration struct {
 	// Name is name of action
 	Name string `yaml:"name"`
@@ -42,7 +42,7 @@ type SchedulerConfiguration struct {
 	Configurations []Configuration `yaml:"configurations"`
 }
 
-// PluginOption defines the options of plugin
+// PluginOption defines the options of plugin.
 type PluginOption struct {
 	// The name of Plugin
 	Name string `yaml:"name"`
