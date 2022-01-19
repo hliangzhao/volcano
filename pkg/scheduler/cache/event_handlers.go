@@ -19,21 +19,21 @@ package cache
 import (
 	"context"
 	"fmt"
-	nodeinfov1alpha1 `github.com/hliangzhao/volcano/pkg/apis/nodeinfo/v1alpha1`
-	`github.com/hliangzhao/volcano/pkg/apis/scheduling`
-	`github.com/hliangzhao/volcano/pkg/apis/scheduling/scheme`
-	schedulingv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1`
-	`github.com/hliangzhao/volcano/pkg/apis/utils`
+	nodeinfov1alpha1 "github.com/hliangzhao/volcano/pkg/apis/nodeinfo/v1alpha1"
+	"github.com/hliangzhao/volcano/pkg/apis/scheduling"
+	"github.com/hliangzhao/volcano/pkg/apis/scheduling/scheme"
+	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
+	"github.com/hliangzhao/volcano/pkg/apis/utils"
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
 	corev1 "k8s.io/api/core/v1"
-	schedulingv1 `k8s.io/api/scheduling/v1`
+	schedulingv1 "k8s.io/api/scheduling/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	`k8s.io/client-go/tools/cache`
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
-	`k8s.io/kubernetes/pkg/kubelet/cm/cpumanager/topology`
-	`k8s.io/kubernetes/pkg/kubelet/cm/cpuset`
-	`strconv`
+	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager/topology"
+	"k8s.io/kubernetes/pkg/kubelet/cm/cpuset"
+	"strconv"
 )
 
 func isTerminated(status apis.TaskStatus) bool {
