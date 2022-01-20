@@ -19,17 +19,41 @@ package cache
 import (
 	"context"
 	"fmt"
-	`github.com/hliangzhao/volcano/pkg/apis/utils`
+	nodeinfov1alpha1 "github.com/hliangzhao/volcano/pkg/apis/nodeinfo/v1alpha1"
+	"github.com/hliangzhao/volcano/pkg/apis/scheduling"
+	"github.com/hliangzhao/volcano/pkg/apis/scheduling/scheme"
+	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
+	"github.com/hliangzhao/volcano/pkg/apis/utils"
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
 	corev1 "k8s.io/api/core/v1"
+	schedulingv1 "k8s.io/api/scheduling/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	`k8s.io/client-go/tools/cache`
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
+	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager/topology"
+	"k8s.io/kubernetes/pkg/kubelet/cm/cpuset"
+	"strconv"
 )
 
 func isTerminated(status apis.TaskStatus) bool {
 	return status == apis.Succeeded || status == apis.Failed
+}
+
+func getJobID(pg *apis.PodGroup) apis.JobID {
+	return apis.JobID(fmt.Sprintf("%s/%s", pg.Namespace, pg.Name))
+}
+
+func (sc *SchedulerCache) AddJob(obj interface{}) {
+	job, ok := obj.(*apis.JobInfo)
+	if !ok {
+		klog.Errorf("Cannot convert to *apis.JobInfo: %v", obj)
+		return
+	}
+
+	sc.Mutex.Lock()
+	defer sc.Mutex.Unlock()
+	sc.Jobs[job.UID] = job
 }
 
 // getOrCreateJob returns the apis.JobInfo that wraps ti if the job exists. Otherwise, create one and return it.
@@ -48,6 +72,8 @@ func (sc *SchedulerCache) getOrCreateJob(ti *apis.TaskInfo) *apis.JobInfo {
 
 	return sc.Jobs[ti.Job]
 }
+
+/* handling Pod and Task */
 
 // addTask adds ti to the right apis.JobInfo instance.
 func (sc *SchedulerCache) addTask(ti *apis.TaskInfo) error {
@@ -278,6 +304,8 @@ func (sc *SchedulerCache) updatePod(oldPod, newPod *corev1.Pod) error {
 	return sc.addPod(newPod)
 }
 
+/* handling Node */
+
 func (sc *SchedulerCache) addNode(node *corev1.Node) error {
 	if sc.Nodes[node.Name] != nil {
 		sc.Nodes[node.Name].SetNode(node)
@@ -387,4 +415,508 @@ func (sc *SchedulerCache) DeleteNode(obj interface{}) {
 			break
 		}
 	}
+}
+
+/* handling PodGroup */
+
+func (sc *SchedulerCache) setPodGroup(pg *apis.PodGroup) error {
+	job := getJobID(pg)
+	// create job for pg if not found
+	if _, found := sc.Jobs[job]; !found {
+		sc.Jobs[job] = apis.NewJobInfo(job)
+	}
+
+	sc.Jobs[job].SetPodGroup(pg)
+
+	// TODO: set default queue in admission
+	if len(pg.Spec.Queue) == 0 {
+		sc.Jobs[job].Queue = apis.QueueID(sc.defaultQueue)
+	}
+
+	return nil
+}
+
+func (sc *SchedulerCache) updatePodGroup(pg *apis.PodGroup) error {
+	return sc.setPodGroup(pg)
+}
+
+func (sc *SchedulerCache) deletePodGroup(jobID apis.JobID) error {
+	job, found := sc.Jobs[jobID]
+	if !found {
+		return fmt.Errorf("can not found job %v", jobID)
+	}
+
+	// delete pg and job
+	job.UnsetPodGroup()
+	sc.deleteJob(job)
+
+	return nil
+}
+
+func (sc *SchedulerCache) AddPodGroupV1alpha1(obj interface{}) {
+	// assert obj as podgroup
+	pg, ok := obj.(*schedulingv1alpha1.PodGroup)
+	if !ok {
+		klog.Errorf("Cannot convert to *schedulingv1alpha1.PodGroup: %v", obj)
+		return
+	}
+
+	// convert podgroup to internal podgroup
+	podgroup := scheduling.PodGroup{}
+	if err := scheme.Scheme.Convert(pg, &podgroup, nil); err != nil {
+		klog.Errorf("Failed to convert podgroup from %T to %T", pg, podgroup)
+		return
+	}
+
+	// construct pg info with podgroup
+	pgInfo := &apis.PodGroup{PodGroup: podgroup, Version: apis.PodGroupVersionV1Alpha1}
+	klog.V(4).Infof("Add PodGroup(%s) into cache, spec(%#v)", pg.Name, pg.Spec)
+
+	sc.Mutex.Lock()
+	defer sc.Mutex.Unlock()
+
+	// set the pg info
+	if err := sc.setPodGroup(pgInfo); err != nil {
+		klog.Errorf("Failed to add PodGroup %s into cache: %v", pg.Name, err)
+		return
+	}
+}
+
+func (sc *SchedulerCache) UpdatePodGroupV1alpha1(oldObj, newObj interface{}) {
+	oldPg, ok := oldObj.(*schedulingv1alpha1.PodGroup)
+	if !ok {
+		klog.Errorf("Cannot convert oldObj to *schedulingv1alpha1.SchedulingSpec: %v", oldObj)
+		return
+	}
+	newPg, ok := newObj.(*schedulingv1alpha1.PodGroup)
+	if !ok {
+		klog.Errorf("Cannot convert newObj to *schedulingv1alpha1.SchedulingSpec: %v", newObj)
+		return
+	}
+
+	if oldPg.ResourceVersion == newPg.ResourceVersion {
+		return
+	}
+
+	// update required
+	podgroup := scheduling.PodGroup{}
+	if err := scheme.Scheme.Convert(newPg, &podgroup, nil); err != nil {
+		klog.Errorf("Failed to convert podgroup from %T to %T", newPg, podgroup)
+		return
+	}
+
+	pgInfo := &apis.PodGroup{PodGroup: podgroup, Version: apis.PodGroupVersionV1Alpha1}
+
+	sc.Mutex.Lock()
+	defer sc.Mutex.Unlock()
+
+	if err := sc.updatePodGroup(pgInfo); err != nil {
+		klog.Errorf("Failed to update SchedulingSpec %s into cache: %v", pgInfo.Name, err)
+		return
+	}
+}
+
+func (sc *SchedulerCache) DeletePodGroupV1alpha1(obj interface{}) {
+	// set podgroup based on obj type
+	var pg *schedulingv1alpha1.PodGroup
+	switch t := obj.(type) {
+	case *schedulingv1alpha1.PodGroup:
+		pg = t
+	case cache.DeletedFinalStateUnknown:
+		var ok bool
+		pg, ok = t.Obj.(*schedulingv1alpha1.PodGroup)
+		if !ok {
+			klog.Errorf("Cannot convert to podgroup: %v", t.Obj)
+			return
+		}
+	default:
+		klog.Errorf("Cannot convert to podgroup: %v", t)
+		return
+	}
+
+	jobID := apis.JobID(fmt.Sprintf("%s/%s", pg.Namespace, pg.Name))
+
+	sc.Mutex.Lock()
+	defer sc.Mutex.Unlock()
+
+	if err := sc.deletePodGroup(jobID); err != nil {
+		klog.Errorf("Failed to delete podgroup %s from cache: %v", pg.Name, err)
+		return
+	}
+}
+
+/* handling Queue */
+
+func (sc *SchedulerCache) addQueue(queue *scheduling.Queue) {
+	qi := apis.NewQueueInfo(queue)
+	sc.Queues[qi.UID] = qi
+}
+
+func (sc *SchedulerCache) updateQueue(queue *scheduling.Queue) {
+	sc.addQueue(queue)
+}
+
+func (sc *SchedulerCache) deleteQueue(queueID apis.QueueID) {
+	delete(sc.Queues, queueID)
+}
+
+func (sc *SchedulerCache) AddQueueV1alpha1(obj interface{}) {
+	q, ok := obj.(*schedulingv1alpha1.Queue)
+	if !ok {
+		klog.Errorf("Cannot convert to *schedulingv1alpha1.Queue: %v", obj)
+		return
+	}
+
+	queue := &scheduling.Queue{}
+	if err := scheme.Scheme.Convert(q, queue, nil); err != nil {
+		klog.Errorf("Failed to convert queue from %T to %T", q, queue)
+		return
+	}
+
+	sc.Mutex.Lock()
+	defer sc.Mutex.Unlock()
+
+	klog.V(4).Infof("Add Queue(%s) into cache, spec(%#v)", q.Name, q.Spec)
+	sc.addQueue(queue)
+}
+
+func (sc *SchedulerCache) UpdateQueueV1alpha1(oldObj, newObj interface{}) {
+	oldQ, ok := oldObj.(*schedulingv1alpha1.Queue)
+	if !ok {
+		klog.Errorf("Cannot convert oldObj to *schedulingv1alpha1.Queue: %v", oldObj)
+		return
+	}
+	newQ, ok := newObj.(*schedulingv1alpha1.Queue)
+	if !ok {
+		klog.Errorf("Cannot convert newObj to *schedulingv1alpha1.Queue: %v", newObj)
+		return
+	}
+
+	if oldQ.ResourceVersion == newQ.ResourceVersion {
+		return
+	}
+
+	newQueue := &scheduling.Queue{}
+	if err := scheme.Scheme.Convert(newQ, newQueue, nil); err != nil {
+		klog.Errorf("Failed to convert queue from %T to %T", newQ, newQueue)
+		return
+	}
+
+	sc.Mutex.Lock()
+	defer sc.Mutex.Unlock()
+	sc.updateQueue(newQueue)
+}
+
+func (sc *SchedulerCache) DeleteQueueV1alpha1(obj interface{}) {
+	var q *schedulingv1alpha1.Queue
+
+	switch t := obj.(type) {
+	case *schedulingv1alpha1.Queue:
+		q = t
+	case cache.DeletedFinalStateUnknown:
+		var ok bool
+		q, ok = t.Obj.(*schedulingv1alpha1.Queue)
+		if !ok {
+			klog.Errorf("Cannot convert to *schedulingv1alpha1.Queue: %v", t.Obj)
+			return
+		}
+	default:
+		klog.Errorf("Cannot convert to *schedulingv1alpha1.Queue: %v", t)
+		return
+	}
+
+	sc.Mutex.Lock()
+	defer sc.Mutex.Unlock()
+	sc.deleteQueue(apis.QueueID(q.Name))
+}
+
+/* handling PriorityClass  */
+
+func (sc *SchedulerCache) deletePriorityClass(pc *schedulingv1.PriorityClass) {
+	if pc.GlobalDefault {
+		sc.defaultPriorityClass = nil
+		sc.defaultPriority = 0
+	}
+	delete(sc.PriorityClasses, pc.Name)
+}
+
+func (sc *SchedulerCache) addPriorityClass(pc *schedulingv1.PriorityClass) {
+	if pc.GlobalDefault {
+		if sc.defaultPriorityClass != nil {
+			klog.Errorf("Updated default priority class from <%s> to <%s> forcefully.",
+				sc.defaultPriorityClass.Name, pc.Name)
+		}
+		sc.defaultPriorityClass = pc
+		sc.defaultPriority = pc.Value
+	}
+
+	sc.PriorityClasses[pc.Name] = pc
+}
+
+func (sc *SchedulerCache) DeletePriorityClass(obj interface{}) {
+	var pc *schedulingv1.PriorityClass
+	switch t := obj.(type) {
+	case *schedulingv1.PriorityClass:
+		pc = t
+	case cache.DeletedFinalStateUnknown:
+		var ok bool
+		pc, ok = t.Obj.(*schedulingv1.PriorityClass)
+		if !ok {
+			klog.Errorf("Cannot convert to *schedulingv1.PriorityClass: %v", t.Obj)
+			return
+		}
+	default:
+		klog.Errorf("Cannot convert to *schedulingv1.PriorityClass: %v", t)
+		return
+	}
+
+	sc.Mutex.Lock()
+	defer sc.Mutex.Unlock()
+
+	sc.deletePriorityClass(pc)
+}
+
+func (sc *SchedulerCache) UpdatePriorityClass(oldObj, newObj interface{}) {
+	oldPC, ok := oldObj.(*schedulingv1.PriorityClass)
+	if !ok {
+		klog.Errorf("Cannot convert oldObj to *schedulingv1.PriorityClass: %v", oldObj)
+
+		return
+	}
+
+	newPC, ok := newObj.(*schedulingv1.PriorityClass)
+	if !ok {
+		klog.Errorf("Cannot convert newObj to *schedulingv1.PriorityClass: %v", newObj)
+		return
+	}
+
+	sc.Mutex.Lock()
+	defer sc.Mutex.Unlock()
+
+	sc.deletePriorityClass(oldPC)
+	sc.addPriorityClass(newPC)
+}
+
+func (sc *SchedulerCache) AddPriorityClass(obj interface{}) {
+	pc, ok := obj.(*schedulingv1.PriorityClass)
+	if !ok {
+		klog.Errorf("Cannot convert to *schedulingv1.PriorityClass: %v", obj)
+		return
+	}
+
+	sc.Mutex.Lock()
+	defer sc.Mutex.Unlock()
+
+	sc.addPriorityClass(pc)
+}
+
+/* handling ResourceQuota  */
+
+func (sc *SchedulerCache) updateResourceQuota(quota *corev1.ResourceQuota) {
+	collection, ok := sc.NamespaceCollection[quota.Namespace]
+	if !ok {
+		collection = apis.NewNamespaceCollection(quota.Namespace)
+		sc.NamespaceCollection[quota.Namespace] = collection
+	}
+	collection.Update(quota)
+}
+
+func (sc *SchedulerCache) deleteResourceQuota(quota *corev1.ResourceQuota) {
+	collection, ok := sc.NamespaceCollection[quota.Namespace]
+	if !ok {
+		return
+	}
+	collection.Delete(quota)
+}
+
+func (sc *SchedulerCache) AddResourceQuota(obj interface{}) {
+	var r *corev1.ResourceQuota
+	switch t := obj.(type) {
+	case *corev1.ResourceQuota:
+		r = t
+	default:
+		klog.Errorf("Cannot convert to *corev1.ResourceQuota: %v", t)
+		return
+	}
+
+	sc.Mutex.Lock()
+	defer sc.Mutex.Unlock()
+
+	klog.V(3).Infof("Add ResourceQuota <%s/%v> in cache, with spec: %v.", r.Namespace, r.Name, r.Spec.Hard)
+	sc.updateResourceQuota(r)
+}
+
+func (sc *SchedulerCache) UpdateResourceQuota(oldObj, newObj interface{}) {
+	newR, ok := newObj.(*corev1.ResourceQuota)
+	if !ok {
+		klog.Errorf("Cannot convert newObj to *corev1.ResourceQuota: %v", newObj)
+		return
+	}
+
+	sc.Mutex.Lock()
+	defer sc.Mutex.Unlock()
+
+	klog.V(3).Infof("Update ResourceQuota <%s/%v> in cache, with spec: %v.", newR.Namespace, newR.Name, newR.Spec.Hard)
+	sc.updateResourceQuota(newR)
+}
+
+func (sc *SchedulerCache) DeleteResourceQuota(obj interface{}) {
+	var r *corev1.ResourceQuota
+	switch t := obj.(type) {
+	case *corev1.ResourceQuota:
+		r = t
+	case cache.DeletedFinalStateUnknown:
+		var ok bool
+		r, ok = t.Obj.(*corev1.ResourceQuota)
+		if !ok {
+			klog.Errorf("Cannot convert to *corev1.ResourceQuota: %v", t.Obj)
+			return
+		}
+	default:
+		klog.Errorf("Cannot convert to *corev1.ResourceQuota: %v", t)
+		return
+	}
+
+	sc.Mutex.Lock()
+	defer sc.Mutex.Unlock()
+
+	klog.V(3).Infof("Delete ResourceQuota <%s/%v> in cache", r.Namespace, r.Name)
+	sc.deleteResourceQuota(r)
+}
+
+/* handling NUMA Topology */
+
+func getNumaInfo(srcInfo *nodeinfov1alpha1.Numatopology) *apis.NumaTopoInfo {
+	numaInfo := &apis.NumaTopoInfo{
+		Namespace:   srcInfo.Namespace,
+		Name:        srcInfo.Name,
+		Policies:    map[nodeinfov1alpha1.PolicyName]string{},
+		NumaResMap:  map[string]*apis.ResourceInfo{},
+		CPUDetail:   topology.CPUDetails{},
+		ResReserved: make(corev1.ResourceList),
+	}
+
+	policies := srcInfo.Spec.Policies
+	for name, policy := range policies {
+		numaInfo.Policies[name] = policy
+	}
+
+	numaResMap := srcInfo.Spec.NumaResMap
+	for name, resInfo := range numaResMap {
+		tmp := apis.ResourceInfo{}
+		tmp.Capacity = resInfo.Capacity
+		tmp.Allocatable = cpuset.MustParse(resInfo.Allocatable)
+		numaInfo.NumaResMap[name] = &tmp
+	}
+
+	cpuDetail := srcInfo.Spec.CPUDetail
+	for key, detail := range cpuDetail {
+		cpuID, _ := strconv.Atoi(key)
+		numaInfo.CPUDetail[cpuID] = topology.CPUInfo{
+			NUMANodeID: detail.NUMANodeID,
+			SocketID:   detail.SocketID,
+			CoreID:     detail.CoreID,
+		}
+	}
+
+	resReserved, err := apis.ParseResourceList(srcInfo.Spec.ResReserved)
+	if err != nil {
+		klog.Errorf("ParseResourceList failed, err=%v", err)
+	} else {
+		numaInfo.ResReserved = resReserved
+	}
+
+	return numaInfo
+}
+
+func (sc *SchedulerCache) addNumaInfo(info *nodeinfov1alpha1.Numatopology) error {
+	if sc.Nodes[info.Name] == nil {
+		sc.Nodes[info.Name] = apis.NewNodeInfo(nil)
+		sc.Nodes[info.Name].Name = info.Name
+	}
+
+	if sc.Nodes[info.Name].NumaInfo == nil {
+		// create
+		sc.Nodes[info.Name].NumaInfo = getNumaInfo(info)
+		sc.Nodes[info.Name].NumaChgFlag = apis.NumaInfoMoreFlag
+	} else {
+		// update
+		newLocalInfo := getNumaInfo(info)
+		if sc.Nodes[info.Name].NumaInfo.Compare(newLocalInfo) {
+			sc.Nodes[info.Name].NumaChgFlag = apis.NumaInfoMoreFlag
+		} else {
+			sc.Nodes[info.Name].NumaChgFlag = apis.NumaInfoLessFlag
+		}
+		sc.Nodes[info.Name].NumaInfo = newLocalInfo
+	}
+
+	for resName, NumaResInfo := range sc.Nodes[info.Name].NumaInfo.NumaResMap {
+		klog.V(3).Infof("resource %s Allocatable %v on node[%s] into cache",
+			resName, NumaResInfo, info.Name)
+	}
+
+	klog.V(3).Infof("Policies %v on node[%s] into cache, change= %v",
+		sc.Nodes[info.Name].NumaInfo.Policies, info.Name, sc.Nodes[info.Name].NumaChgFlag)
+	return nil
+}
+
+func (sc *SchedulerCache) deleteNumaInfo(info *nodeinfov1alpha1.Numatopology) {
+	if sc.Nodes[info.Name] != nil {
+		sc.Nodes[info.Name].NumaInfo = nil
+		sc.Nodes[info.Name].NumaChgFlag = apis.NumaInfoResetFlag
+		klog.V(3).Infof("delete numaInfo in cache for node<%s>", info.Name)
+	}
+}
+
+func (sc *SchedulerCache) AddNumaInfoV1alpha1(obj interface{}) {
+	ss, ok := obj.(*nodeinfov1alpha1.Numatopology)
+	if !ok {
+		klog.Errorf("Cannot convert oldObj to *nodeinfov1alpha1.Numatopology: %v", obj)
+		return
+	}
+
+	sc.Mutex.Lock()
+	defer sc.Mutex.Unlock()
+
+	_ = sc.addNumaInfo(ss)
+}
+
+func (sc *SchedulerCache) UpdateNumaInfoV1alpha1(oldObj, newObj interface{}) {
+	nt, ok := newObj.(*nodeinfov1alpha1.Numatopology)
+	if !ok {
+		klog.Errorf("Cannot convert oldObj to *nodeinfov1alpha1.Numatopology: %v", newObj)
+		return
+	}
+
+	sc.Mutex.Lock()
+	defer sc.Mutex.Unlock()
+
+	_ = sc.addNumaInfo(nt)
+	klog.V(3).Infof("update numaInfo<%s> in cache, with spec: Policy: %v, resMap: %v",
+		nt.Name, nt.Spec.Policies, nt.Spec.NumaResMap)
+}
+
+func (sc *SchedulerCache) DeleteNumaInfoV1alpha1(obj interface{}) {
+	var nt *nodeinfov1alpha1.Numatopology
+	switch t := obj.(type) {
+	case *nodeinfov1alpha1.Numatopology:
+		nt = t
+	case cache.DeletedFinalStateUnknown:
+		var ok bool
+		nt, ok = t.Obj.(*nodeinfov1alpha1.Numatopology)
+		if !ok {
+			klog.Errorf("Cannot convert to Numatopo: %v", t.Obj)
+			return
+		}
+	default:
+		klog.Errorf("Cannot convert to Numatopo: %v", t)
+		return
+	}
+
+	sc.Mutex.Lock()
+	defer sc.Mutex.Unlock()
+
+	sc.deleteNumaInfo(nt)
+	klog.V(3).Infof("Delete numaInfo<%s> from cache, with spec: Policy: %v, resMap: %v",
+		nt.Name, nt.Spec.Policies, nt.Spec.NumaResMap)
 }

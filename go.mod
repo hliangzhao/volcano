@@ -16,6 +16,7 @@ require (
 	k8s.io/klog/v2 v2.30.0
 	k8s.io/kubernetes v1.23.0
 	sigs.k8s.io/controller-runtime v0.11.0
+	stathat.com/c/consistent v1.0.0
 )
 
 require (
