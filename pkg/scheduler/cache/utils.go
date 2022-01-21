@@ -17,14 +17,14 @@ limitations under the License.
 package cache
 
 import (
-	`fmt`
-	schedulingv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1`
-	corev1 `k8s.io/api/core/v1`
-	`k8s.io/klog/v2`
-	`os`
+	"fmt"
+	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
+	"os"
 	"stathat.com/c/consistent"
-	`strconv`
-	`strings`
+	"strconv"
+	"strings"
 )
 
 // responsibleForPod returns false at following conditions:

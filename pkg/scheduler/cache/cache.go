@@ -20,43 +20,43 @@ import (
 	"context"
 	"fmt"
 	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
-	`github.com/hliangzhao/volcano/pkg/apis/scheduling`
+	"github.com/hliangzhao/volcano/pkg/apis/scheduling"
 	schedulingscheme "github.com/hliangzhao/volcano/pkg/apis/scheduling/scheme"
 	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
 	volcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
-	`github.com/hliangzhao/volcano/pkg/client/clientset/versioned/scheme`
+	"github.com/hliangzhao/volcano/pkg/client/clientset/versioned/scheme"
 	vcinformer "github.com/hliangzhao/volcano/pkg/client/informers/externalversions"
 	volcanoinformers "github.com/hliangzhao/volcano/pkg/client/informers/externalversions"
 	nodeinfoinformersv1alpha1 "github.com/hliangzhao/volcano/pkg/client/informers/externalversions/nodeinfo/v1alpha1"
 	schedulinginformersv1alpha1 "github.com/hliangzhao/volcano/pkg/client/informers/externalversions/scheduling/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
-	`github.com/hliangzhao/volcano/pkg/scheduler/metrics`
+	"github.com/hliangzhao/volcano/pkg/scheduler/metrics"
 	corev1 "k8s.io/api/core/v1"
 	schedulingv1 "k8s.io/api/scheduling/v1"
-	apierrors `k8s.io/apimachinery/pkg/api/errors`
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	`k8s.io/apimachinery/pkg/runtime`
-	utilruntime `k8s.io/apimachinery/pkg/util/runtime`
-	`k8s.io/apimachinery/pkg/util/wait`
+	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/informers"
 	coreinformersv1 "k8s.io/client-go/informers/core/v1"
 	schedulinginformersv1 "k8s.io/client-go/informers/scheduling/v1"
 	storageinformersv1 "k8s.io/client-go/informers/storage/v1"
 	"k8s.io/client-go/informers/storage/v1alpha1"
 	"k8s.io/client-go/kubernetes"
-	typedcorev1 `k8s.io/client-go/kubernetes/typed/core/v1`
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
-	`k8s.io/client-go/tools/cache`
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/volumebinding"
-	`os`
-	`strconv`
-	`strings`
+	"os"
+	"strconv"
+	"strings"
 	"sync"
-	`time`
+	"time"
 )
 
 func init() {

@@ -17,7 +17,9 @@ limitations under the License.
 package helpers
 
 import (
+	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
 	corev1 "k8s.io/api/core/v1"
+	"strconv"
 	"strings"
 )
 
@@ -37,4 +39,17 @@ func GetPodIndexUnderTask(pod *corev1.Pod) string {
 	return ""
 }
 
-// TODO
+// CompareTask judges whether lv is before rv.
+func CompareTask(lv, rv *apis.TaskInfo) bool {
+	lStr := GetPodIndexUnderTask(lv.Pod)
+	rStr := GetPodIndexUnderTask(rv.Pod)
+	lIndex, lErr := strconv.Atoi(lStr)
+	rIndex, rErr := strconv.Atoi(rStr)
+	if lErr != nil || rErr != nil || lIndex == rIndex {
+		return lv.Pod.CreationTimestamp.Before(&rv.Pod.CreationTimestamp)
+	}
+	if lIndex > rIndex {
+		return false
+	}
+	return true
+}

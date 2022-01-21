@@ -16,23 +16,15 @@ limitations under the License.
 
 package utils
 
-import (
-	"fmt"
-	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
-	"k8s.io/client-go/kubernetes"
-)
+import "github.com/hliangzhao/volcano/pkg/scheduler/apis"
 
-// FakeBinder is used as fake binder
-type FakeBinder struct {
-	Binds   map[string]string
-	Channel chan string
-}
-
-// Bind used by fake binder struct to bind pods
-func (fb *FakeBinder) Bind(kubeClient *kubernetes.Clientset, tasks []*apis.TaskInfo) (error, []*apis.TaskInfo) {
-	for _, p := range tasks {
-		key := fmt.Sprintf("%v/%v", p.Namespace, p.Name)
-		fb.Binds[key] = p.NodeName
+// GetNodeList returns values of the map 'nodes'
+func GetNodeList(nodes map[string]*apis.NodeInfo, nodeList []string) []*apis.NodeInfo {
+	result := make([]*apis.NodeInfo, 0, len(nodeList))
+	for _, name := range nodeList {
+		if ni, ok := nodes[name]; ok {
+			result = append(result, ni)
+		}
 	}
-	return nil, nil
+	return result
 }

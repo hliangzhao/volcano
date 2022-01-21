@@ -24,6 +24,18 @@ import (
 
 type Arguments map[string]string
 
+// GetArgOfActionFromConf returns argument of action reading from configuration of schedule.
+func GetArgOfActionFromConf(configs []conf.Configuration, actionName string) Arguments {
+	for _, c := range configs {
+		if c.Name == actionName {
+			return c.Arguments
+		}
+	}
+	return nil
+}
+
+/* The following funcs parse input pointer and get corresponding params. */
+
 func (a Arguments) GetInt(ptr *int, key string) {
 	if ptr == nil {
 		return
@@ -79,14 +91,4 @@ func (a Arguments) GetBool(ptr *bool, key string) {
 	}
 
 	*ptr = value
-}
-
-// GetArgOfActionFromConf returns argument of action reading from configuration of schedule.
-func GetArgOfActionFromConf(configs []conf.Configuration, actionName string) Arguments {
-	for _, c := range configs {
-		if c.Name == actionName {
-			return c.Arguments
-		}
-	}
-	return nil
 }
