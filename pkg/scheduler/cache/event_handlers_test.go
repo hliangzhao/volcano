@@ -18,8 +18,8 @@ package cache
 
 import (
 	"fmt"
-	`github.com/hliangzhao/volcano/pkg/apis/scheduling`
-	`github.com/hliangzhao/volcano/pkg/scheduler/apis`
+	"github.com/hliangzhao/volcano/pkg/apis/scheduling"
+	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
 	"strings"
 	"testing"
 

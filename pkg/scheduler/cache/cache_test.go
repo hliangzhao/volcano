@@ -17,15 +17,15 @@ limitations under the License.
 package cache
 
 import (
-	`fmt`
-	`github.com/hliangzhao/volcano/pkg/scheduler/apis`
-	`github.com/hliangzhao/volcano/pkg/scheduler/utils`
-	corev1 `k8s.io/api/core/v1`
-	`k8s.io/apimachinery/pkg/api/resource`
-	metav1 `k8s.io/apimachinery/pkg/apis/meta/v1`
-	`k8s.io/apimachinery/pkg/types`
-	`reflect`
-	`testing`
+	"fmt"
+	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
+	"github.com/hliangzhao/volcano/pkg/scheduler/utils"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"reflect"
+	"testing"
 )
 
 func buildNode(name string, alloc corev1.ResourceList) *corev1.Node {
