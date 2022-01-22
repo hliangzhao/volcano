@@ -17,16 +17,16 @@ limitations under the License.
 package utils
 
 import (
-	`context`
-	`fmt`
-	`github.com/hliangzhao/volcano/pkg/scheduler/apis`
-	`k8s.io/client-go/util/workqueue`
-	`k8s.io/klog/v2`
-	k8sframework `k8s.io/kubernetes/pkg/scheduler/framework`
-	`math`
-	`math/rand`
-	`sort`
-	`sync`
+	"context"
+	"fmt"
+	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
+	"k8s.io/client-go/util/workqueue"
+	"k8s.io/klog/v2"
+	k8sframework "k8s.io/kubernetes/pkg/scheduler/framework"
+	"math"
+	"math/rand"
+	"sort"
+	"sync"
 )
 
 const baselinePercentageOfNodesToFind = 50

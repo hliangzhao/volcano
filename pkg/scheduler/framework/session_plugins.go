@@ -29,122 +29,122 @@ func isEnabled(enabled *bool) bool {
 
 /* Add plugin functions of different topics to session */
 
-// AddJobOrderFn add job order function
+// AddJobOrderFn add job order function.
 func (sess *Session) AddJobOrderFn(name string, fn apis.CompareFn) {
 	sess.jobOrderFns[name] = fn
 }
 
-// AddQueueOrderFn add queue order function
+// AddQueueOrderFn add queue order function.
 func (sess *Session) AddQueueOrderFn(name string, fn apis.CompareFn) {
 	sess.queueOrderFns[name] = fn
 }
 
-// AddClusterOrderFn add queue order function
+// AddClusterOrderFn add queue order function.
 func (sess *Session) AddClusterOrderFn(name string, fn apis.CompareFn) {
 	sess.clusterOrderFns[name] = fn
 }
 
-// AddTaskOrderFn add task order function
+// AddTaskOrderFn add task order function.
 func (sess *Session) AddTaskOrderFn(name string, fn apis.CompareFn) {
 	sess.taskOrderFns[name] = fn
 }
 
-// AddNamespaceOrderFn add namespace order function
+// AddNamespaceOrderFn add namespace order function.
 func (sess *Session) AddNamespaceOrderFn(name string, fn apis.CompareFn) {
 	sess.namespaceOrderFns[name] = fn
 }
 
-// AddPreemptableFn add preemptable function
+// AddPreemptableFn add preemptable function.
 func (sess *Session) AddPreemptableFn(name string, fn apis.EvictableFn) {
 	sess.preemptableFns[name] = fn
 }
 
-// AddReclaimableFn add Reclaimable function
+// AddReclaimableFn add Reclaimable function.
 func (sess *Session) AddReclaimableFn(name string, fn apis.EvictableFn) {
 	sess.reclaimableFns[name] = fn
 }
 
-// AddJobReadyFn add JobReady function
+// AddJobReadyFn add JobReady function.
 func (sess *Session) AddJobReadyFn(name string, fn apis.ValidateFn) {
 	sess.jobReadyFns[name] = fn
 }
 
-// AddJobPipelinedFn add pipelined function
+// AddJobPipelinedFn add pipelined function.
 func (sess *Session) AddJobPipelinedFn(name string, fn apis.VoteFn) {
 	sess.jobPipelinedFns[name] = fn
 }
 
-// AddPredicateFn add Predicate function
+// AddPredicateFn add Predicate function.
 func (sess *Session) AddPredicateFn(name string, fn apis.PredicateFn) {
 	sess.predicateFns[name] = fn
 }
 
-// AddBestNodeFn add BestNode function
+// AddBestNodeFn add BestNode function.
 func (sess *Session) AddBestNodeFn(name string, fn apis.BestNodeFn) {
 	sess.bestNodeFns[name] = fn
 }
 
-// AddNodeOrderFn add Node order function
+// AddNodeOrderFn add Node order function.
 func (sess *Session) AddNodeOrderFn(name string, fn apis.NodeOrderFn) {
 	sess.nodeOrderFns[name] = fn
 }
 
-// AddBatchNodeOrderFn add Batch Node order function
+// AddBatchNodeOrderFn add Batch Node order function.
 func (sess *Session) AddBatchNodeOrderFn(name string, fn apis.BatchNodeOrderFn) {
 	sess.batchNodeOrderFns[name] = fn
 }
 
-// AddNodeMapFn add Node map function
+// AddNodeMapFn add Node map function.
 func (sess *Session) AddNodeMapFn(name string, fn apis.NodeMapFn) {
 	sess.nodeMapFns[name] = fn
 }
 
-// AddNodeReduceFn add Node reduce function
+// AddNodeReduceFn add Node reduce function.
 func (sess *Session) AddNodeReduceFn(name string, fn apis.NodeReduceFn) {
 	sess.nodeReduceFns[name] = fn
 }
 
-// AddOverusedFn add overused function
+// AddOverusedFn add overused function.
 func (sess *Session) AddOverusedFn(name string, fn apis.ValidateFn) {
 	sess.overUsedFns[name] = fn
 }
 
-// AddUnderusedResourceFn add underused function
+// AddUnderusedResourceFn add underused function.
 func (sess *Session) AddUnderusedResourceFn(name string, fn apis.UnderUsedResourceFn) {
 	sess.underUsedFns[name] = fn
 }
 
-// AddJobValidFn add job valid function
+// AddJobValidFn add job valid function.
 func (sess *Session) AddJobValidFn(name string, fn apis.ValidateExFn) {
 	sess.jobValidFns[name] = fn
 }
 
-// AddJobEnqueuableFn add job enqueuable function
+// AddJobEnqueuableFn add job enqueuable function.
 func (sess *Session) AddJobEnqueuableFn(name string, fn apis.VoteFn) {
 	sess.jobEnqueuableFns[name] = fn
 }
 
-// AddJobEnqueuedFn add jobEnqueued function
+// AddJobEnqueuedFn add jobEnqueued function.
 func (sess *Session) AddJobEnqueuedFn(name string, fn apis.JobEnqueuedFn) {
 	sess.jobEnqueuedFns[name] = fn
 }
 
-// AddTargetJobFn add target job function
+// AddTargetJobFn add target job function.
 func (sess *Session) AddTargetJobFn(name string, fn apis.TargetJobFn) {
 	sess.targetJobFns[name] = fn
 }
 
-// AddReservedNodesFn add reservedNodesFn function
+// AddReservedNodesFn add reservedNodesFn function.
 func (sess *Session) AddReservedNodesFn(name string, fn apis.ReservedNodesFn) {
 	sess.reservedNodesFns[name] = fn
 }
 
-// AddVictimTasksFns add victimTasksFns function
+// AddVictimTasksFns add victimTasksFns function.
 func (sess *Session) AddVictimTasksFns(name string, fn apis.VictimTasksFn) {
 	sess.victimTasksFns[name] = fn
 }
 
-// AddJobStarvingFns add jobStarvingFns function
+// AddJobStarvingFns add jobStarvingFns function.
 func (sess *Session) AddJobStarvingFns(name string, fn apis.ValidateFn) {
 	sess.jobStarvingFns[name] = fn
 }
@@ -365,7 +365,7 @@ func (sess *Session) JobStarving(obj interface{}) bool {
 	return false
 }
 
-// JobValid invoke job valid function of the plugins.
+// JobValid invokes job valid function of the plugins.
 func (sess *Session) JobValid(obj interface{}) *apis.ValidateResult {
 	for _, tier := range sess.Tiers {
 		for _, plugin := range tier.Plugins {
@@ -383,7 +383,7 @@ func (sess *Session) JobValid(obj interface{}) *apis.ValidateResult {
 	return nil
 }
 
-// JobEnqueuable invoke jobEnqueuableFns function of the plugins.
+// JobEnqueuable invokes jobEnqueuableFns function of the plugins.
 func (sess *Session) JobEnqueuable(obj interface{}) bool {
 	var hasFound bool
 	for _, tier := range sess.Tiers {
@@ -413,7 +413,7 @@ func (sess *Session) JobEnqueuable(obj interface{}) bool {
 	return true
 }
 
-// JobEnqueued invoke jobEnqueuedFns function of the plugins.
+// JobEnqueued invokes jobEnqueuedFns function of the plugins.
 func (sess *Session) JobEnqueued(obj interface{}) {
 	for _, tier := range sess.Tiers {
 		for _, plugin := range tier.Plugins {
@@ -430,7 +430,7 @@ func (sess *Session) JobEnqueued(obj interface{}) {
 	}
 }
 
-// TargetJob invoke targetJobFns function of the plugins. It returns the target job from the job list.
+// TargetJob invokes targetJobFns function of the plugins. It returns the target job from the job list.
 func (sess *Session) TargetJob(jobs []*apis.JobInfo) *apis.JobInfo {
 	for _, tier := range sess.Tiers {
 		for _, plugin := range tier.Plugins {
@@ -447,7 +447,7 @@ func (sess *Session) TargetJob(jobs []*apis.JobInfo) *apis.JobInfo {
 	return nil
 }
 
-// VictimTasks invoke ReservedNodes function of the plugins.
+// VictimTasks invokes ReservedNodes function of the plugins.
 func (sess *Session) VictimTasks() []*apis.TaskInfo {
 	var victims []*apis.TaskInfo
 	var init bool
@@ -490,7 +490,7 @@ func (sess *Session) VictimTasks() []*apis.TaskInfo {
 	return victims
 }
 
-// ReservedNodes invoke ReservedNodes function of the plugins.
+// ReservedNodes invokes ReservedNodes function of the plugins.
 func (sess *Session) ReservedNodes() {
 	for _, tier := range sess.Tiers {
 		for _, plugin := range tier.Plugins {
@@ -506,7 +506,7 @@ func (sess *Session) ReservedNodes() {
 	}
 }
 
-// JobOrderFn invoke job order function of the plugins.
+// JobOrderFn invokes job order function of the plugins.
 func (sess *Session) JobOrderFn(l, r interface{}) bool {
 	for _, tier := range sess.Tiers {
 		for _, plugin := range tier.Plugins {
@@ -532,7 +532,7 @@ func (sess *Session) JobOrderFn(l, r interface{}) bool {
 	return lv.CreationTimestamp.Before(&rv.CreationTimestamp)
 }
 
-// NamespaceOrderFn invoke namespace order function of the plugins.
+// NamespaceOrderFn invokes namespace order function of the plugins.
 func (sess *Session) NamespaceOrderFn(l, r interface{}) bool {
 	for _, tier := range sess.Tiers {
 		for _, plugin := range tier.Plugins {
@@ -557,7 +557,7 @@ func (sess *Session) NamespaceOrderFn(l, r interface{}) bool {
 	return lv < rv
 }
 
-// ClusterOrderFn invoke ClusterOrderFn function of the plugins.
+// ClusterOrderFn invokes ClusterOrderFn function of the plugins.
 func (sess *Session) ClusterOrderFn(l, r interface{}) bool {
 	for _, tier := range sess.Tiers {
 		for _, plugin := range tier.Plugins {
@@ -580,7 +580,7 @@ func (sess *Session) ClusterOrderFn(l, r interface{}) bool {
 	return lv.Name < rv.Name
 }
 
-// QueueOrderFn invoke queue order function of the plugins.
+// QueueOrderFn invokes queue order function of the plugins.
 func (sess *Session) QueueOrderFn(l, r interface{}) bool {
 	for _, tier := range sess.Tiers {
 		for _, plugin := range tier.Plugins {
@@ -606,7 +606,7 @@ func (sess *Session) QueueOrderFn(l, r interface{}) bool {
 	return lv.Queue.CreationTimestamp.Before(&rv.Queue.CreationTimestamp)
 }
 
-// TaskCompareFns invoke task order function of the plugins
+// TaskCompareFns invokes task order function of the plugins.
 func (sess *Session) TaskCompareFns(l, r interface{}) int {
 	for _, tier := range sess.Tiers {
 		for _, plugin := range tier.Plugins {
@@ -626,7 +626,7 @@ func (sess *Session) TaskCompareFns(l, r interface{}) int {
 	return 0
 }
 
-// TaskOrderFn invoke task order function of the plugins
+// TaskOrderFn invokes task order function of the plugins.
 func (sess *Session) TaskOrderFn(l, r interface{}) bool {
 	if res := sess.TaskCompareFns(l, r); res != 0 {
 		return res < 0
@@ -638,7 +638,7 @@ func (sess *Session) TaskOrderFn(l, r interface{}) bool {
 	return helpers.CompareTask(lv, rv)
 }
 
-// PredicateFn invoke predicate function of the plugins.
+// PredicateFn invokes predicate function of the plugins.
 func (sess *Session) PredicateFn(task *apis.TaskInfo, node *apis.NodeInfo) error {
 	for _, tier := range sess.Tiers {
 		for _, plugin := range tier.Plugins {
@@ -658,7 +658,7 @@ func (sess *Session) PredicateFn(task *apis.TaskInfo, node *apis.NodeInfo) error
 	return nil
 }
 
-// BestNodeFn invoke bestNode function of the plugins.
+// BestNodeFn invokes bestNode function of the plugins.
 func (sess *Session) BestNodeFn(task *apis.TaskInfo, nodeScores map[float64][]*apis.NodeInfo) *apis.NodeInfo {
 	for _, tier := range sess.Tiers {
 		for _, plugin := range tier.Plugins {
@@ -679,7 +679,7 @@ func (sess *Session) BestNodeFn(task *apis.TaskInfo, nodeScores map[float64][]*a
 	return nil
 }
 
-// NodeOrderFn invoke node order function of the plugins.
+// NodeOrderFn invokes node order function of the plugins.
 func (sess *Session) NodeOrderFn(task *apis.TaskInfo, node *apis.NodeInfo) (float64, error) {
 	priorityScore := 0.0
 	for _, tier := range sess.Tiers {
@@ -701,7 +701,7 @@ func (sess *Session) NodeOrderFn(task *apis.TaskInfo, node *apis.NodeInfo) (floa
 	return priorityScore, nil
 }
 
-// BatchNodeOrderFn invoke node order function of the plugins.
+// BatchNodeOrderFn invokes node order function of the plugins.
 func (sess *Session) BatchNodeOrderFn(task *apis.TaskInfo, nodes []*apis.NodeInfo) (map[string]float64, error) {
 	priorityScore := make(map[string]float64, len(nodes))
 	for _, tier := range sess.Tiers {
@@ -725,7 +725,7 @@ func (sess *Session) BatchNodeOrderFn(task *apis.TaskInfo, nodes []*apis.NodeInf
 	return priorityScore, nil
 }
 
-// NodeOrderMapFn invoke node order function of the plugins
+// NodeOrderMapFn invokes node order function of the plugins.
 func (sess *Session) NodeOrderMapFn(task *apis.TaskInfo, node *apis.NodeInfo) (map[string]float64, float64, error) {
 	nodeScoreMap := map[string]float64{}
 	var priorityScore float64
@@ -753,7 +753,7 @@ func (sess *Session) NodeOrderMapFn(task *apis.TaskInfo, node *apis.NodeInfo) (m
 	return nodeScoreMap, priorityScore, nil
 }
 
-// NodeOrderReduceFn invoke node order function of the plugins
+// NodeOrderReduceFn invokes node order function of the plugins.
 func (sess *Session) NodeOrderReduceFn(task *apis.TaskInfo, pluginNodeScoreMap map[string]k8sframework.NodeScoreList) (map[string]float64, error) {
 	nodeScoreMap := map[string]float64{}
 	for _, tier := range sess.Tiers {

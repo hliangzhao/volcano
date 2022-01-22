@@ -17,13 +17,13 @@ limitations under the License.
 package utils
 
 import (
-	`context`
-	`fmt`
-	`github.com/hliangzhao/volcano/pkg/scheduler/apis`
-	`k8s.io/client-go/util/workqueue`
-	`k8s.io/klog/v2`
-	`sync`
-	`sync/atomic`
+	"context"
+	"fmt"
+	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
+	"k8s.io/client-go/util/workqueue"
+	"k8s.io/klog/v2"
+	"sync"
+	"sync/atomic"
 )
 
 type PredicateHelper interface {

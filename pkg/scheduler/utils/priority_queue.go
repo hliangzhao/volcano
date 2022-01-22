@@ -17,9 +17,14 @@ limitations under the License.
 package utils
 
 import (
-	`container/heap`
-	`github.com/hliangzhao/volcano/pkg/scheduler/apis`
+	"container/heap"
+	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
 )
+
+/*
+NOTE that the priority queues in this file has nothing to do with the CRD Queue.
+They are just simple data structures used for push and pop things.
+*/
 
 type priorityQueue struct {
 	items  []interface{}

@@ -18,15 +18,15 @@ package utils
 
 import (
 	"fmt"
-	schedulingv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1`
+	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
-	corev1 `k8s.io/api/core/v1`
-	`k8s.io/apimachinery/pkg/api/resource`
-	metav1 `k8s.io/apimachinery/pkg/apis/meta/v1`
-	`k8s.io/apimachinery/pkg/types`
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
-	`k8s.io/kubernetes/pkg/scheduler/framework/plugins/volumebinding`
-	`sync`
+	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/volumebinding"
+	"sync"
 )
 
 func BuildResourceList(cpu string, memory string) corev1.ResourceList {

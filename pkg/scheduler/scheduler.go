@@ -17,23 +17,23 @@ limitations under the License.
 package scheduler
 
 import (
-	`fmt`
-	`github.com/fsnotify/fsnotify`
-	`github.com/hliangzhao/volcano/pkg/filewatcher`
-	`github.com/hliangzhao/volcano/pkg/scheduler/cache`
-	`github.com/hliangzhao/volcano/pkg/scheduler/conf`
-	`github.com/hliangzhao/volcano/pkg/scheduler/framework`
-	`github.com/hliangzhao/volcano/pkg/scheduler/metrics`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins`
-	`io/ioutil`
-	`k8s.io/apimachinery/pkg/util/wait`
-	`k8s.io/apimachinery/pkg/util/yaml`
-	`k8s.io/client-go/rest`
-	`k8s.io/klog/v2`
-	`path/filepath`
-	`strings`
-	`sync`
-	`time`
+	"fmt"
+	"github.com/fsnotify/fsnotify"
+	"github.com/hliangzhao/volcano/pkg/filewatcher"
+	"github.com/hliangzhao/volcano/pkg/scheduler/cache"
+	"github.com/hliangzhao/volcano/pkg/scheduler/conf"
+	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
+	"github.com/hliangzhao/volcano/pkg/scheduler/metrics"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins"
+	"io/ioutil"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/client-go/rest"
+	"k8s.io/klog/v2"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
 )
 
 var defaultSchedulerConf = `

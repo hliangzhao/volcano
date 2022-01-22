@@ -16,7 +16,7 @@ limitations under the License.
 
 package plugins
 
-import `github.com/hliangzhao/volcano/pkg/scheduler/conf`
+import "github.com/hliangzhao/volcano/pkg/scheduler/conf"
 
 // ApplyPluginConfDefaults sets option's filed to its default value if not set,
 func ApplyPluginConfDefaults(option *conf.PluginOption) {
