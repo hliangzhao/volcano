@@ -17,9 +17,9 @@ limitations under the License.
 package reserve
 
 import (
-	`github.com/hliangzhao/volcano/pkg/scheduler/framework`
-	`github.com/hliangzhao/volcano/pkg/scheduler/utils`
-	`k8s.io/klog/v2`
+	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
+	"github.com/hliangzhao/volcano/pkg/scheduler/utils"
+	"k8s.io/klog/v2"
 )
 
 type Action struct{}
