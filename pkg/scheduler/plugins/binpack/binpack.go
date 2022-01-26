@@ -29,20 +29,20 @@ import (
 const (
 	PluginName = "binpack"
 
-	// BinpackWeight is the key for providing Binpack Priority Weight in YAML
-	BinpackWeight = "binpack.weight"
+	// PluginWeight is the key for providing Binpack Priority Weight in YAML
+	PluginWeight = "binpack.weight"
 
-	// BinpackCPU is the key for weight of cpu
-	BinpackCPU = "binpack.cpu"
+	// CPUWeight is the key for weight of cpu
+	CPUWeight = "binpack.cpu"
 
-	// BinpackMemory is the key for weight of memory
-	BinpackMemory = "binpack.memory"
+	// MemoryWeight is the key for weight of memory
+	MemoryWeight = "binpack.memory"
 
-	// BinpackResources is the key for additional resource key name
-	BinpackResources = "binpack.resources"
+	// AdditionalResources is the key for additional resource key name
+	AdditionalResources = "binpack.resources"
 
-	// BinpackResourcesPrefix is the key prefix for additional resource key name
-	BinpackResourcesPrefix = BinpackResources + "."
+	// AdditionalResourcesPrefix is the key prefix for additional resource key name
+	AdditionalResourcesPrefix = AdditionalResources + "."
 
 	resourceFmt = "%s[%d]"
 )
@@ -64,9 +64,9 @@ func (w *priorityWeight) String() string {
 
 	msg := make([]string, 0, length)
 	msg = append(msg,
-		fmt.Sprintf(resourceFmt, BinpackWeight, w.BinPackingWeight),
-		fmt.Sprintf(resourceFmt, BinpackCPU, w.BinPackingCPU),
-		fmt.Sprintf(resourceFmt, BinpackMemory, w.BinPackingMem),
+		fmt.Sprintf(resourceFmt, PluginWeight, w.BinPackingWeight),
+		fmt.Sprintf(resourceFmt, CPUWeight, w.BinPackingCPU),
+		fmt.Sprintf(resourceFmt, MemoryWeight, w.BinPackingMem),
 	)
 
 	if len(w.BinPackingResources) == 0 {
@@ -118,19 +118,19 @@ func calculateWeight(args framework.Arguments) priorityWeight {
 		BinPackingResources: map[corev1.ResourceName]int{},
 	}
 	// Checks whether binpack.weight is provided or not, if given, modifies the value in weight struct.
-	args.GetInt(&weight.BinPackingWeight, BinpackWeight)
+	args.GetInt(&weight.BinPackingWeight, PluginWeight)
 	// Checks whether binpack.cpu is provided or not, if given, modifies the value in weight struct.
-	args.GetInt(&weight.BinPackingCPU, BinpackCPU)
+	args.GetInt(&weight.BinPackingCPU, CPUWeight)
 	if weight.BinPackingCPU < 0 {
 		weight.BinPackingCPU = 1
 	}
 	// Checks whether binpack.memory is provided or not, if given, modifies the value in weight struct.
-	args.GetInt(&weight.BinPackingMem, BinpackMemory)
+	args.GetInt(&weight.BinPackingMem, MemoryWeight)
 	if weight.BinPackingMem < 0 {
 		weight.BinPackingMem = 1
 	}
 
-	resStr := args[BinpackResources]
+	resStr := args[AdditionalResources]
 	resources := strings.Split(resStr, ",")
 	for _, res := range resources {
 		res = strings.TrimSpace(res)
@@ -138,7 +138,7 @@ func calculateWeight(args framework.Arguments) priorityWeight {
 			continue
 		}
 
-		resKey := BinpackResourcesPrefix + res
+		resKey := AdditionalResourcesPrefix + res
 		resWeight := 1
 		args.GetInt(&resWeight, resKey)
 		if resWeight < 0 {
