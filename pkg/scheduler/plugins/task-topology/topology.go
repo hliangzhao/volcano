@@ -17,9 +17,13 @@ limitations under the License.
 package tasktopology
 
 import (
-	`github.com/hliangzhao/volcano/pkg/scheduler/apis`
-	`github.com/hliangzhao/volcano/pkg/scheduler/framework`
-	`k8s.io/klog/v2`
+	"fmt"
+	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
+	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
+	"k8s.io/klog/v2"
+	k8sframework "k8s.io/kubernetes/pkg/scheduler/framework"
+	"strings"
+	"time"
 )
 
 type taskTopologyPlugin struct {
@@ -40,7 +44,20 @@ func (ttp *taskTopologyPlugin) Name() string {
 	return PluginName
 }
 
-func (ttp *taskTopologyPlugin) OnSessionOpen(sess *framework.Session) {}
+func (ttp *taskTopologyPlugin) OnSessionOpen(sess *framework.Session) {
+	start := time.Now()
+	klog.V(3).Infof("start to init task topology plugin, weight [%d], defined order %v",
+		ttp.weight, affinityPriority)
+
+	ttp.initBucket(sess)
+	sess.AddTaskOrderFn(ttp.Name(), ttp.TaskOrderFn)
+	sess.AddNodeOrderFn(ttp.Name(), ttp.NodeOrderFn)
+	sess.AddEventHandler(&framework.EventHandler{
+		AllocateFunc: ttp.AllocateFn,
+	})
+
+	klog.V(3).Infof("finished to init task topology plugin, using time %v", time.Since(start))
+}
 
 func (ttp *taskTopologyPlugin) OnSessionClose(sess *framework.Session) {
 	ttp.managers = nil
@@ -132,7 +149,7 @@ func (ttp *taskTopologyPlugin) TaskOrderFn(l, r interface{}) int {
 }
 
 func (ttp *taskTopologyPlugin) calcBucketScore(task *apis.TaskInfo, node *apis.NodeInfo) (int, *JobManager, error) {
-	// task could not fit the node, socre is 0
+	// task could not fit the node, score is 0
 	maxResource := node.Idle.Clone().Add(node.Releasing)
 	if req := task.ResReq; req != nil && maxResource.LessPartly(req, apis.Zero) {
 		return 0, nil, nil
@@ -183,4 +200,153 @@ func (ttp *taskTopologyPlugin) calcBucketScore(task *apis.TaskInfo, node *apis.N
 	}
 	// here, the bucket remained request will always fit the maxResource
 	return score, jobManager, nil
+}
+
+func (ttp *taskTopologyPlugin) NodeOrderFn(task *apis.TaskInfo, node *apis.NodeInfo) (float64, error) {
+	score, jobManager, err := ttp.calcBucketScore(task, node)
+	if err != nil {
+		return 0, err
+	}
+	fScore := float64(score * ttp.weight)
+	if jobManager != nil && jobManager.bucketMaxSize != 0 {
+		fScore = fScore * float64(k8sframework.MaxNodeScore) / float64(jobManager.bucketMaxSize)
+	}
+	klog.V(4).Infof("task %s/%s at node %s has bucket score %d, score %f",
+		task.Namespace, task.Name, node.Name, score, fScore)
+	return fScore, nil
+}
+
+func (ttp *taskTopologyPlugin) AllocateFn(event *framework.Event) {
+	task := event.Task
+
+	jobManager, hasManager := ttp.managers[task.Job]
+	if !hasManager {
+		return
+	}
+	jobManager.TaskBound(task)
+}
+
+func affinityCheck(job *apis.JobInfo, affinity [][]string) error {
+	if job == nil || affinity == nil {
+		return fmt.Errorf("empty input, job: %v, affinity: %v", job, affinity)
+	}
+
+	var taskNum = len(job.Tasks)
+	var taskRef = make(map[string]bool, taskNum)
+	for _, task := range job.Tasks {
+		tmpStrings := strings.Split(task.Name, "-")
+		if _, exist := taskRef[tmpStrings[len(tmpStrings)-2]]; !exist {
+			taskRef[tmpStrings[len(tmpStrings)-2]] = true
+		}
+	}
+
+	for _, aff := range affinity {
+		affTasks := make(map[string]bool, len(aff))
+		for _, task := range aff {
+			if len(task) == 0 {
+				continue
+			}
+			if _, exist := taskRef[task]; !exist {
+				return fmt.Errorf("task %s do not exist in job <%s/%s>", task, job.Namespace, job.Name)
+			}
+			if _, exist := affTasks[task]; exist {
+				return fmt.Errorf("task %s is duplicated in job <%s/%s>", task, job.Namespace, job.Name)
+			}
+			affTasks[task] = true
+		}
+	}
+
+	return nil
+}
+
+func splitAnnotations(job *apis.JobInfo, annotation string) ([][]string, error) {
+	affinityStr := strings.Split(annotation, ";")
+	if len(affinityStr) == 0 {
+		return nil, nil
+	}
+
+	var affinity = make([][]string, len(affinityStr))
+	for i, str := range affinityStr {
+		affinity[i] = strings.Split(str, ",")
+	}
+	if err := affinityCheck(job, affinity); err != nil {
+		klog.V(4).Infof("Job <%s/%s> affinity key invalid: %s.",
+			job.Namespace, job.Name, err.Error())
+		return nil, err
+	}
+	return affinity, nil
+}
+
+func readTopologyFromPgAnnotations(job *apis.JobInfo) (*TaskTopology, error) {
+	jobAffinityStr, affinityExist := job.PodGroup.Annotations[JobAffinityAnnotations]
+	jobAntiAffinityStr, antiAffinityExist := job.PodGroup.Annotations[JobAntiAffinityAnnotations]
+	taskOrderStr, taskOrderExist := job.PodGroup.Annotations[TaskOrderAnnotations]
+
+	if !(affinityExist || antiAffinityExist || taskOrderExist) {
+		return nil, nil
+	}
+
+	var jobTopo = TaskTopology{
+		Affinity:     nil,
+		AntiAffinity: nil,
+		TaskOrder:    nil,
+	}
+
+	if affinityExist {
+		affinities, err := splitAnnotations(job, jobAffinityStr)
+		if err != nil {
+			klog.V(4).Infof("Job <%s/%s> affinity key invalid: %s.",
+				job.Namespace, job.Name, err.Error())
+			return nil, err
+		}
+		jobTopo.Affinity = affinities
+	}
+
+	if antiAffinityExist {
+		antiAffinities, err := splitAnnotations(job, jobAntiAffinityStr)
+		if err != nil {
+			klog.V(4).Infof("Job <%s/%s> anti affinity key invalid: %s.",
+				job.Namespace, job.Name, err.Error())
+			return nil, err
+		}
+		jobTopo.AntiAffinity = antiAffinities
+	}
+
+	if taskOrderExist {
+		jobTopo.TaskOrder = strings.Split(taskOrderStr, ",")
+		if err := affinityCheck(job, [][]string{jobTopo.TaskOrder}); err != nil {
+			klog.V(4).Infof("Job <%s/%s> task order key invalid: %s.",
+				job.Namespace, job.Name, err.Error())
+			return nil, err
+		}
+	}
+
+	return &jobTopo, nil
+}
+
+// initBucket reads current jobs from sess and create manager and bucket for them.
+func (ttp *taskTopologyPlugin) initBucket(sess *framework.Session) {
+	for jobID, job := range sess.Jobs {
+		if noPendingTasks(job) {
+			klog.V(4).Infof("No pending tasks in job <%s/%s> by plugin %s.",
+				job.Namespace, job.Name, PluginName)
+			continue
+		}
+
+		jobTopo, err := readTopologyFromPgAnnotations(job)
+		if err != nil {
+			klog.V(4).Infof("Failed to read task topology from job <%s/%s> annotations, error: %s.",
+				job.Namespace, job.Name, err.Error())
+			continue
+		}
+		if jobTopo == nil {
+			continue
+		}
+
+		manager := NewJobManager(jobID)
+		manager.ApplyTaskTopology(jobTopo)
+		manager.ConstructBucket(job.Tasks)
+
+		ttp.managers[job.UID] = manager
+	}
 }

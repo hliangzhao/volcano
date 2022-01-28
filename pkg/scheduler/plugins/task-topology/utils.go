@@ -17,9 +17,9 @@ limitations under the License.
 package tasktopology
 
 import (
-	batchv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1`
-	`github.com/hliangzhao/volcano/pkg/scheduler/apis`
-	`github.com/hliangzhao/volcano/pkg/scheduler/framework`
+	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
+	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
+	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
 )
 
 const (

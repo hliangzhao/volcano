@@ -17,13 +17,13 @@ limitations under the License.
 package tasktopology
 
 import (
-	`fmt`
-	`github.com/hliangzhao/volcano/pkg/scheduler/apis`
-	`k8s.io/apimachinery/pkg/types`
-	`k8s.io/klog/v2`
-	`math`
-	`sort`
-	`strings`
+	"fmt"
+	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/klog/v2"
+	"math"
+	"sort"
+	"strings"
 )
 
 type topologyType int

@@ -17,9 +17,9 @@ limitations under the License.
 package tasktopology
 
 import (
-	`github.com/hliangzhao/volcano/pkg/scheduler/apis`
-	`k8s.io/apimachinery/pkg/types`
-	`k8s.io/klog/v2`
+	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/klog/v2"
 )
 
 type reqAction int
