@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+// GetController returns the controller's UID of input obj.
 func GetController(obj interface{}) types.UID {
 	accessor, err := meta.Accessor(obj)
 	if err != nil {

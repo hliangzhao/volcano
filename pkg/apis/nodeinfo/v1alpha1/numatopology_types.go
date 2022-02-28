@@ -45,22 +45,19 @@ const (
 
 // NumatopologySpec defines the desired state of Numatopology
 type NumatopologySpec struct {
-	// Specifies the policy of the manager
+	// Specifies the policy of the manager. NumaPolicy could be best-effort, none, single-numa-nod, etc.
 	// +optional
 	Policies map[PolicyName]string `json:"policies,omitempty"`
 
-	// Specifies the reserved resource of the node
-	// Key is resource name
+	// Specifies the reserved resource of the node. Key is resource name
 	// +optional
 	ResReserved map[string]string `json:"resReserved,omitempty"`
 
-	// Specifies the numa info for the resource
-	// Key is resource name
+	// Specifies the numa info for the resource. Key is resource name
 	// +optional
 	NumaResMap map[string]ResourceInfo `json:"numares,omitempty"`
 
-	// Specifies the cpu topology info
-	// Key is cpu id
+	// Specifies the cpu topology info. Key is cpu id
 	// +optional
 	CPUDetail map[string]CPUInfo `json:"cpuDetail,omitempty"`
 }

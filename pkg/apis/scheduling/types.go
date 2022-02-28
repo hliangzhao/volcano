@@ -44,16 +44,17 @@ type PodGroup struct {
 type PodGroupSpec struct {
 	// MinMember defines the minimal number of members/tasks to run the pod group;
 	// if there's not enough resources to start all tasks, the scheduler will not start anyone.
-	// TODO: this could be improved!
+	// TODO: this could be improved
 	MinMember int32
 
 	// MinTaskMember defines the minimal number of pods to run for each task in the pod group;
-	// if there's not enough resources to start each task, the scheduler
-	// will not start anyone.
+	// if there's not enough resources to start each task, the scheduler will not start anyone.
+	// TODO: this could be improved
 	MinTaskMember map[string]int32
 
 	// Queue defines the queue to allocate resource for PodGroup; if queue does not exist,
 	// the PodGroup will not be scheduled.
+	// Every PodGroup must be inserted into a queue before scheduling.
 	Queue string
 
 	// If specified, indicates the PodGroup's priority. "system-node-critical" and
@@ -68,15 +69,17 @@ type PodGroupSpec struct {
 	// MinResources defines the minimal resource of members/tasks to run the pod group;
 	// if there's not enough resources to start all tasks, the scheduler
 	// will not start anyone.
+	// TODO: the minimal resources to run all tasks?
 	MinResources *corev1.ResourceList
 }
 
 // PodGroupStatus defines the observed state of PodGroup
 type PodGroupStatus struct {
 	// Current phase of PodGroup.
+	// (Pending ---> Inqueue ---> Running)
 	Phase PodGroupPhase
 
-	// The conditions of PodGroup.
+	// The conditions of PodGroup. In each condition, condition status, transition info / time are visible.
 	// +optional
 	Conditions []PodGroupCondition
 
@@ -210,7 +213,7 @@ type QueueSpec struct {
 
 	// TODO: verify delete `State QueueState` is legal or not
 
-	// Reclaimable indicate whether the queue can be reclaimed by other queue
+	// Reclaimable indicate whether the resources allocated to this queue can be reclaimed by other queue
 	Reclaimable *bool
 
 	// extendCluster indicate the jobs in this Queue will be dispatched to these clusters.
@@ -218,6 +221,20 @@ type QueueSpec struct {
 
 	// Guarantee indicate configuration about resource reservation
 	Guarantee Guarantee `json:"guarantee,omitempty" protobuf:"bytes,4,opt,name=guarantee"`
+}
+
+// Cluster defines the information of a cluster.
+type Cluster struct {
+	Name     string
+	Weight   int32
+	Capacity corev1.ResourceList
+}
+
+// Guarantee represents configuration of queue resource reservation
+type Guarantee struct {
+	// The amount of cluster resource reserved for queue. Just set either `percentage` or `resource`
+	// +optional
+	Resource corev1.ResourceList `json:"resource,omitempty" protobuf:"bytes,3,opt,name=resource"`
 }
 
 // QueueState is state type of queue.
@@ -255,20 +272,6 @@ const (
 	// QueueCommandIssuedEvent is triggered if a command is raised by user
 	QueueCommandIssuedEvent QueueEvent = "CommandIssued"
 )
-
-// Cluster defines the information of a cluster.
-type Cluster struct {
-	Name     string
-	Weight   int32
-	Capacity corev1.ResourceList
-}
-
-// Guarantee represents configuration of queue resource reservation
-type Guarantee struct {
-	// The amount of cluster resource reserved for queue. Just set either `percentage` or `resource`
-	// +optional
-	Resource corev1.ResourceList `json:"resource,omitempty" protobuf:"bytes,3,opt,name=resource"`
-}
 
 // QueueStatus represents the status of Queue.
 type QueueStatus struct {

@@ -19,12 +19,20 @@ package nodeorder
 import (
 	"context"
 	"fmt"
+	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
 	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/utils"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
+	"k8s.io/kubernetes/pkg/scheduler/apis/config"
 	k8sframework "k8s.io/kubernetes/pkg/scheduler/framework"
+	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/feature"
+	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/imagelocality"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/interpodaffinity"
+	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/nodeaffinity"
+	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/noderesources"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/tainttoleration"
 )
 
@@ -132,7 +140,150 @@ func (nop *nodeOrderPlugin) Name() string {
 }
 
 func (nop *nodeOrderPlugin) OnSessionOpen(sess *framework.Session) {
-	// TODO
+	weight := calculateWeight(nop.pluginArguments)
+	podList := utils.NewPodListerFromNode(sess)
+	nodeMap := utils.GenerateNodeMapAndSlice(sess.Nodes)
+
+	// Register event handlers to update task info in PodLister & nodeMap
+	sess.AddEventHandler(&framework.EventHandler{
+		AllocateFunc: func(e *framework.Event) {
+			pod := podList.UpdateTask(e.Task, e.Task.NodeName)
+
+			nodeName := e.Task.NodeName
+			node, found := nodeMap[nodeName]
+			if !found {
+				klog.Warningf("node order, update pod %s/%s allocate to NOT EXIST node [%s]", pod.Namespace, pod.Name, nodeName)
+			} else {
+				node.AddPod(pod)
+				klog.V(4).Infof("node order, update pod %s/%s allocate to node [%s]", pod.Namespace, pod.Name, nodeName)
+			}
+		},
+		DeallocateFunc: func(e *framework.Event) {
+			pod := podList.UpdateTask(e.Task, "")
+
+			nodeName := e.Task.NodeName
+			node, found := nodeMap[nodeName]
+			if !found {
+				klog.Warningf("node order, update pod %s/%s allocate from NOT EXIST node [%s]", pod.Namespace, pod.Name, nodeName)
+			} else {
+				err := node.RemovePod(pod)
+				if err != nil {
+					klog.Errorf("Failed to update pod %s/%s and deallocate from node [%s]: %s", pod.Namespace, pod.Name, nodeName, err.Error())
+				} else {
+					klog.V(4).Infof("node order, update pod %s/%s deallocate from node [%s]", pod.Namespace, pod.Name, nodeName)
+				}
+			}
+		},
+	})
+
+	// Initialize k8s scheduling plugins
+	handle := k8s.NewFrameworkHandle(nodeMap, sess.KubeClient(), sess.InformerFactory())
+
+	// TODO: NodeResourcesMostAllocated and NodeResourcesMostAllocated are removed in v1.23.
+	//  Replace them with the new struct Fit.
+	//  Currently, we only calculate three policy scores.
+
+	// prepare NodeResourcesBalancedAllocation
+	p, _ := noderesources.NewBalancedAllocation(
+		&config.NodeResourcesBalancedAllocationArgs{
+			Resources: []config.ResourceSpec{
+				{Name: "cpu", Weight: 1},
+				{Name: "memory", Weight: 1},
+			},
+		},
+		handle,
+		feature.Features{},
+	)
+	balancedAllocation := p.(*noderesources.BalancedAllocation)
+
+	// prepare NodeAffinity
+	p, _ = nodeaffinity.New(nil, handle)
+	nodeAffinity := p.(*nodeaffinity.NodeAffinity)
+
+	// prepare ImageLocality
+	p, _ = imagelocality.New(nil, handle)
+	imageLocality := p.(*imagelocality.ImageLocality)
+
+	nodeOrderFn := func(task *apis.TaskInfo, node *apis.NodeInfo) (float64, error) {
+		var nodeScore = 0.0
+
+		// ImageLocality score
+		if weight.imageLocalityWeight != 0 {
+			score, status := imageLocality.Score(context.TODO(), nil, task.Pod, node.Name)
+			if !status.IsSuccess() {
+				klog.Warningf("Image Locality Priority Failed because of Error: %v", status.AsError())
+				return 0, status.AsError()
+			}
+
+			// If imageLocalityWeight is provided, host.Score is multiplied with weight, if not, host.Score is added to total score.
+			nodeScore += float64(score) * float64(weight.imageLocalityWeight)
+		}
+
+		// NodeResourcesBalancedAllocation score
+		if weight.balancedResourceWeight != 0 {
+			score, status := balancedAllocation.Score(context.TODO(), nil, task.Pod, node.Name)
+			if !status.IsSuccess() {
+				klog.Warningf("Balanced Resource Allocation Priority Failed because of Error: %v", status.AsError())
+				return 0, status.AsError()
+			}
+
+			// If balancedResourceWeight is provided, host.Score is multiplied with weight, if not, host.Score is added to total score.
+			nodeScore += float64(score) * float64(weight.balancedResourceWeight)
+		}
+
+		// NodeAffinity score
+		if weight.nodeAffinityWeight != 0 {
+			score, status := nodeAffinity.Score(context.TODO(), nil, task.Pod, node.Name)
+			if !status.IsSuccess() {
+				klog.Warningf("Calculate Node Affinity Priority Failed because of Error: %v", status.AsError())
+				return 0, status.AsError()
+			}
+
+			// TODO: should we normalize the score?
+			// If nodeAffinityWeight is provided, host.Score is multiplied with weight, if not, host.Score is added to total score.
+			nodeScore += float64(score) * float64(weight.nodeAffinityWeight)
+		}
+
+		klog.V(4).Infof("Total Score for task %s/%s on node %s is: %f", task.Namespace, task.Name, node.Name, nodeScore)
+		return nodeScore, nil
+	}
+	sess.AddNodeOrderFn(nop.Name(), nodeOrderFn)
+
+	plArgs := &config.InterPodAffinityArgs{}
+	p, _ = interpodaffinity.New(plArgs, handle, feature.Features{})
+	interPodAffinity := p.(*interpodaffinity.InterPodAffinity)
+
+	p, _ = tainttoleration.New(nil, handle)
+	taintToleration := p.(*tainttoleration.TaintToleration)
+
+	batchNodeOrderFn := func(task *apis.TaskInfo, nodeInfos []*apis.NodeInfo) (map[string]float64, error) {
+		// InterPodAffinity
+		state := k8sframework.NewCycleState()
+		nodes := make([]*corev1.Node, 0, len(nodeInfos))
+		for _, node := range nodeInfos {
+			nodes = append(nodes, node.Node)
+		}
+		nodeScores := make(map[string]float64, len(nodes))
+
+		// calculate two scores
+		podAffinityScores, podErr := interPodAffinityScore(interPodAffinity, state, task.Pod, nodes, weight.podAffinityWeight)
+		if podErr != nil {
+			return nil, podErr
+		}
+
+		nodeTolerationScores, err := taintTolerationScore(taintToleration, state, task.Pod, nodes, weight.taintTolerationWeight)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, node := range nodes {
+			nodeScores[node.Name] = podAffinityScores[node.Name] + nodeTolerationScores[node.Name]
+		}
+
+		klog.V(4).Infof("Batch Total Score for task %s/%s is: %v", task.Namespace, task.Name, nodeScores)
+		return nodeScores, nil
+	}
+	sess.AddBatchNodeOrderFn(nop.Name(), batchNodeOrderFn)
 }
 
 func (nop *nodeOrderPlugin) OnSessionClose(sess *framework.Session) {}

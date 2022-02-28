@@ -16,8 +16,7 @@ limitations under the License.
 
 package v1alpha1
 
-// Action is the action that Job controller will take according to the event.
-// Action is acted on job, task, and queue.
+// Action is the action on job, task, and queue that Job controller will take according to the event.
 type Action string
 
 const (

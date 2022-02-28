@@ -17,10 +17,16 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
+	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+/*
+In package Scheduling, we define `PodGroup` and `Queue`, which are used for scheduling.
+In this package, we define the most import CRD: batch `Job` (volcano Job).
+Note that `PodGroup` is used to wrap `Job` for scheduling.
+*/
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -48,8 +54,7 @@ type JobSpec struct {
 	// +optional
 	SchedulerName string `json:"schedulerName,omitempty" protobuf:"bytes,1,opt,name=schedulerName"`
 
-	// The minimal available pods to run for this Job
-	// Defaults to the summary of tasks' replicas
+	// The minimal available pods to run for this Job. Defaults to the summary of tasks' replicas
 	// +optional
 	MinAvailable int32 `json:"minAvailable,omitempty" protobuf:"bytes,2,opt,name=minAvailable"`
 
@@ -66,11 +71,11 @@ type JobSpec struct {
 	Policies []LifecyclePolicy `json:"policies,omitempty" protobuf:"bytes,5,opt,name=policies"`
 
 	// Specifies the plugin of job
-	// Key is plugin name, value is the arguments of the plugin
+	// Key is the plugin name, value is the arguments of the plugin
 	// +optional
 	Plugins map[string][]string `json:"plugins,omitempty" protobuf:"bytes,6,opt,name=plugins"`
 
-	// RunningEstimate is a user running duration estimate for the job
+	// RunningEstimate is a user running duration estimate for the job.
 	// Default to nil
 	RunningEstimate *metav1.Duration `json:"runningEstimate,omitempty" protobuf:"bytes,7,opt,name=runningEstimate"`
 
@@ -127,7 +132,7 @@ type TaskSpec struct {
 	// +optional
 	Replicas int32 `json:"replicas,omitempty" protobuf:"bytes,2,opt,name=replicas"`
 
-	// The minimal available pods to run for this Task
+	// The minimal available pods to run for this Task.
 	// Defaults to the task replicas
 	// +optional
 	MinAvailable *int32 `json:"minAvailable,omitempty" protobuf:"bytes,3,opt,name=minAvailable"`
@@ -161,17 +166,17 @@ type LifecyclePolicy struct {
 	// One of "Restart", "None".
 	// Default to None.
 	// +optional
-	Action v1alpha1.Action `json:"action,omitempty" protobuf:"bytes,1,opt,name=action"`
+	Action busv1alpha1.Action `json:"action,omitempty" protobuf:"bytes,1,opt,name=action"`
 
 	// The Event recorded by scheduler; the controller takes actions
 	// according to this Event.
 	// +optional
-	Event v1alpha1.Event `json:"event,omitempty" protobuf:"bytes,2,opt,name=event"`
+	Event busv1alpha1.Event `json:"event,omitempty" protobuf:"bytes,2,opt,name=event"`
 
 	// The Events recorded by scheduler; the controller takes actions
 	// according to the Events.
 	// +optional
-	Events []v1alpha1.Event `json:"events,omitempty" protobuf:"bytes,3,opt,name=events"`
+	Events []busv1alpha1.Event `json:"events,omitempty" protobuf:"bytes,3,opt,name=events"`
 
 	// The exit code of the pod container, controller will take action
 	// according to this code.
@@ -194,7 +199,7 @@ const (
 	SingleNumaNode NumaPolicy = "single-numa-node"
 )
 
-// Iteration defines the phase of the iteration, which should be used in multi-task scheduling
+// Iteration defines the phase of the iteration, which should be used in multitask scheduling
 type Iteration string
 
 const (

@@ -48,11 +48,13 @@ type PodGroupSpec struct {
 	// MinMember defines the minimal number of members/tasks to run the pod group;
 	// if there's not enough resources to start all tasks, the scheduler
 	// will not start anyone.
+	// TODO: this could be improved
 	MinMember int32 `json:"minMember,omitempty" protobuf:"bytes,1,opt,name=minMember"`
 
 	// MinTaskMember defines the minimal number of pods to run each task in the pod group;
 	// if there's not enough resources to start each task, the scheduler
 	// will not start anyone.
+	// TODO: this could be improved
 	MinTaskMember map[string]int32 `json:"minTaskMember,omitempty" protobuf:"bytes,1,opt,name=minTaskMember"`
 
 	// Queue defines the queue to allocate resource for PodGroup; if queue does not exist,
@@ -72,6 +74,7 @@ type PodGroupSpec struct {
 	// MinResources defines the minimal resource of members/tasks to run the pod group;
 	// if there's not enough resources to start all tasks, the scheduler
 	// will not start anyone.
+	// TODO: the minimal resources to run all tasks?
 	MinResources *corev1.ResourceList `json:"minResources,omitempty" protobuf:"bytes,4,opt,name=minResources"`
 }
 
@@ -227,6 +230,8 @@ type QueueSpec struct {
 	Weight     int32               `json:"weight,omitempty" protobuf:"bytes,1,opt,name=weight"`
 	Capability corev1.ResourceList `json:"capability,omitempty" protobuf:"bytes,2,opt,name=capability"`
 
+	// TODO: verify delete `State QueueState` is legal or not
+
 	// Reclaimable indicate whether the queue can be reclaimed by other queue
 	Reclaimable *bool `json:"reclaimable,omitempty" protobuf:"bytes,3,opt,name=reclaimable"`
 
@@ -249,6 +254,42 @@ type Guarantee struct {
 	// +optional
 	Resource corev1.ResourceList `json:"resource,omitempty" protobuf:"bytes,3,opt,name=resource"`
 }
+
+// QueueState is state type of queue.
+type QueueState string
+
+const (
+	// QueueStateOpen indicate `Open` state of queue
+	QueueStateOpen QueueState = "Open"
+	// QueueStateClosed indicate `Closed` state of queue
+	QueueStateClosed QueueState = "Closed"
+	// QueueStateClosing indicate `Closing` state of queue
+	QueueStateClosing QueueState = "Closing"
+	// QueueStateUnknown indicate `Unknown` state of queue
+	QueueStateUnknown QueueState = "Unknown"
+)
+
+// QueueAction is the action that queue controller will take according to the event.
+type QueueAction string
+
+const (
+	// SyncQueueAction is the action to sync queue status.
+	SyncQueueAction QueueAction = "SyncQueue"
+	// OpenQueueAction is the action to open queue
+	OpenQueueAction QueueAction = "OpenQueue"
+	// CloseQueueAction is the action to close queue
+	CloseQueueAction QueueAction = "CloseQueue"
+)
+
+// QueueEvent represent the phase of queue.
+type QueueEvent string
+
+const (
+	// QueueOutOfSyncEvent is triggered if PodGroup/Queue were updated
+	QueueOutOfSyncEvent QueueEvent = "OutOfSync"
+	// QueueCommandIssuedEvent is triggered if a command is raised by user
+	QueueCommandIssuedEvent QueueEvent = "CommandIssued"
+)
 
 // QueueStatus represents the status of Queue.
 type QueueStatus struct {
@@ -277,42 +318,6 @@ type Reservation struct {
 	// +optional
 	Resource corev1.ResourceList `json:"resource,omitempty" protobuf:"bytes,2,opt,name=resource"`
 }
-
-// QueueEvent represent the phase of queue.
-type QueueEvent string
-
-const (
-	// QueueOutOfSyncEvent is triggered if PodGroup/Queue were updated
-	QueueOutOfSyncEvent QueueEvent = "OutOfSync"
-	// QueueCommandIssuedEvent is triggered if a command is raised by user
-	QueueCommandIssuedEvent QueueEvent = "CommandIssued"
-)
-
-// QueueAction is the action that queue controller will take according to the event.
-type QueueAction string
-
-const (
-	// SyncQueueAction is the action to sync queue status.
-	SyncQueueAction QueueAction = "SyncQueue"
-	// OpenQueueAction is the action to open queue
-	OpenQueueAction QueueAction = "OpenQueue"
-	// CloseQueueAction is the action to close queue
-	CloseQueueAction QueueAction = "CloseQueue"
-)
-
-// QueueState is state type of queue.
-type QueueState string
-
-const (
-	// QueueStateOpen indicate `Open` state of queue
-	QueueStateOpen QueueState = "Open"
-	// QueueStateClosed indicate `Closed` state of queue
-	QueueStateClosed QueueState = "Closed"
-	// QueueStateClosing indicate `Closing` state of queue
-	QueueStateClosing QueueState = "Closing"
-	// QueueStateUnknown indicate `Unknown` state of queue
-	QueueStateUnknown QueueState = "Unknown"
-)
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true

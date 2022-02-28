@@ -16,7 +16,7 @@ limitations under the License.
 
 package v1alpha1
 
-// Event represent the phase of Job, e.g. pod-failed.
+// Event represent the phase of Job, Task, and Pod, e.g. task completed.
 type Event string
 
 const (

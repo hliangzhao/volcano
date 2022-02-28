@@ -47,6 +47,8 @@ var QueueKind = schedulingv1alpha1.SchemeGroupVersion.WithKind("Queue")
 
 // CreateOrUpdateConfigMap creates or updates the ConfigMap with data for job.
 func CreateOrUpdateConfigMap(job *batchv1alpha1.Job, kubeClient kubernetes.Interface, data map[string]string, cmName string) error {
+	// The code in this func is standard!
+	// kubernetes.Interface是我们可以在代码中操作CRUD的client
 	foundCm, err := kubeClient.CoreV1().ConfigMaps(job.Namespace).Get(context.TODO(), cmName, metav1.GetOptions{})
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
@@ -63,7 +65,7 @@ func CreateOrUpdateConfigMap(job *batchv1alpha1.Job, kubeClient kubernetes.Inter
 					*metav1.NewControllerRef(job, JobKind),
 				},
 			},
-			Data: data,
+			Data: data, // default string data
 		}
 		if _, err = kubeClient.CoreV1().ConfigMaps(job.Namespace).Create(context.TODO(), cm, metav1.CreateOptions{}); err != nil {
 			klog.V(3).Infof("Failed to create ConfigMap for Job <%s/%s>: %v", job.Namespace, job.Name, err)
@@ -95,6 +97,7 @@ func DeleteConfigMap(job *batchv1alpha1.Job, kubeClient kubernetes.Interface, cm
 	return nil
 }
 
+// CreateOrUpdateSecret creates or updates the Secret with the given data.
 func CreateOrUpdateSecret(job *batchv1alpha1.Job, kubeClient kubernetes.Interface, data map[string][]byte, secretName string) error {
 	foundSc, err := kubeClient.CoreV1().Secrets(job.Namespace).Get(context.TODO(), secretName, metav1.GetOptions{})
 	if err != nil {
@@ -112,7 +115,7 @@ func CreateOrUpdateSecret(job *batchv1alpha1.Job, kubeClient kubernetes.Interfac
 					*metav1.NewControllerRef(job, JobKind),
 				},
 			},
-			Data: data,
+			Data: data, // default binary data
 		}
 		if _, err = kubeClient.CoreV1().Secrets(job.Namespace).Create(context.TODO(), sc, metav1.CreateOptions{}); err != nil {
 			klog.V(3).Infof("Failed to create ConfigMap for Job <%s/%s>: %v", job.Namespace, job.Name, err)
@@ -136,6 +139,7 @@ func CreateOrUpdateSecret(job *batchv1alpha1.Job, kubeClient kubernetes.Interfac
 	return nil
 }
 
+// DeleteSecret deletes the Secret with name secretName for job.
 func DeleteSecret(job *batchv1alpha1.Job, kubeClient kubernetes.Interface, secretName string) error {
 	if err := kubeClient.CoreV1().Secrets(job.Namespace).Delete(context.TODO(), secretName, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
 		klog.Errorf("Failed to delete Secret of Job <%s/%s>: %v", job.Namespace, job.Name, err)
@@ -144,6 +148,7 @@ func DeleteSecret(job *batchv1alpha1.Job, kubeClient kubernetes.Interface, secre
 	return nil
 }
 
+// GeneratePodGroupName returns the PodGroup name as "podgroup-{ownerRef.UID}" or "podgroup-{pod.UID}".
 func GeneratePodGroupName(pod *corev1.Pod) string {
 	pgName := batchv1alpha1.PodgroupNamePrefix
 	if len(pod.OwnerReferences) != 0 {
@@ -204,7 +209,7 @@ func runServer(server *http.Server, ln net.Listener) error {
 		msg := fmt.Sprintf("Stopped listening on %s", listener.Addr().String())
 		select {
 		case <-stopCh:
-			klog.Info(msg) // when logging, server.Shutdown() is also executed
+			klog.Info(msg) // when logging, server.Shutdown() (in the coroutine defined above) is also executed
 		default:
 			klog.Fatalf("%s due to error: %v", msg, err)
 		}
@@ -218,7 +223,9 @@ type tcpKeepAliveListener struct {
 }
 
 // Accept waits for and returns the next connection to the listener.
+// This func will be called internally in `server.Serve(listener)`.
 func (listener tcpKeepAliveListener) Accept() (net.Conn, error) {
+	// only accept TCP connections
 	tc, err := listener.AcceptTCP()
 	if err != nil {
 		return nil, err
