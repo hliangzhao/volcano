@@ -18,6 +18,8 @@ package filewatcher
 
 import "github.com/fsnotify/fsnotify"
 
+/* This module wraps fsnotify/fileWatcher. */
+
 type FileWatcher interface {
 	Events() chan fsnotify.Event
 	Errors() chan error

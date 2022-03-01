@@ -24,8 +24,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// TODO: fully checked
-
 // buildNode creates a node.
 func buildNode(name string, alloc corev1.ResourceList) *corev1.Node {
 	return &corev1.Node{
@@ -40,22 +38,22 @@ func buildNode(name string, alloc corev1.ResourceList) *corev1.Node {
 }
 
 // buildPod creates a pod.
-func buildPod(ns, n, nn string, p corev1.PodPhase, req corev1.ResourceList,
+func buildPod(namespace, name, nodeName string, phase corev1.PodPhase, req corev1.ResourceList,
 	owner []metav1.OwnerReference, labels map[string]string) *corev1.Pod {
 
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			UID:             types.UID(fmt.Sprintf("%v-%v", ns, n)),
-			Name:            n,
-			Namespace:       ns,
+			UID:             types.UID(fmt.Sprintf("%v-%v", namespace, name)),
+			Name:            name,
+			Namespace:       namespace,
 			OwnerReferences: owner,
 			Labels:          labels,
 		},
 		Status: corev1.PodStatus{
-			Phase: p,
+			Phase: phase,
 		},
 		Spec: corev1.PodSpec{
-			NodeName: nn,
+			NodeName: nodeName,
 			Containers: []corev1.Container{
 				{
 					Resources: corev1.ResourceRequirements{

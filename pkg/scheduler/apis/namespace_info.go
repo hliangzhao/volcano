@@ -23,8 +23,6 @@ import (
 	"k8s.io/klog/v2"
 )
 
-// TODO: fully checked
-
 const (
 	// NamespaceWeightKey is the key in ResourceQuota.spec.hard indicating the weight of this namespace
 	NamespaceWeightKey = "volcano.sh/namespace.weight"
@@ -55,6 +53,7 @@ type quotaItem struct {
 	weight int64
 }
 
+// quotaItemKeyFunc parses obj as quotaItem and returns the quotaItem's name.
 func quotaItemKeyFunc(obj interface{}) (string, error) {
 	item, ok := obj.(*quotaItem)
 	if !ok {
@@ -63,13 +62,16 @@ func quotaItemKeyFunc(obj interface{}) (string, error) {
 	return item.name, nil
 }
 
-// for big root heap
+// quotaItemLessFunc parses a and b as quotaItem and judges whether a.weight > b.weight.
 func quotaItemLessFunc(a interface{}, b interface{}) bool {
+	// for big root heap
 	A := a.(*quotaItem)
 	B := b.(*quotaItem)
 	return A.weight > B.weight
 }
 
+// NamespaceCollection is used to collect quotaItems.
+// quotaItems are saved into a heap. Thus, quotaItemKeyFunc and quotaItemLessFunc are required for creating the heap.
 type NamespaceCollection struct {
 	Name        string
 	quotaWeight *cache.Heap
@@ -82,6 +84,8 @@ func NewNamespaceCollection(name string) *NamespaceCollection {
 	}
 }
 
+/* delete and update func of NamespaceCollection */
+
 func (nc *NamespaceCollection) deleteWeight(q *quotaItem) {
 	_ = nc.quotaWeight.Delete(q)
 }
@@ -90,6 +94,7 @@ func (nc *NamespaceCollection) updateWeight(q *quotaItem) {
 	_ = nc.quotaWeight.Update(q)
 }
 
+// itemFromQuota creates a quotaItem instance from corev1.ResourceQuota.
 func itemFromQuota(quota *corev1.ResourceQuota) *quotaItem {
 	var weight int64 = DefaultNamespaceWeight
 	quotaWeight, ok := quota.Spec.Hard[NamespaceWeightKey]
@@ -110,11 +115,11 @@ func (nc *NamespaceCollection) Delete(quota *corev1.ResourceQuota) {
 	nc.deleteWeight(itemFromQuota(quota))
 }
 
-// Snapshot will clone a NamespaceInfo without Heap according NamespaceCollection.
+// Snapshot clones a NamespaceInfo without Heap according NamespaceCollection.
 func (nc *NamespaceCollection) Snapshot() *NamespaceInfo {
 	var weight int64 = DefaultNamespaceWeight
 
-	// get the weight of obj, and then put it back
+	// get the weight of the first obj in the heap, and then put it back
 	obj, err := nc.quotaWeight.Pop()
 	if err != nil {
 		klog.Warningf("namespace %s, quota weight meets error %v when pop", nc.Name, err)
@@ -124,6 +129,7 @@ func (nc *NamespaceCollection) Snapshot() *NamespaceInfo {
 		_ = nc.quotaWeight.Add(item)
 	}
 
+	// the weight we get is used to create the snapshot
 	return &NamespaceInfo{
 		Name:   NamespaceName(nc.Name),
 		Weight: weight,

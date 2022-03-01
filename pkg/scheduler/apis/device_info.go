@@ -18,8 +18,6 @@ package apis
 
 import corev1 "k8s.io/api/core/v1"
 
-// TODO: fully checked
-
 // GPUDevice include gpu id, memory and the pods who are sharing it.
 type GPUDevice struct {
 	ID int
@@ -38,7 +36,7 @@ func NewGPUDevice(id int, mem uint) *GPUDevice {
 	}
 }
 
-// getGPUResourceOfContainer returns the GPU resource required by the container.
+// getGPUResourceOfContainer returns the GPU resource (GPU mem) required by the given container c.
 func getGPUResourceOfContainer(c *corev1.Container) uint {
 	var mem uint
 	if val, ok := c.Resources.Limits[VolcanoGPUResource]; ok {
@@ -47,7 +45,7 @@ func getGPUResourceOfContainer(c *corev1.Container) uint {
 	return mem
 }
 
-// GetGPUResourceOfPod returns the GPU resource required by the pod.
+// GetGPUResourceOfPod returns the GPU resource required by the input pod.
 func GetGPUResourceOfPod(pod *corev1.Pod) uint {
 	var mem uint
 	for _, c := range pod.Spec.Containers {

@@ -16,6 +16,9 @@ limitations under the License.
 
 package helpers
 
+// TODO: just copied. Not checked.
+// Passed.
+
 import (
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
 	corev1 "k8s.io/api/core/v1"

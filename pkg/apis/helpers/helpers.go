@@ -48,7 +48,7 @@ var QueueKind = schedulingv1alpha1.SchemeGroupVersion.WithKind("Queue")
 // CreateOrUpdateConfigMap creates or updates the ConfigMap with data for job.
 func CreateOrUpdateConfigMap(job *batchv1alpha1.Job, kubeClient kubernetes.Interface, data map[string]string, cmName string) error {
 	// The code in this func is standard!
-	// kubernetes.Interface是我们可以在代码中操作CRUD的client
+	// kubernetes.Interface is the client that we used for the CRUD of k8s resources
 	foundCm, err := kubeClient.CoreV1().ConfigMaps(job.Namespace).Get(context.TODO(), cmName, metav1.GetOptions{})
 	if err != nil {
 		if !apierrors.IsNotFound(err) {

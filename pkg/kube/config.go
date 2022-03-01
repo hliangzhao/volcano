@@ -21,6 +21,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+/* This module defines volcano config. */
+
 type ClientOptions struct {
 	Master     string
 	KubeConfig string

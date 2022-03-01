@@ -18,8 +18,6 @@ package apis
 
 import "fmt"
 
-// TODO: fully checked
-
 // ClusterInfo is a snapshot of cluster by cache.
 type ClusterInfo struct {
 	Jobs           map[JobID]*JobInfo

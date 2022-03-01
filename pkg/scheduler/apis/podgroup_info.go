@@ -18,9 +18,9 @@ package apis
 
 import "github.com/hliangzhao/volcano/pkg/apis/scheduling"
 
-// TODO: fully checked
+// No more wrapper is required for podgroup.
 
-// PodGroupPhase is the phase of a pod group at the current time.
+// PodGroupPhase is the phase of a podgroup at current time.
 type PodGroupPhase string
 
 // These are the valid phase of podGroups.

@@ -22,6 +22,7 @@ import (
 	"math"
 )
 
+// Min returns a new resource instance where each resource quantity is the min one of l and r.
 func Min(l, r *apis.Resource) *apis.Resource {
 	res := &apis.Resource{}
 	res.MilliCPU = math.Min(l.MilliCPU, r.MilliCPU)
@@ -43,7 +44,7 @@ func Max(l, r *apis.Resource) *apis.Resource {
 	res.MilliCPU = math.Max(l.MilliCPU, r.MilliCPU)
 	res.Memory = math.Max(l.Memory, r.Memory)
 
-	if l.ScalarResources == nil || r.ScalarResources == nil {
+	if l.ScalarResources == nil && r.ScalarResources == nil {
 		return res
 	}
 

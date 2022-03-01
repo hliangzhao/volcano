@@ -24,8 +24,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpuset"
 )
 
-// TODO: fully checked
-
 type NumaChangeFlag int
 
 const (
@@ -39,10 +37,28 @@ const (
 	NumaInfoLessFlag NumaChangeFlag = 0b10
 )
 
-// PodResourceDecision is resource allocation determined by scheduler,
-// and passed to kubelet through pod annotation.
+// PodResourceDecision is the resource allocation determined by scheduler, and passed to kubelet through pod annotation.
 type PodResourceDecision struct {
+	// key is NUMA id
 	NumaResources map[int]corev1.ResourceList `json:"numa,omitempty"`
+}
+
+type TopologyInfo struct {
+	Policy string
+	ResMap map[int]corev1.ResourceList // key: NUMA ID
+}
+
+func (info *TopologyInfo) Clone() *TopologyInfo {
+	copyInfo := &TopologyInfo{
+		Policy: info.Policy,
+		ResMap: map[int]corev1.ResourceList{},
+	}
+
+	for numaId, resList := range info.ResMap {
+		copyInfo.ResMap[numaId] = resList.DeepCopy()
+	}
+
+	return copyInfo
 }
 
 // ResourceInfo is the allocatable information for the resource.
@@ -59,7 +75,7 @@ type NumaTopoInfo struct {
 	Name        string
 	Policies    map[nodeinfov1alpha1.PolicyName]string
 	NumaResMap  map[string]*ResourceInfo
-	CPUDetail   topology.CPUDetails
+	CPUDetail   topology.CPUDetails // CPUDetails is a map from CPU ID to Core ID, Socket ID, and NUMA ID
 	ResReserved corev1.ResourceList
 }
 
@@ -111,8 +127,8 @@ func (info *NumaTopoInfo) DeepCopy() *NumaTopoInfo {
 
 // Compare is the function to show the change of the resource on kubelet
 // return val:
-// - true: at least one resource on kubelet is getting more or no change;
-// - false: otherwise.
+// true: at least one resource on kubelet is getting more or no change;
+// false: otherwise.
 func (info *NumaTopoInfo) Compare(newInfo *NumaTopoInfo) bool {
 	for resName := range info.NumaResMap {
 		oldSize := info.NumaResMap[resName].Allocatable.Size()
@@ -124,6 +140,7 @@ func (info *NumaTopoInfo) Compare(newInfo *NumaTopoInfo) bool {
 	return false
 }
 
+// ResNumaSets key is the resource name
 type ResNumaSets map[string]cpuset.CPUSet
 
 // Allocate is the function to remove the allocated resource.
@@ -140,11 +157,14 @@ func (info *NumaTopoInfo) Release(resSets ResNumaSets) {
 	}
 }
 
+// GetPodResourceNumaInfo returns numa resources from the annotation of the given task.
 func GetPodResourceNumaInfo(ti *TaskInfo) map[int]corev1.ResourceList {
+	// has already been filled into ti, return directly
 	if ti.NumaInfo != nil && len(ti.NumaInfo.ResMap) > 0 {
 		return ti.NumaInfo.ResMap
 	}
 
+	// parse from annotation
 	if _, ok := ti.Pod.Annotations[TopologyDecisionAnnotation]; !ok {
 		return nil
 	}
@@ -162,7 +182,7 @@ func (info *NumaTopoInfo) AddTask(ti *TaskInfo) {
 		return
 	}
 
-	// update
+	// update numa topo info
 	for numaId, resList := range decision {
 		for resName, resQuantity := range resList {
 			info.NumaResMap[string(resName)].UsedPerNuma[numaId] += ResQuantity2Float64(resName, resQuantity)
@@ -177,7 +197,7 @@ func (info *NumaTopoInfo) RemoveTask(ti *TaskInfo) {
 		return
 	}
 
-	// update
+	// update numa topo info
 	for numaId, resList := range decision {
 		for resName, resQuantity := range resList {
 			info.NumaResMap[string(resName)].UsedPerNuma[numaId] -= ResQuantity2Float64(resName, resQuantity)
@@ -185,7 +205,7 @@ func (info *NumaTopoInfo) RemoveTask(ti *TaskInfo) {
 	}
 }
 
-// GenerateNodeResNumaSets return the idle resource sets of all node.
+// GenerateNodeResNumaSets returns the idle resource sets of nodes.
 func GenerateNodeResNumaSets(nodes map[string]*NodeInfo) map[string]ResNumaSets {
 	nodeSlice := make(map[string]ResNumaSets)
 	for _, node := range nodes {
@@ -201,7 +221,7 @@ func GenerateNodeResNumaSets(nodes map[string]*NodeInfo) map[string]ResNumaSets 
 	return nodeSlice
 }
 
-// GenerateNumaNodes return the numa IDs of all node.
+// GenerateNumaNodes return the numa IDs of nodes. Key is the node name, value is the numa ids in this node.
 func GenerateNumaNodes(nodes map[string]*NodeInfo) map[string][]int {
 	nodeNumaMap := make(map[string][]int)
 	for _, node := range nodes {
@@ -233,7 +253,7 @@ func (resSets ResNumaSets) Release(taskSets ResNumaSets) {
 	}
 }
 
-// Clone is the copy action.
+// Clone is the deep copy action.
 func (resSets ResNumaSets) Clone() ResNumaSets {
 	newSets := make(ResNumaSets)
 	for resName := range resSets {

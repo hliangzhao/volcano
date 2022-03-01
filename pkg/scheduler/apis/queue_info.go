@@ -22,21 +22,20 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// TODO: fully checked
-
 type QueueID types.UID
 
 type QueueInfo struct {
 	UID    QueueID
 	Name   string
-	Weight int32
+	Weight int32 // the weight of this queue
 
 	// Weights is a list of slash seperated float numbers.
 	// Each of them is a weight corresponding the hierarchy level.
 	Weights string
 
-	// Hierarchy is a list of node name along the
-	// path from the root to the node itself.
+	// TODO: How to understand hierarchy here?
+
+	// Hierarchy is a list of node name along the path from the root to the node itself.
 	Hierarchy string
 
 	Queue *scheduling.Queue

@@ -16,8 +16,6 @@ limitations under the License.
 
 package apis
 
-// TODO: fully checked
-
 const (
 	// VolcanoGPUResource extended gpu resource
 	VolcanoGPUResource = "volcano.sh/gpu-memory"

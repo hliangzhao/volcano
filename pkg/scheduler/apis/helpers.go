@@ -20,30 +20,28 @@ import (
 	"fmt"
 )
 
-// TODO: fully checked
-
 // MergeErrors is used to merge multiple errors into a single error.
 func MergeErrors(errs ...error) error {
 	msg := "errors: "
 
-	foundErr := false
+	notFirst := false
 	i := 1
 
 	for _, e := range errs {
 		if e != nil {
-			if foundErr {
+			if notFirst {
 				msg = fmt.Sprintf("%s, %d: ", msg, i)
 			} else {
 				msg = fmt.Sprintf("%s %d: ", msg, i)
 			}
 			msg = fmt.Sprintf("%s%v", msg, e)
-			foundErr = true
+			notFirst = true
 			i++
 		}
 	}
 
 	// the returned string is "errors: 1: xxx, 2: xxx, 3: xxx"
-	if foundErr {
+	if notFirst {
 		return fmt.Errorf("%s", msg)
 	}
 	return nil

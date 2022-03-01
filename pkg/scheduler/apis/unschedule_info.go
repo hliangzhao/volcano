@@ -22,8 +22,6 @@ import (
 	"strings"
 )
 
-// TODO: fully checked
-
 const (
 	// NodePodNumberExceeded means pods in node exceed the allocatable pod number
 	NodePodNumberExceeded = "node(s) pod number exceeded"

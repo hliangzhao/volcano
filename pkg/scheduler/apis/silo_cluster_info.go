@@ -21,9 +21,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// TODO: fully checked
-
 type ClusterID types.UID
+
+// TODO: where to use SiloClusterInfo?
 
 // SiloClusterInfo will have all details about queue.
 type SiloClusterInfo struct {

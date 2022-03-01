@@ -27,15 +27,13 @@ import (
 	"time"
 )
 
-// TODO: fully checked
-
 // Refer k8s.io/kubernetes/pkg/scheduler/algorithm/predicates/predicates.go#GetResourceRequest.
 //
 // GetResourceRequest returns a *Resource that covers the largest width in each resource dimension.
 // Because init-containers run sequentially, we collect the max in each dimension iteratively.
 // In contrast, we sum the resource vectors for regular containers since they run simultaneously.
 //
-// To be consistent with kubernetes default scheduler, it is only used for predicates of actions(e.g.
+// To be consistent with kubernetes default scheduler, it is only used for predicates of actions (e.g.
 // allocate, backfill, preempt, reclaim), please use GetPodResourceWithoutInitContainers for other cases.
 //
 // Example:
@@ -77,7 +75,7 @@ func GetPodResourceRequest(pod *corev1.Pod) *Resource {
 	return result
 }
 
-// GetPodPreemptable return volcano.sh/preemptable value for pod.
+// GetPodPreemptable returns the value of annotation/label `volcano.sh/preemptable` of pod.
 func GetPodPreemptable(pod *corev1.Pod) bool {
 	// check annotations
 	if len(pod.Annotations) > 0 {
@@ -106,7 +104,7 @@ func GetPodPreemptable(pod *corev1.Pod) bool {
 	return false
 }
 
-// GetPodRevocableZone return volcano.sh/revocable-zone value for pod/podgroup.
+// GetPodRevocableZone return `volcano.sh/revocable-zone` value for pod/podgroup.
 func GetPodRevocableZone(pod *corev1.Pod) string {
 	if len(pod.Annotations) > 0 {
 		if value, found := pod.Annotations[schedulingv1alpha1.RevocableZone]; found {
@@ -124,7 +122,7 @@ func GetPodRevocableZone(pod *corev1.Pod) string {
 	return ""
 }
 
-// GetPodTopologyInfo return volcano.sh/numa-topology-policy value for pod.
+// GetPodTopologyInfo return `volcano.sh/numa-topology-policy` value for pod.
 func GetPodTopologyInfo(pod *corev1.Pod) *TopologyInfo {
 	info := TopologyInfo{
 		ResMap: map[int]corev1.ResourceList{},
@@ -145,7 +143,9 @@ func GetPodTopologyInfo(pod *corev1.Pod) *TopologyInfo {
 	return &info
 }
 
+// GetGPUIndex returns the index of GPU that pod consumed.
 func GetGPUIndex(pod *corev1.Pod) int {
+	// TODO: what about a pod consumes more than 1 GPU? Should returns a slice
 	if len(pod.Annotations) > 0 {
 		value, found := pod.Annotations[GPUIndex]
 		if found {
@@ -167,18 +167,19 @@ func escapeJSONPointer(p string) string {
 	return p
 }
 
-// AddGPUIndexPatch returns the patch adding GPU index
+// AddGPUIndexPatch returns the patch adding GPU index.
 func AddGPUIndexPatch(id int) string {
 	return fmt.Sprintf(
 		`[{"op": "add", "path": "/metadata/annotations/%s", "value":"%d"},`+
 			`{"op": "add", "path": "/metadata/annotations/%s", "value": "%d"}]`,
 		escapeJSONPointer(PredicateTime),
 		time.Now().UnixNano(),
-		escapeJSONPointer(GPUIndex), id,
+		escapeJSONPointer(GPUIndex),
+		id,
 	)
 }
 
-// RemoveGPUIndexPatch returns the patch removing GPU index
+// RemoveGPUIndexPatch returns the patch removing GPU index.
 func RemoveGPUIndexPatch() string {
 	return fmt.Sprintf(
 		`[{"op": "remove", "path": "/metadata/annotations/%s"},`+
