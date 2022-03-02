@@ -16,6 +16,8 @@ limitations under the License.
 
 package cache
 
+// TODO: why only Binder needs the factory method?
+
 var bindMethodMap Binder
 
 // RegisterBindMethod register Bind Method

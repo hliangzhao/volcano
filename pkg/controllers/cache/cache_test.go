@@ -16,6 +16,9 @@ limitations under the License.
 
 package cache
 
+// TODO: just copied. Not checked.
+// Passed.
+
 import (
 	"fmt"
 	"github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"

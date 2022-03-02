@@ -45,7 +45,7 @@ spec:
                 format: int32
                 type: integer
               minAvailable:
-                description: The minimal available pods to run for this Job Defaults
+                description: The minimal available pods to run for this Job. Defaults
                   to the summary of tasks' replicas
                 format: int32
                 type: integer
@@ -59,7 +59,7 @@ spec:
                   items:
                     type: string
                   type: array
-                description: Specifies the plugin of job Key is plugin name, value
+                description: Specifies the plugin of job Key is the plugin name, value
                   is the arguments of the plugin
                 type: object
               policies:
@@ -80,7 +80,8 @@ spec:
                       description: The Events recorded by scheduler; the controller
                         takes actions according to the Events.
                       items:
-                        description: Event represent the phase of Job, e.g. pod-failed.
+                        description: Event represent the phase of Job, Task, and Pod,
+                          e.g. task completed.
                         type: string
                       type: array
                     exitCode:
@@ -104,7 +105,7 @@ spec:
                 type: string
               runningEstimate:
                 description: RunningEstimate is a user running duration estimate for
-                  the job Default to nil
+                  the job. Default to nil
                 type: string
               schedulerName:
                 description: SchedulerName is the default value of `tasks.template.spec.schedulerName`.
@@ -137,7 +138,7 @@ spec:
                       format: int32
                       type: integer
                     minAvailable:
-                      description: The minimal available pods to run for this Task
+                      description: The minimal available pods to run for this Task.
                         Defaults to the task replicas
                       format: int32
                       type: integer
@@ -163,8 +164,8 @@ spec:
                             description: The Events recorded by scheduler; the controller
                               takes actions according to the Events.
                             items:
-                              description: Event represent the phase of Job, e.g.
-                                pod-failed.
+                              description: Event represent the phase of Job, Task,
+                                and Pod, e.g. task completed.
                               type: string
                             type: array
                           exitCode:
@@ -7769,7 +7770,7 @@ spec:
                           type: object
                       type: object
                     topologyPolicy:
-                      description: Specifies the topology policy of task
+                      description: Specifies the NUMA topology policy of task
                       type: string
                   type: object
                 type: array

@@ -36,14 +36,19 @@ import (
 	"strconv"
 )
 
+/* In this file, we implement the functions that Add, Update, and Delete different fields of SchedulerCache. */
+
+// isTerminated checks whether status is succeeded or failed.
 func isTerminated(status apis.TaskStatus) bool {
 	return status == apis.Succeeded || status == apis.Failed
 }
 
+// getJobID returns <podgroup-ns/podgroup-name>.
 func getJobID(pg *apis.PodGroup) apis.JobID {
 	return apis.JobID(fmt.Sprintf("%s/%s", pg.Namespace, pg.Name))
 }
 
+// AddJob adds obj to sc.Jobs.
 func (sc *SchedulerCache) AddJob(obj interface{}) {
 	job, ok := obj.(*apis.JobInfo)
 	if !ok {
@@ -75,19 +80,19 @@ func (sc *SchedulerCache) getOrCreateJob(ti *apis.TaskInfo) *apis.JobInfo {
 
 /* handling Pod and Task */
 
-// addTask adds ti to the right apis.JobInfo instance.
-func (sc *SchedulerCache) addTask(ti *apis.TaskInfo) error {
-	if len(ti.NodeName) != 0 {
-		// create node for ti if not found
-		if _, found := sc.Nodes[ti.NodeName]; !found {
-			sc.Nodes[ti.NodeName] = apis.NewNodeInfo(nil)
-			sc.Nodes[ti.NodeName].Name = ti.NodeName
+// addTask adds task to the right job and then adds the job to sc.Jobs.
+func (sc *SchedulerCache) addTask(task *apis.TaskInfo) error {
+	if len(task.NodeName) != 0 {
+		// create node for task if not found
+		if _, found := sc.Nodes[task.NodeName]; !found {
+			sc.Nodes[task.NodeName] = apis.NewNodeInfo(nil)
+			sc.Nodes[task.NodeName].Name = task.NodeName
 		}
 
-		// add ti to this node
-		node := sc.Nodes[ti.NodeName]
-		if !isTerminated(ti.Status) {
-			if err := node.AddTask(ti); err != nil {
+		// add task to this node
+		node := sc.Nodes[task.NodeName]
+		if !isTerminated(task.Status) {
+			if err := node.AddTask(task); err != nil {
 				if _, outOfSync := err.(*apis.AllocateFailError); outOfSync {
 					node.State = apis.NodeState{
 						Phase:  apis.NotReady,
@@ -97,25 +102,27 @@ func (sc *SchedulerCache) addTask(ti *apis.TaskInfo) error {
 				return err
 			}
 		} else {
-			klog.V(4).Infof("Pod <%v/%v> is in status %s.", ti.Namespace, ti.Name, ti.Status.String())
+			klog.V(4).Infof("Pod <%v/%v> is in status %s.", task.Namespace, task.Name, task.Status.String())
 		}
 	}
 
-	// get (or create) the job of ti
-	job := sc.getOrCreateJob(ti)
+	// get (or create) the job of task
+	job := sc.getOrCreateJob(task)
 	if job != nil {
-		job.AddTaskInfo(ti)
+		job.AddTaskInfo(task)
 	}
 
 	return nil
 }
 
+// addPod adds pod to sc.
 func (sc *SchedulerCache) addPod(pod *corev1.Pod) error {
 	// Assumes that lock is already acquired.
-	ti := apis.NewTaskInfo(pod)
-	return sc.addTask(ti)
+	task := apis.NewTaskInfo(pod)
+	return sc.addTask(task)
 }
 
+// AddPod (wraps addPod) adds pod to sc.
 func (sc *SchedulerCache) AddPod(obj interface{}) {
 	pod, ok := obj.(*corev1.Pod)
 	if !ok {
@@ -136,6 +143,27 @@ func (sc *SchedulerCache) AddPod(obj interface{}) {
 	klog.V(3).Infof("Added pod <%s/%v> into cache.", pod.Namespace, pod.Name)
 }
 
+// updatePod deletes oldPod and adds newPod to sc.
+// Assumes that lock is already acquired.
+func (sc *SchedulerCache) updatePod(oldPod, newPod *corev1.Pod) error {
+	// ignore the update event if pod is allocated in cache but not present in NodeName
+	if sc.allocatedPodInCache(newPod) && newPod.Spec.NodeName == "" {
+		klog.V(4).Infof("Pod <%s/%v> already in cache with allocated status, ignore the update event",
+			newPod.Namespace, newPod.Name)
+		return nil
+	}
+
+	if err := sc.deletePod(oldPod); err != nil {
+		return err
+	}
+	// when delete pod, the owner reference of pod will be set nil,just as orphan pod
+	if len(utils.GetController(newPod)) == 0 {
+		newPod.OwnerReferences = oldPod.OwnerReferences
+	}
+	return sc.addPod(newPod)
+}
+
+// UpdatePod (wraps updatePod) deletes oldObj and adds newObj to sc.
 func (sc *SchedulerCache) UpdatePod(oldObj, newObj interface{}) {
 	oldPod, ok := oldObj.(*corev1.Pod)
 	if !ok {
@@ -160,6 +188,31 @@ func (sc *SchedulerCache) UpdatePod(oldObj, newObj interface{}) {
 	klog.V(4).Infof("Updated pod <%s/%v> in cache.", oldPod.Namespace, oldPod.Name)
 }
 
+// deletePod deletes the task (of the input pod) from sc.
+// Further, if the job of the task is terminated, delete the job by the way.
+func (sc *SchedulerCache) deletePod(pod *corev1.Pod) error {
+	ti := apis.NewTaskInfo(pod)
+
+	// Delete the Task (pod) in cache to handle Binding status.
+	task := ti
+	if job, found := sc.Jobs[ti.Job]; found {
+		if t, found := job.Tasks[ti.UID]; found {
+			task = t
+		}
+	}
+	if err := sc.deleteTask(task); err != nil {
+		klog.Warningf("Failed to delete task: %v", err)
+	}
+
+	// Further, if job was terminated, delete it.
+	if job, found := sc.Jobs[ti.Job]; found && apis.JobTerminated(job) {
+		sc.deleteJob(job)
+	}
+
+	return nil
+}
+
+// DeletePod (wraps deletePod) deletes obj from sc.
 func (sc *SchedulerCache) DeletePod(obj interface{}) {
 	var pod *corev1.Pod
 	switch t := obj.(type) {
@@ -189,24 +242,25 @@ func (sc *SchedulerCache) DeletePod(obj interface{}) {
 	klog.V(3).Infof("Deleted pod <%s/%v> from cache.", pod.Namespace, pod.Name)
 }
 
-func (sc *SchedulerCache) deleteTask(ti *apis.TaskInfo) error {
+// deleteTask deletes task from sc. Specifically, it deletes task from the corresponding job and scheduled node.
+func (sc *SchedulerCache) deleteTask(task *apis.TaskInfo) error {
 	var jobErr, nodeErr, numaErr error
 
-	// remove ti from job
-	if len(ti.Job) != 0 {
-		if job, found := sc.Jobs[ti.Job]; found {
-			jobErr = job.DeleteTaskInfo(ti)
+	// remove task from job
+	if len(task.Job) != 0 {
+		if job, found := sc.Jobs[task.Job]; found {
+			jobErr = job.DeleteTaskInfo(task)
 		} else {
 			jobErr = fmt.Errorf("failed to find Job <%v> for Task %v/%v",
-				ti.Job, ti.Namespace, ti.Name)
+				task.Job, task.Namespace, task.Name)
 		}
 	}
 
-	// remove ti from node
-	if len(ti.NodeName) != 0 {
-		node := sc.Nodes[ti.NodeName]
+	// remove task from node
+	if len(task.NodeName) != 0 {
+		node := sc.Nodes[task.NodeName]
 		if node != nil {
-			nodeErr = node.RemoveTask(ti)
+			nodeErr = node.RemoveTask(task)
 		}
 	}
 
@@ -219,93 +273,50 @@ func (sc *SchedulerCache) deleteTask(ti *apis.TaskInfo) error {
 	return nil
 }
 
-// updateTask deletes the old TaskInfo and add the new one.
-func (sc *SchedulerCache) updateTask(oldTi, newTi *apis.TaskInfo) error {
-	if err := sc.deleteTask(oldTi); err != nil {
+// updateTask deletes the old task from sc and add the new one to sc.
+func (sc *SchedulerCache) updateTask(oldTask, newTask *apis.TaskInfo) error {
+	if err := sc.deleteTask(oldTask); err != nil {
 		klog.Warningf("Failed to delete task: %v", err)
 	}
-	return sc.addTask(newTi)
+	return sc.addTask(newTask)
 }
 
-// syncTask gets the latest pod from oldTi. If the pod changed, use it to update ti.
-func (sc *SchedulerCache) syncTask(oldTi *apis.TaskInfo) error {
-	latestPod, err := sc.kubeClient.CoreV1().Pods(oldTi.Namespace).Get(context.TODO(), oldTi.Name, metav1.GetOptions{})
+// syncTask gets the latest task from the cluster and update it to sc.
+func (sc *SchedulerCache) syncTask(oldTask *apis.TaskInfo) error {
+	latestPod, err := sc.kubeClient.CoreV1().Pods(oldTask.Namespace).Get(context.TODO(), oldTask.Name, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
-			err := sc.deleteTask(oldTi)
+			err := sc.deleteTask(oldTask)
 			if err != nil {
-				klog.Errorf("Failed to delete Pod <%v/%v> and remove from cache: %s", oldTi.Namespace, oldTi.Name, err.Error())
+				klog.Errorf("Failed to delete Pod <%v/%v> and remove from cache: %s", oldTask.Namespace, oldTask.Name, err.Error())
 				return err
 			}
-			klog.V(3).Infof("Pod <%v/%v> was deleted, removed from cache.", oldTi.Namespace, oldTi.Name)
+			klog.V(3).Infof("Pod <%v/%v> was deleted, removed from cache.", oldTask.Namespace, oldTask.Name)
 			return nil
 		}
-		return fmt.Errorf("failed to get Pod <%v/%v>: err %v", oldTi.Namespace, oldTi.Name, err)
+		return fmt.Errorf("failed to get Pod <%v/%v>: err %v", oldTask.Namespace, oldTask.Name, err)
 	}
 
-	newTi := apis.NewTaskInfo(latestPod)
+	newTask := apis.NewTaskInfo(latestPod)
 	sc.Mutex.Lock()
 	defer sc.Mutex.Unlock()
-	return sc.updateTask(oldTi, newTi)
+	return sc.updateTask(oldTask, newTask)
 }
 
-// allocatedPodInCache checks the node allocation status of pod.
+// allocatedPodInCache checks whether pod is scheduled to a node. True is returned only when pod in sc, and it is scheduled.
 func (sc *SchedulerCache) allocatedPodInCache(pod *corev1.Pod) bool {
-	ti := apis.NewTaskInfo(pod)
-	// get the job cache of ti
-	if job, found := sc.Jobs[ti.Job]; found {
-		// if job found, get the ti cache in the job, update the cache
-		if t, found := job.Tasks[ti.UID]; found {
+	task := apis.NewTaskInfo(pod)
+	if job, found := sc.Jobs[task.Job]; found {
+		if t, found := job.Tasks[task.UID]; found {
 			return apis.AllocatedStatus(t.Status)
 		}
 	}
 	return false
 }
 
-func (sc *SchedulerCache) deletePod(pod *corev1.Pod) error {
-	ti := apis.NewTaskInfo(pod)
-
-	// Delete the Task (pod) in cache to handle Binding status.
-	task := ti
-	if job, found := sc.Jobs[ti.Job]; found {
-		if t, found := job.Tasks[ti.UID]; found {
-			task = t
-		}
-	}
-	if err := sc.deleteTask(task); err != nil {
-		klog.Warningf("Failed to delete task: %v", err)
-	}
-
-	// Further, if job was terminated, delete it.
-	if job, found := sc.Jobs[ti.Job]; found && apis.JobTerminated(job) {
-		sc.deleteJob(job)
-	}
-
-	return nil
-}
-
-// updatePod deletes oldPod and adds newPod to sc.
-// Assumes that lock is already acquired.
-func (sc *SchedulerCache) updatePod(oldPod, newPod *corev1.Pod) error {
-	// ignore the update event if pod is allocated in cache but not present in NodeName
-	if sc.allocatedPodInCache(newPod) && newPod.Spec.NodeName == "" {
-		klog.V(4).Infof("Pod <%s/%v> already in cache with allocated status, ignore the update event",
-			newPod.Namespace, newPod.Name)
-		return nil
-	}
-
-	if err := sc.deletePod(oldPod); err != nil {
-		return err
-	}
-	// when delete pod, the owner reference of pod will be set nil,just as orphan pod
-	if len(utils.GetController(newPod)) == 0 {
-		newPod.OwnerReferences = oldPod.OwnerReferences
-	}
-	return sc.addPod(newPod)
-}
-
 /* handling Node */
 
+// addNode adds node to sc.Nodes.
 func (sc *SchedulerCache) addNode(node *corev1.Node) error {
 	if sc.Nodes[node.Name] != nil {
 		sc.Nodes[node.Name].SetNode(node)
@@ -315,6 +326,7 @@ func (sc *SchedulerCache) addNode(node *corev1.Node) error {
 	return nil
 }
 
+// updateNode updates the node in sc.Nodes which is denoted by newNode.
 func (sc *SchedulerCache) updateNode(oldNode, newNode *corev1.Node) error {
 	// TODO: oldNode not used
 	if sc.Nodes[newNode.Name] != nil {
@@ -324,6 +336,7 @@ func (sc *SchedulerCache) updateNode(oldNode, newNode *corev1.Node) error {
 	return fmt.Errorf("node <%s> does not exist", newNode.Name)
 }
 
+// deleteNode deletes node from sc.Nodes.
 func (sc *SchedulerCache) deleteNode(node *corev1.Node) error {
 	if _, ok := sc.Nodes[node.Name]; !ok {
 		return fmt.Errorf("node <%s> does not exist", node.Name)
@@ -343,6 +356,7 @@ func (sc *SchedulerCache) deleteNode(node *corev1.Node) error {
 	return nil
 }
 
+// AddNode (wraps addNode) adds obj to sc.Nodes.
 func (sc *SchedulerCache) AddNode(obj interface{}) {
 	node, ok := obj.(*corev1.Node)
 	if !ok {
@@ -361,6 +375,7 @@ func (sc *SchedulerCache) AddNode(obj interface{}) {
 	sc.NodeList = append(sc.NodeList, node.Name)
 }
 
+// UpdateNode (wraps updateNode) updates the specific node in sc.Nodes.
 func (sc *SchedulerCache) UpdateNode(oldObj, newObj interface{}) {
 	oldNode, ok := oldObj.(*corev1.Node)
 	if !ok {
@@ -383,6 +398,7 @@ func (sc *SchedulerCache) UpdateNode(oldObj, newObj interface{}) {
 	}
 }
 
+// DeleteNode (wraps deleteNode) deletes obj from sc.Nodes and sc.NodeList.
 func (sc *SchedulerCache) DeleteNode(obj interface{}) {
 	var node *corev1.Node
 	switch t := obj.(type) {
@@ -419,6 +435,7 @@ func (sc *SchedulerCache) DeleteNode(obj interface{}) {
 
 /* handling PodGroup */
 
+// setPodGroup sets the specific job in sc with the pg info.
 func (sc *SchedulerCache) setPodGroup(pg *apis.PodGroup) error {
 	job := getJobID(pg)
 	// create job for pg if not found
@@ -436,10 +453,12 @@ func (sc *SchedulerCache) setPodGroup(pg *apis.PodGroup) error {
 	return nil
 }
 
+// updatePodGroup updates sc with the pg info.
 func (sc *SchedulerCache) updatePodGroup(pg *apis.PodGroup) error {
 	return sc.setPodGroup(pg)
 }
 
+// deletePodGroup deletes job with jobID from sc.
 func (sc *SchedulerCache) deletePodGroup(jobID apis.JobID) error {
 	job, found := sc.Jobs[jobID]
 	if !found {
@@ -453,6 +472,7 @@ func (sc *SchedulerCache) deletePodGroup(jobID apis.JobID) error {
 	return nil
 }
 
+// AddPodGroupV1alpha1 (wraps setPodGroup) adds podgroup obj to sc.
 func (sc *SchedulerCache) AddPodGroupV1alpha1(obj interface{}) {
 	// assert obj as podgroup
 	pg, ok := obj.(*schedulingv1alpha1.PodGroup)
@@ -482,6 +502,7 @@ func (sc *SchedulerCache) AddPodGroupV1alpha1(obj interface{}) {
 	}
 }
 
+// UpdatePodGroupV1alpha1 (wraps updatePodGroup) updates the specific podgroup in sc.
 func (sc *SchedulerCache) UpdatePodGroupV1alpha1(oldObj, newObj interface{}) {
 	oldPg, ok := oldObj.(*schedulingv1alpha1.PodGroup)
 	if !ok {
@@ -516,6 +537,7 @@ func (sc *SchedulerCache) UpdatePodGroupV1alpha1(oldObj, newObj interface{}) {
 	}
 }
 
+// DeletePodGroupV1alpha1 (wraps deletePodGroup) deletes the podgroup obj from sc.
 func (sc *SchedulerCache) DeletePodGroupV1alpha1(obj interface{}) {
 	// set podgroup based on obj type
 	var pg *schedulingv1alpha1.PodGroup
@@ -560,6 +582,7 @@ func (sc *SchedulerCache) deleteQueue(queueID apis.QueueID) {
 	delete(sc.Queues, queueID)
 }
 
+// AddQueueV1alpha1 (wraps addQueue) adds the queue obj to sc.
 func (sc *SchedulerCache) AddQueueV1alpha1(obj interface{}) {
 	q, ok := obj.(*schedulingv1alpha1.Queue)
 	if !ok {
@@ -580,6 +603,7 @@ func (sc *SchedulerCache) AddQueueV1alpha1(obj interface{}) {
 	sc.addQueue(queue)
 }
 
+// UpdateQueueV1alpha1 (wraps updateQueue) updates the specific queue object in sc.
 func (sc *SchedulerCache) UpdateQueueV1alpha1(oldObj, newObj interface{}) {
 	oldQ, ok := oldObj.(*schedulingv1alpha1.Queue)
 	if !ok {
@@ -607,6 +631,7 @@ func (sc *SchedulerCache) UpdateQueueV1alpha1(oldObj, newObj interface{}) {
 	sc.updateQueue(newQueue)
 }
 
+// DeleteQueueV1alpha1 (wraps deleteQueue) deletes the queue obj from sc.
 func (sc *SchedulerCache) DeleteQueueV1alpha1(obj interface{}) {
 	var q *schedulingv1alpha1.Queue
 
@@ -653,6 +678,7 @@ func (sc *SchedulerCache) addPriorityClass(pc *schedulingv1.PriorityClass) {
 	sc.PriorityClasses[pc.Name] = pc
 }
 
+// DeletePriorityClass (wraps deletePriorityClass) deletes the PriorityClass obj from sc.
 func (sc *SchedulerCache) DeletePriorityClass(obj interface{}) {
 	var pc *schedulingv1.PriorityClass
 	switch t := obj.(type) {
@@ -676,6 +702,7 @@ func (sc *SchedulerCache) DeletePriorityClass(obj interface{}) {
 	sc.deletePriorityClass(pc)
 }
 
+// UpdatePriorityClass updates the specific PriorityClass in sc.
 func (sc *SchedulerCache) UpdatePriorityClass(oldObj, newObj interface{}) {
 	oldPC, ok := oldObj.(*schedulingv1.PriorityClass)
 	if !ok {
@@ -697,6 +724,7 @@ func (sc *SchedulerCache) UpdatePriorityClass(oldObj, newObj interface{}) {
 	sc.addPriorityClass(newPC)
 }
 
+// AddPriorityClass (wraps addPriorityClass) adds the PriorityClass obj to sc.
 func (sc *SchedulerCache) AddPriorityClass(obj interface{}) {
 	pc, ok := obj.(*schedulingv1.PriorityClass)
 	if !ok {
@@ -729,6 +757,7 @@ func (sc *SchedulerCache) deleteResourceQuota(quota *corev1.ResourceQuota) {
 	collection.Delete(quota)
 }
 
+// AddResourceQuota adds ResourceQuota obj to sc.
 func (sc *SchedulerCache) AddResourceQuota(obj interface{}) {
 	var r *corev1.ResourceQuota
 	switch t := obj.(type) {
@@ -746,6 +775,7 @@ func (sc *SchedulerCache) AddResourceQuota(obj interface{}) {
 	sc.updateResourceQuota(r)
 }
 
+// UpdateResourceQuota updates the specific ResourceQuota in sc.
 func (sc *SchedulerCache) UpdateResourceQuota(oldObj, newObj interface{}) {
 	newR, ok := newObj.(*corev1.ResourceQuota)
 	if !ok {
@@ -760,6 +790,7 @@ func (sc *SchedulerCache) UpdateResourceQuota(oldObj, newObj interface{}) {
 	sc.updateResourceQuota(newR)
 }
 
+// DeleteResourceQuota deletes the ResourceQuota obj from sc.
 func (sc *SchedulerCache) DeleteResourceQuota(obj interface{}) {
 	var r *corev1.ResourceQuota
 	switch t := obj.(type) {
@@ -786,6 +817,7 @@ func (sc *SchedulerCache) DeleteResourceQuota(obj interface{}) {
 
 /* handling NUMA Topology */
 
+// getNumaInfo constructs an apis.NumaTopoInfo instance from the CRD nodeinfov1alpha1.Numatopology.
 func getNumaInfo(srcInfo *nodeinfov1alpha1.Numatopology) *apis.NumaTopoInfo {
 	numaInfo := &apis.NumaTopoInfo{
 		Namespace:   srcInfo.Namespace,
@@ -829,6 +861,7 @@ func getNumaInfo(srcInfo *nodeinfov1alpha1.Numatopology) *apis.NumaTopoInfo {
 	return numaInfo
 }
 
+// addNumaInfo updates sc.Nodes based on the input numa info.
 func (sc *SchedulerCache) addNumaInfo(info *nodeinfov1alpha1.Numatopology) error {
 	if sc.Nodes[info.Name] == nil {
 		sc.Nodes[info.Name] = apis.NewNodeInfo(nil)
@@ -860,6 +893,7 @@ func (sc *SchedulerCache) addNumaInfo(info *nodeinfov1alpha1.Numatopology) error
 	return nil
 }
 
+// deleteNumaInfo updates sc.Nodes based on the input numa info.
 func (sc *SchedulerCache) deleteNumaInfo(info *nodeinfov1alpha1.Numatopology) {
 	if sc.Nodes[info.Name] != nil {
 		sc.Nodes[info.Name].NumaInfo = nil
@@ -868,6 +902,7 @@ func (sc *SchedulerCache) deleteNumaInfo(info *nodeinfov1alpha1.Numatopology) {
 	}
 }
 
+// AddNumaInfoV1alpha1 (wraps addNumaInfo) updates sc.Nodes (NumaInfo and NumaChgFlag) based on the input obj.
 func (sc *SchedulerCache) AddNumaInfoV1alpha1(obj interface{}) {
 	ss, ok := obj.(*nodeinfov1alpha1.Numatopology)
 	if !ok {
@@ -881,6 +916,7 @@ func (sc *SchedulerCache) AddNumaInfoV1alpha1(obj interface{}) {
 	_ = sc.addNumaInfo(ss)
 }
 
+// UpdateNumaInfoV1alpha1 (wraps addNumaInfo) updates sc.Nodes (NumaInfo and NumaChgFlag) based on the input obj.
 func (sc *SchedulerCache) UpdateNumaInfoV1alpha1(oldObj, newObj interface{}) {
 	nt, ok := newObj.(*nodeinfov1alpha1.Numatopology)
 	if !ok {
@@ -896,6 +932,7 @@ func (sc *SchedulerCache) UpdateNumaInfoV1alpha1(oldObj, newObj interface{}) {
 		nt.Name, nt.Spec.Policies, nt.Spec.NumaResMap)
 }
 
+// DeleteNumaInfoV1alpha1 (wraps deleteNumaInfo) updates sc.Nodes (NumaInfo and NumaChgFlag) based on the input obj.
 func (sc *SchedulerCache) DeleteNumaInfoV1alpha1(obj interface{}) {
 	var nt *nodeinfov1alpha1.Numatopology
 	switch t := obj.(type) {

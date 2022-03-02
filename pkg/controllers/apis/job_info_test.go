@@ -17,6 +17,7 @@ limitations under the License.
 package apis
 
 // TODO: just copied. Not checked.
+// Passed.
 
 import (
 	"fmt"

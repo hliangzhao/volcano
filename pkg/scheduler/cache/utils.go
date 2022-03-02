@@ -29,7 +29,7 @@ import (
 
 // responsibleForPod returns false at following conditions:
 // 1. The current scheduler is not the specified scheduler in Pod's spec.
-// 2. The Job which the Pod belongs is not assigned to current scheduler based on the hash algorithm in multi-schedulers scenario.
+// 2. The Job which the Pod belongs is not assigned to current scheduler based on the hash algorithm in multi-scheduler scenario.
 func responsibleForPod(pod *corev1.Pod, schedulerName string, mySchedulerPodName string, c *consistent.Consistent) bool {
 	if schedulerName != pod.Spec.SchedulerName {
 		return false
@@ -89,7 +89,7 @@ func responsibleForPodGroup(pg *schedulingv1alpha1.PodGroup, mySchedulerPodName 
 	return true
 }
 
-// getMultiSchedulerInfo return the Pod name of current scheduler and the hash table for all schedulers.
+// getMultiSchedulerInfo returns the Pod name of current scheduler and the hash table for all schedulers.
 func getMultiSchedulerInfo() (schedulerPodName string, c *consistent.Consistent) {
 	multiSchedulerEnable := os.Getenv("MULTI_SCHEDULER_ENABLE")
 	mySchedulerPodName := os.Getenv("SCHEDULER_POD_NAME")
