@@ -34,7 +34,7 @@ func GetArgOfActionFromConf(configs []conf.Configuration, actionName string) Arg
 	return nil
 }
 
-/* The following funcs parse input pointer and get corresponding params. */
+/* The following funcs parse input pointer and get corresponding param of different types. */
 
 func (a Arguments) GetInt(ptr *int, key string) {
 	if ptr == nil {

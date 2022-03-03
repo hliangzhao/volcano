@@ -25,6 +25,8 @@ import (
 	"sync"
 )
 
+/* This file provides functions to register plugins and actions. */
+
 /* Plugins related */
 
 var pluginMutex sync.Mutex

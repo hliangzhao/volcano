@@ -139,12 +139,12 @@ func UpdateActionDuration(actionName string, duration time.Duration) {
 	actionSchedulingLatency.WithLabelValues(actionName).Observe(DurationInMicroseconds(duration))
 }
 
-// UpdateE2eDuration updates entire end to end scheduling latency.
+// UpdateE2eDuration updates entire end-to-end scheduling latency.
 func UpdateE2eDuration(duration time.Duration) {
 	e2eSchedulingLatency.Observe(DurationInMilliseconds(duration))
 }
 
-// UpdateE2eSchedulingDurationByJob updates entire end to end scheduling duration.
+// UpdateE2eSchedulingDurationByJob updates entire end-to-end scheduling duration.
 func UpdateE2eSchedulingDurationByJob(jobName string, queue string, namespace string, duration time.Duration) {
 	e2eJobSchedulingDuration.WithLabelValues(jobName, queue, namespace).Set(DurationInMilliseconds(duration))
 	e2eJobSchedulingLatency.Observe(DurationInMilliseconds(duration))
@@ -160,7 +160,7 @@ func UpdatePodScheduleStatus(label string, count int) {
 	scheduleAttempts.WithLabelValues(label).Add(float64(count))
 }
 
-// UpdatePreemptionVictimsCount updates count of preemption victims.
+// UpdatePreemptionVictimsCount updates the count of preemption victims.
 func UpdatePreemptionVictimsCount(victimsCount int) {
 	preemptionVictims.Set(float64(victimsCount))
 }

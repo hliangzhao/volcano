@@ -44,7 +44,7 @@ func SetupSignalHandler() (stopCh <-chan struct{}) {
 	return stop
 }
 
-// SetupSignalContext is same as SetupSignalHandler, but a context.Context is returned.
+// SetupSignalContext is same as SetupSignalHandler, but a context.Context (other than a stop channel) is returned.
 // Only one of SetupSignalContext and SetupSignalHandler should be called, and only can
 // be called once.
 func SetupSignalContext() context.Context {

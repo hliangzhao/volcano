@@ -31,12 +31,14 @@ const (
 	Allocate
 )
 
+// operation defines an operation on a task
 type operation struct {
 	name   Operation
 	task   *apis.TaskInfo
 	reason string
 }
 
+// Statement defines a series of operation in a scheduling session.
 type Statement struct {
 	operations []operation
 	sess       *Session
@@ -48,6 +50,29 @@ func NewStatement(sess *Session) *Statement {
 	}
 }
 
+// Commit executes all operations in s in turn.
+func (s *Statement) Commit() {
+	klog.V(3).Info("Committing operations ...")
+	for _, op := range s.operations {
+		op.task.ClearLastTxContext()
+		switch op.name {
+		case Evict:
+			err := s.evict(op.task, op.reason)
+			if err != nil {
+				klog.Errorf("Failed to evict task: %s", err.Error())
+			}
+		case Pipeline:
+			s.pipeline(op.task)
+		case Allocate:
+			err := s.allocate(op.task)
+			if err != nil {
+				klog.Errorf("Failed to allocate task: for %s", err.Error())
+			}
+		}
+	}
+}
+
+// Discard discards all operations in s in a reversed order.
 func (s *Statement) Discard() {
 	klog.V(3).Info("Discarding operations ...")
 	for i := len(s.operations) - 1; i >= 0; i-- {
@@ -70,29 +95,9 @@ func (s *Statement) Discard() {
 	}
 }
 
-func (s *Statement) Commit() {
-	klog.V(3).Info("Committing operations ...")
-	for _, op := range s.operations {
-		op.task.ClearLastTxContext()
-		switch op.name {
-		case Evict:
-			err := s.evict(op.task, op.reason)
-			if err != nil {
-				klog.Errorf("Failed to evict task: %s", err.Error())
-			}
-		case Pipeline:
-			s.pipeline(op.task)
-		case Allocate:
-			err := s.allocate(op.task)
-			if err != nil {
-				klog.Errorf("Failed to allocate task: for %s", err.Error())
-			}
-		}
-	}
-}
-
 /* Evict, Pipeline, and Allocate implementation */
 
+// unevict will revoke the evict operation on reclaimee.
 func (s *Statement) unevict(reclaimee *apis.TaskInfo) error {
 	// update job status
 	if job, found := s.sess.Jobs[reclaimee.Job]; found {
@@ -127,10 +132,10 @@ func (s *Statement) unevict(reclaimee *apis.TaskInfo) error {
 	return nil
 }
 
+// evict will evict reclaimee for reason.
 func (s *Statement) evict(reclaimee *apis.TaskInfo, reason string) error {
 	if err := s.sess.cache.Evict(reclaimee, reason); err != nil {
-		// TODO: why in evict func, we call unevict func?
-		//  there may exists problem when naming the `unevict` func!
+		// if error happens, keep everything back to origin
 		if e := s.unevict(reclaimee); e != nil {
 			klog.Errorf("Failed to unevict task <%v/%v>: %v.",
 				reclaimee.Namespace, reclaimee.Name, e)
@@ -140,6 +145,8 @@ func (s *Statement) evict(reclaimee *apis.TaskInfo, reason string) error {
 	return nil
 }
 
+// Evict will evict reclaimee for reason. Specifically, it will update s.sess.Jobs and
+// s.sess.Nodes status info and add this operation to s.operations.
 func (s *Statement) Evict(reclaimee *apis.TaskInfo, reason string) error {
 	// update job status
 	if job, found := s.sess.Jobs[reclaimee.Job]; found {
@@ -184,6 +191,8 @@ func (s *Statement) pipeline(task *apis.TaskInfo) {
 	// TODO: not implemented?
 }
 
+// Pipeline will pipeline task to host. Specifically, it will update s.sess.Jobs and
+// s.sess.Nodes status info and add this operation to s.operations.
 func (s *Statement) Pipeline(task *apis.TaskInfo, hostname string) error {
 	if job, found := s.sess.Jobs[task.Job]; found {
 		if err := job.UpdateTaskStatus(task, apis.Pipelined); err != nil {
@@ -285,6 +294,8 @@ func (s *Statement) allocate(task *apis.TaskInfo) error {
 	return nil
 }
 
+// Allocate will allocate task to node. Specifically, it will update s.sess.Jobs and
+// // s.sess.Nodes status info and add this operation to s.operations.
 func (s *Statement) Allocate(task *apis.TaskInfo, nodeInfo *apis.NodeInfo) error {
 	// get pod volumes and allocate it on the host, then, update task status
 	podVolumes, err := s.sess.cache.GetPodVolumes(task, nodeInfo.Node)

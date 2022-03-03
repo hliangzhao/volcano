@@ -34,15 +34,18 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/volumebinding"
 )
 
+// Session defines a scheduling session.
 type Session struct {
+	// session ID
 	UID types.UID
 
+	// kube client, informers, and volcano scheduler cache
 	kubeClient      kubernetes.Interface
 	cache           cache.Cache
 	informerFactory informers.SharedInformerFactory
 
 	TotalResource *apis.Resource
-	// podGroupStatus cache podgroup status during schedule
+	// podGroupStatus caches the status of podgroups during schedule
 	// This should not be mutated after initiated.
 	podGroupStatus map[apis.JobID]scheduling.PodGroupStatus
 
@@ -52,6 +55,7 @@ type Session struct {
 	Queues         map[apis.QueueID]*apis.QueueInfo
 	NamespaceInfo  map[apis.NamespaceName]*apis.NamespaceInfo
 
+	// scheduling configs
 	Tiers          []conf.Tier
 	Configurations []conf.Configuration
 	NodeList       []*apis.NodeInfo
@@ -59,6 +63,7 @@ type Session struct {
 	plugins       map[string]Plugin
 	eventHandlers []*EventHandler
 
+	// predicates for scheduling
 	jobOrderFns       map[string]apis.CompareFn
 	queueOrderFns     map[string]apis.CompareFn
 	taskOrderFns      map[string]apis.CompareFn
@@ -85,6 +90,7 @@ type Session struct {
 	jobStarvingFns    map[string]apis.ValidateFn
 }
 
+// openSession opens a scheduling session based on the input cluster cache info.
 func openSession(cache cache.Cache) *Session {
 	sess := &Session{
 		UID:             uuid.NewUUID(),
@@ -137,7 +143,7 @@ func openSession(cache cache.Cache) *Session {
 		}
 
 		if vjr := sess.JobValid(job); vjr != nil {
-			// job is not pass, update its condition to unschedulable
+			// job not passed, update its condition to unschedulable
 			if !vjr.Pass {
 				jc := &scheduling.PodGroupCondition{
 					Type:               scheduling.PodGroupUnschedulableType,
@@ -164,8 +170,8 @@ func openSession(cache cache.Cache) *Session {
 	sess.NamespaceInfo = snapshot.NamespaceInfo
 
 	// calculate all nodes' resource only once in each schedule cycle, other plugins can clone it when need
-	for _, n := range sess.Nodes {
-		sess.TotalResource.Add(n.Allocatable)
+	for _, node := range sess.Nodes {
+		sess.TotalResource.Add(node.Allocatable)
 	}
 
 	klog.V(3).Infof("Open Session %v with <%d> Job and <%d> Queues",
@@ -174,6 +180,7 @@ func openSession(cache cache.Cache) *Session {
 	return sess
 }
 
+// closeSession closes the input scheduling session.
 func closeSession(sess *Session) {
 	ju := newJobUpdater(sess)
 	ju.UpdateAll()
@@ -193,7 +200,7 @@ func closeSession(sess *Session) {
 	klog.V(3).Infof("Close Session %v", sess.UID)
 }
 
-// String return nodes and jobs information in the session.
+// String returns nodes and jobs information in the session.
 func (sess Session) String() string {
 	msg := fmt.Sprintf("Session %v: \n", sess.UID)
 
@@ -208,7 +215,7 @@ func (sess Session) String() string {
 	return msg
 }
 
-// InformerFactory returns the scheduler ShareInformerFactory
+// InformerFactory returns the session's ShareInformerFactory.
 func (sess Session) InformerFactory() informers.SharedInformerFactory {
 	return sess.informerFactory
 }
@@ -218,17 +225,17 @@ func (sess Session) KubeClient() kubernetes.Interface {
 	return sess.kubeClient
 }
 
-// AddEventHandler add event handlers.
+// AddEventHandler adds event handlers to current session.
 func (sess *Session) AddEventHandler(eh *EventHandler) {
 	sess.eventHandlers = append(sess.eventHandlers, eh)
 }
 
-// UpdateSchedulerNumaInfo update SchedulerNumaInfo.
+// UpdateSchedulerNumaInfo updates SchedulerNumaInfo.
 func (sess *Session) UpdateSchedulerNumaInfo(AllocatedSets map[string]apis.ResNumaSets) {
 	_ = sess.cache.UpdateSchedulerNumaInfo(AllocatedSets)
 }
 
-// UpdatePodGroupCondition update job condition accordingly.
+// UpdatePodGroupCondition updates job condition accordingly.
 func (sess *Session) UpdatePodGroupCondition(jobInfo *apis.JobInfo, cond *scheduling.PodGroupCondition) error {
 	job, ok := sess.Jobs[jobInfo.UID]
 	if !ok {
@@ -253,7 +260,7 @@ func (sess *Session) UpdatePodGroupCondition(jobInfo *apis.JobInfo, cond *schedu
 	return nil
 }
 
-// BindPodGroup bind PodGroup to specified cluster.
+// BindPodGroup binds PodGroup to the specified cluster.
 func (sess *Session) BindPodGroup(job *apis.JobInfo, cluster string) error {
 	return sess.cache.BindPodGroup(job, cluster)
 }
@@ -298,12 +305,14 @@ func jobStatus(sess *Session, jobInfo *apis.JobInfo) scheduling.PodGroupStatus {
 	return status
 }
 
+// Statement constructs a Statement instance with sess.
 func (sess *Session) Statement() *Statement {
 	return &Statement{
 		sess: sess,
 	}
 }
 
+// dispatch binds task to the scheduled node and updates related metrics.
 func (sess *Session) dispatch(task *apis.TaskInfo, volumes *volumebinding.PodVolumes) error {
 	if err := sess.cache.AddBindTask(task); err != nil {
 		return err
@@ -326,6 +335,8 @@ func (sess *Session) dispatch(task *apis.TaskInfo, volumes *volumebinding.PodVol
 	return nil
 }
 
+/* Statement Allocate, Evict, and Pipeline implementations */
+
 func (sess *Session) Allocate(task *apis.TaskInfo, nodeInfo *apis.NodeInfo) error {
 	// TODO: this Allocate is similar to statement.Allocate. Why statement.Allocate calls this directly?
 
@@ -342,7 +353,6 @@ func (sess *Session) Allocate(task *apis.TaskInfo, nodeInfo *apis.NodeInfo) erro
 	task.Pod.Spec.NodeName = hostname
 	task.PodVolumes = podVolumes
 
-	// Only update status in session
 	job, found := sess.Jobs[task.Job]
 	if found {
 		if err := job.UpdateTaskStatus(task, apis.Allocated); err != nil {
@@ -401,7 +411,6 @@ func (sess *Session) Evict(reclaimee *apis.TaskInfo, reason string) error {
 		return err
 	}
 
-	// Update status in session
 	job, found := sess.Jobs[reclaimee.Job]
 	if found {
 		if err := job.UpdateTaskStatus(reclaimee, apis.Releasing); err != nil {
@@ -415,7 +424,6 @@ func (sess *Session) Evict(reclaimee *apis.TaskInfo, reason string) error {
 		return fmt.Errorf("failed to find job %s", reclaimee.Job)
 	}
 
-	// Update task in node.
 	if node, found := sess.Nodes[reclaimee.NodeName]; found {
 		if err := node.UpdateTask(reclaimee); err != nil {
 			klog.Errorf("Failed to update task <%v/%v> in Session <%v>: %v",
@@ -438,7 +446,6 @@ func (sess *Session) Evict(reclaimee *apis.TaskInfo, reason string) error {
 func (sess *Session) Pipeline(task *apis.TaskInfo, hostname string) error {
 	// TODO: this Pipeline is similar to statement.Pipeline. Why statement.Pipeline calls this directly?
 
-	// Only update status in session
 	job, found := sess.Jobs[task.Job]
 	if found {
 		if err := job.UpdateTaskStatus(task, apis.Pipelined); err != nil {

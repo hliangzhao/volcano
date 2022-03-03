@@ -24,6 +24,7 @@ import (
 	"time"
 )
 
+// OpenSession opens a scheduling session and register plugins and actions according to the input configs.
 func OpenSession(cache cache.Cache, tiers []conf.Tier, configs []conf.Configuration) *Session {
 	sess := openSession(cache)
 	sess.Tiers = tiers
@@ -45,6 +46,7 @@ func OpenSession(cache cache.Cache, tiers []conf.Tier, configs []conf.Configurat
 	return sess
 }
 
+// CloseSession closes a scheduling session.
 func CloseSession(sess *Session) {
 	for _, plugin := range sess.plugins {
 		onSessionCloseStart := time.Now()

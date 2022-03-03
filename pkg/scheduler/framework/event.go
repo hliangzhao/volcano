@@ -18,6 +18,7 @@ package framework
 
 import "github.com/hliangzhao/volcano/pkg/scheduler/apis"
 
+// Event is happened on tasks
 type Event struct {
 	Task *apis.TaskInfo
 }
