@@ -27,6 +27,7 @@ import (
 	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
 )
 
+// init registers all the implemented actions
 func init() {
 	framework.RegisterAction(allocate.New())
 	framework.RegisterAction(backfill.New())

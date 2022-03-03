@@ -23,7 +23,7 @@ import (
 
 /*
 NOTE that the priority queues in this file has nothing to do with the CRD Queue.
-They are just simple data structures used for push and pop things.
+The priorityQueue and PriorityQueue defined in this file are data structures used for push and pop things.
 */
 
 type priorityQueue struct {

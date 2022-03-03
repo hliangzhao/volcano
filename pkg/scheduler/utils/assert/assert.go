@@ -50,7 +50,7 @@ func Assert(condition bool, msg string) {
 	klog.Errorf("%s, %s", msg, debug.Stack())
 }
 
-// Assertf check condition, if condition is false, print message using Assert.
+// Assertf check condition, if condition is false, print message (args with defined format) using Assert.
 func Assertf(condition bool, format string, args ...interface{}) {
 	if condition {
 		return

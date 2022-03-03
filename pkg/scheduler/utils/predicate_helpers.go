@@ -38,7 +38,7 @@ func NewPredicateHelper() PredicateHelper {
 	return &predicateHelper{taskPredicateErrorCache: map[string]map[string]error{}}
 }
 
-// PredicateNodes returns the specified number of nodes that fit a task.
+// PredicateNodes returns the nodes that fit a task after the predicates.
 func (ph *predicateHelper) PredicateNodes(task *apis.TaskInfo, nodes []*apis.NodeInfo,
 	fn apis.PredicateFn) ([]*apis.NodeInfo, *apis.FitErrors) {
 

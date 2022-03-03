@@ -29,6 +29,8 @@ import (
 	"sync"
 )
 
+/* The fake functions defined in this file are used for code tests. */
+
 func BuildResourceList(cpu string, memory string) corev1.ResourceList {
 	return corev1.ResourceList{
 		corev1.ResourceCPU:    resource.MustParse(cpu),

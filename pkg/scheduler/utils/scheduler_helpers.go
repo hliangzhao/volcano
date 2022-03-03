@@ -47,6 +47,7 @@ func CalculateNumOfFeasibleNodesToFind(numAllNodes int32) (numNodes int32) {
 	return 0
 }
 
+// GetMinInt returns the minimal value from the input slice.
 func GetMinInt(values ...int) int {
 	if len(values) == 0 {
 		return 0
@@ -61,7 +62,7 @@ func GetMinInt(values ...int) int {
 	return min
 }
 
-// ResourceReservation is struct used for resource reservation
+// ResourceReservation reserves resources in LockedNodes for TargetJob.
 type ResourceReservation struct {
 	TargetJob   *apis.JobInfo
 	LockedNodes map[string]*apis.NodeInfo
@@ -74,7 +75,7 @@ func NewResourceReservation() *ResourceReservation {
 	}
 }
 
-// GetNodeList returns values of the map 'nodes'.
+// GetNodeList returns the nodes denoted by nodeList from `nodes`.
 func GetNodeList(nodes map[string]*apis.NodeInfo, nodeList []string) []*apis.NodeInfo {
 	result := make([]*apis.NodeInfo, 0, len(nodeList))
 	for _, name := range nodeList {
@@ -104,7 +105,8 @@ func ValidateVictims(preemptor *apis.TaskInfo, node *apis.NodeInfo, victims []*a
 	return nil
 }
 
-// SelectBestNode returns the best node whose score is highest, pick one randomly if there are many nodes with same score.
+// SelectBestNode returns the best node whose score is the highest.
+// It picks one node randomly if there are many nodes with same score.
 func SelectBestNode(nodeScores map[float64][]*apis.NodeInfo) *apis.NodeInfo {
 	var bestNodes []*apis.NodeInfo
 	maxScore := -1.0
@@ -124,7 +126,7 @@ func SelectBestNode(nodeScores map[float64][]*apis.NodeInfo) *apis.NodeInfo {
 
 // SortNodes returns nodes by order of score.
 func SortNodes(nodeScores map[float64][]*apis.NodeInfo) []*apis.NodeInfo {
-	var nodesInorder []*apis.NodeInfo
+	var nodesInOrder []*apis.NodeInfo
 	var keys []float64
 	for key := range nodeScores {
 		keys = append(keys, key)
@@ -132,9 +134,9 @@ func SortNodes(nodeScores map[float64][]*apis.NodeInfo) []*apis.NodeInfo {
 	sort.Sort(sort.Reverse(sort.Float64Slice(keys)))
 	for _, key := range keys {
 		nodes := nodeScores[key]
-		nodesInorder = append(nodesInorder, nodes...)
+		nodesInOrder = append(nodesInOrder, nodes...)
 	}
-	return nodesInorder
+	return nodesInOrder
 }
 
 // PrioritizeNodes returns a map whose key is node's score and value are corresponding nodes.
