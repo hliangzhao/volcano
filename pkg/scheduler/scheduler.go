@@ -36,6 +36,8 @@ import (
 	"time"
 )
 
+// TODO: not checked
+
 var defaultSchedulerConf = `
 actions: "enqueue, allocate, backfill"
 tiers:
