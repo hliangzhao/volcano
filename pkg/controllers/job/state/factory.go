@@ -17,10 +17,10 @@ limitations under the License.
 package state
 
 import (
-	batchv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1`
-	busv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1`
-	`github.com/hliangzhao/volcano/pkg/controllers/apis`
-	corev1 `k8s.io/api/core/v1`
+	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
+	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
+	"github.com/hliangzhao/volcano/pkg/controllers/apis"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type PhaseMap map[corev1.PodPhase]struct{}

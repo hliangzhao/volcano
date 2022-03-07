@@ -16,7 +16,7 @@ limitations under the License.
 
 package state
 
-import batchv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1`
+import batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
 
 // TotalTasks returns the total number of tasks in job.
 func TotalTasks(job *batchv1alpha1.Job) int32 {

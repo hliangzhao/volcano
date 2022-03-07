@@ -17,8 +17,8 @@ limitations under the License.
 package state
 
 import (
-	busv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1`
-	`github.com/hliangzhao/volcano/pkg/controllers/apis`
+	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
+	"github.com/hliangzhao/volcano/pkg/controllers/apis"
 )
 
 type finishedState struct {
