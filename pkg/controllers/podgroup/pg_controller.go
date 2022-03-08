@@ -32,6 +32,10 @@ import (
 	"k8s.io/klog/v2"
 )
 
+func init() {
+	_ = framework.RegisterController(&pgController{})
+}
+
 type pgController struct {
 	// clients
 	kubeClient    kubernetes.Interface
@@ -44,7 +48,7 @@ type pgController struct {
 	podLister corelistersv1.PodLister
 	podSynced func() bool // TODO: change to cache.InformerSynced
 	pgLister  schedulinglisterv1alpha1.PodGroupLister
-	pgSynced  func() bool // TODO: change to cache.InformerSynced
+	pgSynced  func() bool
 
 	// work queue
 	queue workqueue.RateLimitingInterface
@@ -143,8 +147,4 @@ func contains(slice []string, element string) bool {
 		}
 	}
 	return false
-}
-
-func init() {
-	_ = framework.RegisterController(&pgController{})
 }
