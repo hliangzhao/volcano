@@ -17,9 +17,9 @@ limitations under the License.
 package plugininterface
 
 import (
-	batchv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1`
-	corev1 `k8s.io/api/core/v1`
-	`k8s.io/client-go/kubernetes`
+	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 type PluginClient struct {

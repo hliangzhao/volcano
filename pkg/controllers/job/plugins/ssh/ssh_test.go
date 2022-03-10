@@ -1,8 +1,8 @@
 package ssh
 
 import (
-	plugininterface `github.com/hliangzhao/volcano/pkg/controllers/job/plugins/interface`
-	`testing`
+	plugininterface "github.com/hliangzhao/volcano/pkg/controllers/job/plugins/interface"
+	"testing"
 )
 
 // TODO: just copied. Not checked.
