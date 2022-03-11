@@ -15,3 +15,39 @@ limitations under the License.
 */
 
 package plugins
+
+import (
+	"github.com/hliangzhao/volcano/pkg/controllers/job/plugins/distributed-framework/tensorflow"
+	"github.com/hliangzhao/volcano/pkg/controllers/job/plugins/env"
+	plugininterface "github.com/hliangzhao/volcano/pkg/controllers/job/plugins/interface"
+	"github.com/hliangzhao/volcano/pkg/controllers/job/plugins/ssh"
+	"github.com/hliangzhao/volcano/pkg/controllers/job/plugins/svc"
+	"sync"
+)
+
+func init() {
+	RegisterPluginBuilder("ssh", ssh.New)
+	RegisterPluginBuilder("env", env.New)
+	RegisterPluginBuilder("svc", svc.New)
+	RegisterPluginBuilder("tensorflow", tensorflow.New)
+}
+
+var pluginMutex sync.Mutex
+
+type PluginBuilder func(plugininterface.PluginClient, []string) plugininterface.PluginInterface
+
+var PluginBuilders = map[string]PluginBuilder{}
+
+func RegisterPluginBuilder(name string, pb PluginBuilder) {
+	pluginMutex.Lock()
+	defer pluginMutex.Unlock()
+	PluginBuilders[name] = pb
+}
+
+func GetPluginBuilder(name string) (PluginBuilder, bool) {
+	pluginMutex.Lock()
+	defer pluginMutex.Unlock()
+
+	pb, found := PluginBuilders[name]
+	return pb, found
+}
