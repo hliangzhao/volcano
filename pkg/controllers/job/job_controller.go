@@ -631,16 +631,16 @@ type TaskPriority struct {
 
 type TasksPriority []TaskPriority
 
-func (p *TasksPriority) Len() int {
-	return len(*p)
+func (p TasksPriority) Len() int {
+	return len(p)
 }
 
-func (p *TasksPriority) Less(i, j int) bool {
-	return (*p)[i].priority > (*p)[j].priority
+func (p TasksPriority) Less(i, j int) bool {
+	return p[i].priority > p[j].priority
 }
 
-func (p *TasksPriority) Swap(i, j int) {
-	(*p)[i], (*p)[j] = (*p)[j], (*p)[i]
+func (p TasksPriority) Swap(i, j int) {
+	p[i], p[j] = p[j], p[i]
 }
 
 func isControlledBy(obj metav1.Object, gvk schema.GroupVersionKind) bool {
@@ -652,22 +652,4 @@ func isControlledBy(obj metav1.Object, gvk schema.GroupVersionKind) bool {
 		return true
 	}
 	return false
-}
-
-/* Plugins for job-controller. */
-
-func (jc *jobController) pluginOnPodCreate(job *batchv1alpha1.Job, pod *corev1.Pod) error {
-	return nil
-}
-
-func (jc *jobController) pluginOnJobAdd(job *batchv1alpha1.Job) error {
-	return nil
-}
-
-func (jc *jobController) pluginOnJobDelete(job *batchv1alpha1.Job) error {
-	return nil
-}
-
-func (jc *jobController) pluginOnJobUpdate(job *batchv1alpha1.Job) error {
-	return nil
 }

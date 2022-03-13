@@ -118,21 +118,24 @@ func (sp *sshPlugin) mountRSAKey(pod *corev1.Pod, job *batchv1alpha1.Job) {
 	pod.Spec.Volumes = append(pod.Spec.Volumes, sshVolume)
 
 	// mount the secret to each container in this pod
-	for _, c := range pod.Spec.Containers {
+	for i, c := range pod.Spec.Containers {
 		vm := corev1.VolumeMount{
 			MountPath: sp.sshKeyFilePath,
 			SubPath:   RelativePath,
 			Name:      secretName,
 		}
-		c.VolumeMounts = append(c.VolumeMounts, vm)
+		// TODO: pay attention to the following error!
+		// c.VolumeMounts = append(c.VolumeMounts, vm)
+		pod.Spec.Containers[i].VolumeMounts = append(c.VolumeMounts, vm)
 	}
-	for _, c := range pod.Spec.InitContainers {
+	for i, c := range pod.Spec.InitContainers {
 		vm := corev1.VolumeMount{
 			MountPath: sp.sshKeyFilePath,
 			SubPath:   RelativePath,
 			Name:      secretName,
 		}
 		c.VolumeMounts = append(c.VolumeMounts, vm)
+		pod.Spec.InitContainers[i].VolumeMounts = append(c.VolumeMounts, vm)
 	}
 }
 
