@@ -3,10 +3,12 @@ module github.com/hliangzhao/volcano
 go 1.17
 
 require (
+	github.com/agiledragon/gomonkey/v2 v2.5.0
 	github.com/fsnotify/fsnotify v1.5.1
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.17.0
 	github.com/prometheus/client_golang v1.11.0
+	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac
 	gopkg.in/square/go-jose.v2 v2.2.2
 	k8s.io/api v0.23.0
@@ -73,7 +75,6 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.19.1 // indirect
-	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
 	golang.org/x/mod v0.4.2 // indirect
 	golang.org/x/net v0.0.0-20210825183410-e898025ed96a // indirect
 	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f // indirect
