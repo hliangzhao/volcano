@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -45,7 +45,7 @@ const (
 
 // NumatopologySpec defines the desired state of Numatopology
 type NumatopologySpec struct {
-	// Specifies the policy of the manager. NumaPolicy could be best-effort, none, single-numa-nod, etc.
+	// Specifies the policy of the manager. NumaPolicy could be best-effort, none, single-numa-node, etc.
 	// +optional
 	Policies map[PolicyName]string `json:"policies,omitempty"`
 

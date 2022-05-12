@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,9 +18,13 @@ package v1alpha1
 
 const GroupName = "scheduling.hliangzhao.io"
 
-const KubeHierarchyAnnotationKey = "volcano.sh/hierarchy"
+// JobWaitingTime is the key of sla plugin to set maximum waiting time
+// that a job could stay Pending in service level agreement
+const JobWaitingTime = GroupName + "/sla-waiting-time"
 
-const KubeHierarchyWeightAnnotationKey = "volcano.sh/hierarchy-weights"
+const KubeHierarchyAnnotationKey = GroupName + "/hierarchy"
+
+const KubeHierarchyWeightAnnotationKey = GroupName + "/hierarchy-weights"
 
 // KubeGroupNameAnnotationKey is the annotation key of Pod to identify
 // which PodGroup it belongs to.
@@ -35,19 +39,23 @@ const VolcanoGroupNameAnnotationKey = GroupName + "/group-name"
 const QueueNameAnnotationKey = GroupName + "/queue-name"
 
 // PodPreemptable is the key of preemptable
-const PodPreemptable = "volcano.sh/preemptable"
+const PodPreemptable = GroupName + "/preemptable"
+
+// PreemptStableTime is the key of preempt stable time, such as "60s", "10m".
+// Valid time units are "ns", "µs" (or "us"), "ms", "s", "m", "h".
+const PreemptStableTime = GroupName + "/preempt-stable-time"
 
 // RevocableZone is the key of revocable-zone
-const RevocableZone = "volcano.sh/revocable-zone"
+const RevocableZone = GroupName + "/revocable-zone"
 
 // JDBMinAvailable is the key of min available pod number
-const JDBMinAvailable = "volcano.sh/jdb-min-available"
+const JDBMinAvailable = GroupName + "/jdb-min-available"
 
 // JDBMaxUnavailable is the key of max unavailable pod number
-const JDBMaxUnavailable = "volcano.sh/jdb-max-unavailable"
+const JDBMaxUnavailable = GroupName + "/jdb-max-unavailable"
 
 // NumaPolicyKey is the key of pod NUMA-topology policy
-const NumaPolicyKey = "volcano.sh/numa-topology-policy"
+const NumaPolicyKey = GroupName + "/numa-topology-policy"
 
 // TopologyDecisionAnnotation is the key of topology decision about pod request resource
-const TopologyDecisionAnnotation = "volcano.sh/topology-decision"
+const TopologyDecisionAnnotation = GroupName + "/topology-decision"

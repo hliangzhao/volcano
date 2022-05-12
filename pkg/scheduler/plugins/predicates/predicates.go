@@ -17,24 +17,24 @@ limitations under the License.
 package predicates
 
 import (
-	`context`
-	`fmt`
-	`github.com/hliangzhao/volcano/pkg/scheduler/apis`
+	"context"
+	"fmt"
+	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
 	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/utils`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/utils/k8s`
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/utils"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
-	metav1 `k8s.io/apimachinery/pkg/apis/meta/v1`
-	`k8s.io/apimachinery/pkg/types`
-	`k8s.io/klog/v2`
-	`k8s.io/kubernetes/pkg/scheduler/apis/config`
-	k8sframework `k8s.io/kubernetes/pkg/scheduler/framework`
-	`k8s.io/kubernetes/pkg/scheduler/framework/plugins/feature`
-	`k8s.io/kubernetes/pkg/scheduler/framework/plugins/interpodaffinity`
-	`k8s.io/kubernetes/pkg/scheduler/framework/plugins/nodeaffinity`
-	`k8s.io/kubernetes/pkg/scheduler/framework/plugins/nodeports`
-	`k8s.io/kubernetes/pkg/scheduler/framework/plugins/nodeunschedulable`
-	`k8s.io/kubernetes/pkg/scheduler/framework/plugins/tainttoleration`
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/klog/v2"
+	"k8s.io/kubernetes/pkg/scheduler/apis/config"
+	k8sframework "k8s.io/kubernetes/pkg/scheduler/framework"
+	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/feature"
+	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/interpodaffinity"
+	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/nodeaffinity"
+	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/nodeports"
+	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/nodeunschedulable"
+	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/tainttoleration"
 	"strings"
 )
 

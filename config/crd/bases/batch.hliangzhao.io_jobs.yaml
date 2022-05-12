@@ -19,10 +19,24 @@ spec:
     singular: job
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .status.state.phase
+      name: STATUS
+      type: string
+    - jsonPath: .status.minAvailable
+      name: minAvailable
+      type: integer
+    - jsonPath: .status.running
+      name: RUNNINGS
+      type: integer
+    - jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
+    name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Job is the Schema for the jobs API
+        description: Job is the Schema for the jobs API The following tags will be
+          printed when using the `kubectl get vcjob` command
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -63,10 +77,12 @@ spec:
                   is the arguments of the plugin
                 type: object
               policies:
-                description: Specifies the default lifecycle of tasks
+                description: Specifies the default lifecycle of all the tasks in this
+                  job
                 items:
                   description: LifecyclePolicy specifies the lifecycle and error handling
-                    of task and job.
+                    of task and job. It indicates that, when meet the Event e, which
+                    Action a will be taken.
                   properties:
                     action:
                       description: The action that will be taken to the PodGroup according
@@ -80,7 +96,7 @@ spec:
                       description: The Events recorded by scheduler; the controller
                         takes actions according to the Events.
                       items:
-                        description: Event represent the phase of Job, Task, and Pod,
+                        description: Event represent the event of Job, Task, and Pod,
                           e.g. task completed.
                         type: string
                       type: array
@@ -111,9 +127,12 @@ spec:
                 description: SchedulerName is the default value of `tasks.template.spec.schedulerName`.
                 type: string
               tasks:
-                description: Tasks specifies the task specification of Job
+                description: Tasks specifies the task specification of Job. A vcjob
+                  consists of multiple tasks.
                 items:
-                  description: TaskSpec specifies the task specification of Job
+                  description: TaskSpec specifies the task specification of Job. Task
+                    corresponds to Pod. A task consists of replicated pods with specific
+                    lifecycle policies and numa policies.
                   properties:
                     dependsOn:
                       description: Specifies the tasks that this task depends on.
@@ -149,7 +168,8 @@ spec:
                       description: Specifies the lifecycle of task
                       items:
                         description: LifecyclePolicy specifies the lifecycle and error
-                          handling of task and job.
+                          handling of task and job. It indicates that, when meet the
+                          Event e, which Action a will be taken.
                         properties:
                           action:
                             description: The action that will be taken to the PodGroup
@@ -164,7 +184,7 @@ spec:
                             description: The Events recorded by scheduler; the controller
                               takes actions according to the Events.
                             items:
-                              description: Event represent the phase of Job, Task,
+                              description: Event represent the event of Job, Task,
                                 and Pod, e.g. task completed.
                               type: string
                             type: array

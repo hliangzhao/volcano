@@ -68,7 +68,7 @@ spec:
                 additionalProperties:
                   type: string
                 description: Specifies the policy of the manager. NumaPolicy could
-                  be best-effort, none, single-numa-nod, etc.
+                  be best-effort, none, single-numa-node, etc.
                 type: object
               resReserved:
                 additionalProperties:

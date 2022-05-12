@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,9 +19,9 @@ package v1alpha1
 const (
 	// TaskSpecKey task spec key used in pod annotation
 	TaskSpecKey = "volcano.sh/task-spec"
-	// JobNameKey job name key used in pod annotation / labels
+	// JobNameKey job name key used in pod annotation/labels
 	JobNameKey = "volcano.sh/job-name"
-	// QueueNameKey queue name key used in pod annotation / labels
+	// QueueNameKey queue name key used in pod annotation/labels
 	QueueNameKey = "volcano.sh/queue-name"
 	// JobNamespaceKey job namespace key
 	JobNamespaceKey = "volcano.sh/job-namespace"

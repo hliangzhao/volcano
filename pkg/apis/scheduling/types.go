@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,6 +27,10 @@ import (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // PodGroup is the Schema for the podgroups API
+// +kubebuilder:printcolumn:name="STATUS",type=string,JSONPath=`.status.phase`
+// +kubebuilder:printcolumn:name="minMember",type=integer,JSONPath=`.spec.minMember`
+// +kubebuilder:printcolumn:name="RUNNINGS",type=integer,JSONPath=`.status.running`
+// +kubebuilder:printcolumn:name="AGE",type=date,JSONPath=`.metadata.creationTimestamp`
 type PodGroup struct {
 	metav1.TypeMeta
 
@@ -44,12 +48,10 @@ type PodGroup struct {
 type PodGroupSpec struct {
 	// MinMember defines the minimal number of members/tasks to run the pod group;
 	// if there's not enough resources to start all tasks, the scheduler will not start anyone.
-	// TODO: this could be improved
 	MinMember int32
 
 	// MinTaskMember defines the minimal number of pods to run for each task in the pod group;
 	// if there's not enough resources to start each task, the scheduler will not start anyone.
-	// TODO: this could be improved
 	MinTaskMember map[string]int32
 
 	// Queue defines the queue to allocate resource for PodGroup; if queue does not exist,
@@ -69,14 +71,12 @@ type PodGroupSpec struct {
 	// MinResources defines the minimal resource of members/tasks to run the pod group;
 	// if there's not enough resources to start all tasks, the scheduler
 	// will not start anyone.
-	// TODO: the minimal resources to run all tasks?
 	MinResources *corev1.ResourceList
 }
 
 // PodGroupStatus defines the observed state of PodGroup
 type PodGroupStatus struct {
 	// Current phase of PodGroup.
-	// (Pending ---> Inqueue ---> Running)
 	Phase PodGroupPhase
 
 	// The conditions of PodGroup. In each condition, condition status, transition info / time are visible.
@@ -114,12 +114,15 @@ const (
 	// PodGroupInqueue means controllers can start to create pods,
 	// is a new state between PodGroupPending and PodGroupRunning
 	PodGroupInqueue PodGroupPhase = "Inqueue"
+
+	// PodGroupCompleted means all the pods of PodGroup are completed
+	PodGroupCompleted PodGroupPhase = "Completed"
 )
 
 type PodGroupConditionType string
 
 const (
-	// PodGroupUnschedulableType is Unschedulable event type
+	// PodGroupUnschedulableType is unschedulable event type
 	PodGroupUnschedulableType PodGroupConditionType = "Unschedulable"
 
 	// PodGroupScheduled is scheduled event type
@@ -211,7 +214,7 @@ type QueueSpec struct {
 	Weight     int32
 	Capability corev1.ResourceList
 
-	// TODO: verify delete `State QueueState` is legal or not
+	// TODO: check delete `State QueueState` is legal or not
 
 	// Reclaimable indicate whether the resources allocated to this queue can be reclaimed by other queue
 	Reclaimable *bool
@@ -286,6 +289,8 @@ type QueueStatus struct {
 	Running int32
 	// The number of `Inqueue` PodGroup in this queue.
 	Inqueue int32
+	// The number of `Completed` PodGroup in this queue.
+	Completed int32
 
 	// Reservation is the profile of resource reservation for queue
 	Reservation Reservation `json:"reservation,omitempty" protobuf:"bytes,6,opt,name=reservation"`

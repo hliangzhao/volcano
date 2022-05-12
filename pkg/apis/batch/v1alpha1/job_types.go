@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import (
 
 /*
 In package Scheduling, we define `PodGroup` and `Queue`, which are used for scheduling.
-In this package, we define the most import CRD: batch `Job` (volcano Job).
+We also define the most import CRD: batch `Job` (volcano Job).
 Note that `PodGroup` is used to wrap `Job` for scheduling.
 */
 
@@ -35,6 +35,11 @@ Note that `PodGroup` is used to wrap `Job` for scheduling.
 // +kubebuilder:subresource:status
 
 // Job is the Schema for the jobs API
+// The following tags will be printed when using the `kubectl get vcjob` command
+// +kubebuilder:printcolumn:name="STATUS",type=string,JSONPath=`.status.state.phase`
+// +kubebuilder:printcolumn:name="minAvailable",type=integer,JSONPath=`.status.minAvailable`
+// +kubebuilder:printcolumn:name="RUNNINGS",type=integer,JSONPath=`.status.running`
+// +kubebuilder:printcolumn:name="AGE",type=date,JSONPath=`.metadata.creationTimestamp`
 type Job struct {
 	metav1.TypeMeta `json:",inline"`
 
@@ -62,11 +67,12 @@ type JobSpec struct {
 	// +optional
 	Volumes []VolumeSpec `json:"volumes,omitempty" protobuf:"bytes,3,opt,name=volumes"`
 
-	// Tasks specifies the task specification of Job
+	// Tasks specifies the task specification of Job.
+	// A vcjob consists of multiple tasks.
 	// +optional
 	Tasks []TaskSpec `json:"tasks,omitempty" protobuf:"bytes,4,opt,name=tasks"`
 
-	// Specifies the default lifecycle of tasks
+	// Specifies the default lifecycle of all the tasks in this job
 	// +optional
 	Policies []LifecyclePolicy `json:"policies,omitempty" protobuf:"bytes,5,opt,name=policies"`
 
@@ -122,7 +128,8 @@ type VolumeSpec struct {
 	VolumeClaim *corev1.PersistentVolumeClaimSpec `json:"volumeClaim,omitempty" protobuf:"bytes,3,opt,name=volumeClaim"`
 }
 
-// TaskSpec specifies the task specification of Job
+// TaskSpec specifies the task specification of Job.
+// Task corresponds to Pod. A task consists of replicated pods with specific lifecycle policies and numa policies.
 type TaskSpec struct {
 	// Name specifies the name of tasks
 	// +optional
@@ -161,6 +168,7 @@ type TaskSpec struct {
 }
 
 // LifecyclePolicy specifies the lifecycle and error handling of task and job.
+// It indicates that, when meet the Event e, which Action a will be taken.
 type LifecyclePolicy struct {
 	// The action that will be taken to the PodGroup according to Event.
 	// One of "Restart", "None".

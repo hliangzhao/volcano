@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -44,17 +44,16 @@ type PodGroup struct {
 }
 
 // PodGroupSpec represents the template of a pod group.
+// TODO: what will happen if multiple vcjobs are put into a podgroup?
 type PodGroupSpec struct {
 	// MinMember defines the minimal number of members/tasks to run the pod group;
 	// if there's not enough resources to start all tasks, the scheduler
 	// will not start anyone.
-	// TODO: this could be improved
 	MinMember int32 `json:"minMember,omitempty" protobuf:"bytes,1,opt,name=minMember"`
 
 	// MinTaskMember defines the minimal number of pods to run each task in the pod group;
 	// if there's not enough resources to start each task, the scheduler
 	// will not start anyone.
-	// TODO: this could be improved
 	MinTaskMember map[string]int32 `json:"minTaskMember,omitempty" protobuf:"bytes,1,opt,name=minTaskMember"`
 
 	// Queue defines the queue to allocate resource for PodGroup; if queue does not exist,
@@ -74,7 +73,6 @@ type PodGroupSpec struct {
 	// MinResources defines the minimal resource of members/tasks to run the pod group;
 	// if there's not enough resources to start all tasks, the scheduler
 	// will not start anyone.
-	// TODO: the minimal resources to run all tasks?
 	MinResources *corev1.ResourceList `json:"minResources,omitempty" protobuf:"bytes,4,opt,name=minResources"`
 }
 
@@ -100,10 +98,10 @@ type PodGroupStatus struct {
 	Failed int32 `json:"failed,omitempty" protobuf:"bytes,5,opt,name=failed"`
 }
 
-// PodGroupPhase is the phase of a pod group at the current time.
+// PodGroupPhase is the phase of a podgroup at the current time.
 type PodGroupPhase string
 
-// These are the valid phase of podGroups.
+// These are the valid phase of podgroups.
 const (
 	// PodGroupPending means the pod group has been accepted by the system, but scheduler can not allocate
 	// enough resources to it.
@@ -119,6 +117,9 @@ const (
 	// PodGroupInqueue means controllers can start to create pods,
 	// is a new state between PodGroupPending and PodGroupRunning
 	PodGroupInqueue PodGroupPhase = "Inqueue"
+
+	// PodGroupCompleted means all the pods of PodGroup are completed
+	PodGroupCompleted PodGroupPhase = "Completed"
 )
 
 type PodGroupConditionType string
@@ -230,8 +231,6 @@ type QueueSpec struct {
 	Weight     int32               `json:"weight,omitempty" protobuf:"bytes,1,opt,name=weight"`
 	Capability corev1.ResourceList `json:"capability,omitempty" protobuf:"bytes,2,opt,name=capability"`
 
-	// TODO: verify delete `State QueueState` is legal or not
-
 	// Reclaimable indicate whether the queue can be reclaimed by other queue
 	Reclaimable *bool `json:"reclaimable,omitempty" protobuf:"bytes,3,opt,name=reclaimable"`
 
@@ -304,6 +303,8 @@ type QueueStatus struct {
 	Running int32 `json:"running,omitempty" protobuf:"bytes,4,opt,name=running"`
 	// The number of `Inqueue` PodGroup in this queue.
 	Inqueue int32 `json:"inqueue,omitempty" protobuf:"bytes,5,opt,name=inqueue"`
+	// The number of `Completed` PodGroup in this queue.
+	Completed int32 `json:"completed,omitempty" protobuf:"bytes,7,opt,name=completed"`
 
 	// Reservation is the profile of resource reservation for queue
 	Reservation Reservation `json:"reservation,omitempty" protobuf:"bytes,6,opt,name=reservation"`

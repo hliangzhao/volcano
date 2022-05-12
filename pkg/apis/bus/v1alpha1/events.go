@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@ limitations under the License.
 
 package v1alpha1
 
-// Event represent the phase of Job, Task, and Pod, e.g. task completed.
+// Event represent the event of Job, Task, and Pod, e.g. task completed.
 type Event string
 
 const (
@@ -31,7 +31,7 @@ const (
 
 	// JobUnknownEvent These below are several events can lead to job 'Unknown'
 	// 1. Task Unschedulable, this is triggered when part of
-	//    pods can't be scheduled while some are already running in gang-scheduling case.
+	//    pods can't be scheduled while some are already running in gang-scheduling case
 	JobUnknownEvent Event = "Unknown"
 
 	// TaskCompletedEvent is triggered if the 'Replicas' amount of pods in one task are succeed
@@ -39,7 +39,7 @@ const (
 
 	// Note: events below are used internally, should not be used by users.
 
-	// OutOfSyncEvent is triggered if Pod/Job is updated(add/update/delete)
+	// OutOfSyncEvent is triggered if Pod/Job is updated (add/update/delete)
 	OutOfSyncEvent Event = "OutOfSync"
 
 	// CommandIssuedEvent is triggered if a command is raised by user
@@ -48,6 +48,6 @@ const (
 	// JobUpdatedEvent is triggered if Job is updated, currently only scale up/down
 	JobUpdatedEvent Event = "JobUpdated"
 
-	// TaskFailedEvent is triggered when task finished unexpected.
+	// TaskFailedEvent is triggered when task finishes unexpectedly
 	TaskFailedEvent Event = "TaskFailed"
 )

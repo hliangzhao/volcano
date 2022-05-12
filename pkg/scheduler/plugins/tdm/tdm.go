@@ -17,14 +17,14 @@ limitations under the License.
 package tdm
 
 import (
-	`fmt`
-	`github.com/hliangzhao/volcano/pkg/scheduler/apis`
-	`github.com/hliangzhao/volcano/pkg/scheduler/framework`
-	`github.com/hliangzhao/volcano/pkg/scheduler/utils`
-	`k8s.io/apimachinery/pkg/util/intstr`
-	`k8s.io/klog/v2`
-	`strings`
-	`time`
+	"fmt"
+	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
+	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
+	"github.com/hliangzhao/volcano/pkg/scheduler/utils"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/klog/v2"
+	"strings"
+	"time"
 )
 
 const (
@@ -82,7 +82,21 @@ func (tp *tdmPlugin) Name() string {
 }
 
 func (tp *tdmPlugin) OnSessionOpen(sess *framework.Session) {
-	// TODO
+	klog.V(4).Infof("Enter tdm plugin ...")
+	if klog.V(4).Enabled() {
+		defer func() {
+			klog.V(4).Infof("Leaving tdm plugin.")
+		}()
+	}
+
+	sess.AddPredicateFn(tp.Name(), func(taskInfo *apis.TaskInfo, nodeInfo *apis.NodeInfo) error {
+		if nodeInfo.RevocableZone == "" {
+			return nil
+		}
+		if err := tp.availableRevocableZone(nodeInfo.RevocableZone); err != nil {
+			// TODO
+		}
+	})
 }
 
 func (tp *tdmPlugin) OnSessionClose(sess *framework.Session) {}
@@ -90,7 +104,7 @@ func (tp *tdmPlugin) OnSessionClose(sess *framework.Session) {}
 func parseRevocableZone(rz string) (start, end time.Time, err error) {
 	rzValues := strings.Split(strings.TrimSpace(rz), "-")
 	if len(rzValues) != 2 {
-		err = fmt.Errorf("revocable zone %v format error", rzRaw)
+		err = fmt.Errorf("revocable zone %v format error", rz)
 		return
 	}
 
