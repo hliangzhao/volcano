@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,13 +20,13 @@ import (
 	"fmt"
 	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/controllers/job/plugins"
-	plugininterface "github.com/hliangzhao/volcano/pkg/controllers/job/plugins/interface"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 )
 
+// pluginOnPodCreate executes plugins defined in job when creating the pod instance.
 func (jc *jobController) pluginOnPodCreate(job *batchv1alpha1.Job, pod *corev1.Pod) error {
-	client := plugininterface.PluginClient{KubeClient: jc.kubeClient}
+	client := pluginsinterface.PluginClient{KubeClient: jc.kubeClient}
 	for name, args := range job.Spec.Plugins {
 		pb, found := plugins.GetPluginBuilder(name)
 		if !found {
@@ -36,15 +36,16 @@ func (jc *jobController) pluginOnPodCreate(job *batchv1alpha1.Job, pod *corev1.P
 		}
 		klog.Infof("Starting to execute plugin at <pluginOnPodCreate>: %s on job: <%s/%s>", name, job.Namespace, job.Name)
 		if err := pb(client, args).OnPodCreate(pod, job); err != nil {
-			klog.Errorf("Failed to process on pod create plugin %s, err %v.", name, err)
+			klog.Errorf("Failed to process plugin %s on pod create, err %v.", name, err)
 			return err
 		}
 	}
 	return nil
 }
 
+// pluginOnJobAdd executes plugins defined in job when creating the job instance.
 func (jc *jobController) pluginOnJobAdd(job *batchv1alpha1.Job) error {
-	client := plugininterface.PluginClient{KubeClient: jc.kubeClient}
+	client := pluginsinterface.PluginClient{KubeClient: jc.kubeClient}
 	if job.Status.ControlledResources == nil {
 		job.Status.ControlledResources = map[string]string{}
 	}
@@ -57,15 +58,16 @@ func (jc *jobController) pluginOnJobAdd(job *batchv1alpha1.Job) error {
 		}
 		klog.Infof("Starting to execute plugin at <pluginOnJobAdd>: %s on job: <%s/%s>", name, job.Namespace, job.Name)
 		if err := pb(client, args).OnJobAdd(job); err != nil {
-			klog.Errorf("Failed to process on job add plugin %s, err %v.", name, err)
+			klog.Errorf("Failed to process plugin %s on job add, err %v.", name, err)
 			return err
 		}
 	}
 	return nil
 }
 
+// pluginOnJobDelete executes plugins defined in job when deleting the job instance.
 func (jc *jobController) pluginOnJobDelete(job *batchv1alpha1.Job) error {
-	client := plugininterface.PluginClient{KubeClient: jc.kubeClient}
+	client := pluginsinterface.PluginClient{KubeClient: jc.kubeClient}
 	if job.Status.ControlledResources == nil {
 		job.Status.ControlledResources = map[string]string{}
 	}
@@ -78,15 +80,16 @@ func (jc *jobController) pluginOnJobDelete(job *batchv1alpha1.Job) error {
 		}
 		klog.Infof("Starting to execute plugin at <pluginOnJobDelete>: %s on job: <%s/%s>", name, job.Namespace, job.Name)
 		if err := pb(client, args).OnJobDelete(job); err != nil {
-			klog.Errorf("failed to process on job delete plugin %s, err %v.", name, err)
+			klog.Errorf("failed to process plugin %s on job delete, err %v.", name, err)
 			return err
 		}
 	}
 	return nil
 }
 
+// pluginOnJobUpdate executes plugins defined in job when updating the job instance.
 func (jc *jobController) pluginOnJobUpdate(job *batchv1alpha1.Job) error {
-	client := plugininterface.PluginClient{KubeClient: jc.kubeClient}
+	client := pluginsinterface.PluginClient{KubeClient: jc.kubeClient}
 	if job.Status.ControlledResources == nil {
 		job.Status.ControlledResources = map[string]string{}
 	}
@@ -99,7 +102,7 @@ func (jc *jobController) pluginOnJobUpdate(job *batchv1alpha1.Job) error {
 		}
 		klog.Infof("Starting to execute plugin at <pluginOnJobUpdate>: %s on job: <%s/%s>", name, job.Namespace, job.Name)
 		if err := pb(client, args).OnJobUpdate(job); err != nil {
-			klog.Errorf("failed to process on job delete plugin %s, err %v.", name, err)
+			klog.Errorf("failed to process plugin %s on job update, err %v.", name, err)
 			return err
 		}
 	}

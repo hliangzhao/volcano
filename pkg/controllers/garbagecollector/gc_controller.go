@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -203,6 +203,7 @@ func (gc *gcController) processJob(key string) error {
 
 func (gc *gcController) handleErr(err error, key interface{}) {
 	if err == nil {
+		// finally processed
 		gc.queue.Forget(key)
 		return
 	}

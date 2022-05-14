@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,6 +25,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2"
+	"k8s.io/kubernetes/pkg/quota/v1/evaluator/core"
+	"k8s.io/utils/clock"
 )
 
 type podRequest struct {
@@ -44,26 +46,25 @@ func (pgC *pgController) addPod(obj interface{}) {
 	})
 }
 
-// setPGForPod sets the podgroup that the input pod belongs to as pgName.
-func (pgC *pgController) setPGForPod(pod *corev1.Pod, pgName string) error {
+// updatePodAnnotations updates the annotation which denotes the podgroup this pod belongs to.
+func (pgC *pgController) updatePodAnnotations(pod *corev1.Pod, pgName string) error {
 	if pod.Annotations == nil {
-		pod.Annotations = make(map[string]string)
+		pod.Annotations = map[string]string{}
 	}
 	if pod.Annotations[schedulingv1alpha1.KubeGroupNameAnnotationKey] == "" {
 		pod.Annotations[schedulingv1alpha1.KubeGroupNameAnnotationKey] = pgName
 	} else {
 		if pod.Annotations[schedulingv1alpha1.KubeGroupNameAnnotationKey] != pgName {
-			klog.Errorf("normal pod %s/%s annotations %s value is not %s, but %s",
-				pod.Namespace, pod.Name, schedulingv1alpha1.KubeGroupNameAnnotationKey,
-				pod.Annotations[schedulingv1alpha1.KubeGroupNameAnnotationKey])
+			klog.Errorf("normal pod %s/%s annotations %s value is not %s, but %s", pod.Namespace, pod.Name,
+				schedulingv1alpha1.KubeGroupNameAnnotationKey, pgName, pod.Annotations[schedulingv1alpha1.KubeGroupNameAnnotationKey])
 		}
 		return nil
 	}
-
 	if _, err := pgC.kubeClient.CoreV1().Pods(pod.Namespace).Update(context.TODO(), pod, metav1.UpdateOptions{}); err != nil {
 		klog.Errorf("Failed to update pod <%s/%s>: %v", pod.Namespace, pod.Name, err)
 		return err
 	}
+
 	return nil
 }
 
@@ -89,6 +90,9 @@ func (pgC *pgController) createNormalPodPGIfNotExist(pod *corev1.Pod) error {
 				MinMember:         1,
 				PriorityClassName: pod.Spec.PriorityClassName,
 				MinResources:      calcPGMinResources(pod),
+			},
+			Status: schedulingv1alpha1.PodGroupStatus{
+				Phase: schedulingv1alpha1.PodGroupPending,
 			},
 		}
 
@@ -120,7 +124,7 @@ func (pgC *pgController) createNormalPodPGIfNotExist(pod *corev1.Pod) error {
 			return err
 		}
 	}
-	return pgC.setPGForPod(pod, pgName)
+	return pgC.updatePodAnnotations(pod, pgName)
 }
 
 // newPGOwnerReferences sets controller for the given pod.
@@ -141,36 +145,37 @@ func newPGOwnerReferences(pod *corev1.Pod) []metav1.OwnerReference {
 	return []metav1.OwnerReference{*ref}
 }
 
-func addResourceList(list, req, limit corev1.ResourceList) {
-	// update Requests to list
-	for name, quantity := range req {
-		if value, ok := list[name]; !ok {
-			list[name] = quantity.DeepCopy()
-		} else {
-			value.Add(quantity)
-			list[name] = value
-		}
-	}
-
-	if req != nil {
-		return
-	}
-	// If Requests is omitted for a container,
-	// it defaults to Limits if that is explicitly specified.
-	for name, quantity := range limit {
-		if value, ok := list[name]; !ok {
-			list[name] = quantity.DeepCopy()
-		} else {
-			value.Add(quantity)
-			list[name] = value
-		}
-	}
-}
+// func addResourceList(list, req, limit corev1.ResourceList) {
+// 	// update Requests to list
+// 	for name, quantity := range req {
+// 		if value, ok := list[name]; !ok {
+// 			list[name] = quantity.DeepCopy()
+// 		} else {
+// 			value.Add(quantity)
+// 			list[name] = value
+// 		}
+// 	}
+//
+// 	if req != nil {
+// 		return
+// 	}
+// 	// If Requests is omitted for a container,
+// 	// it defaults to Limits if that is explicitly specified.
+// 	for name, quantity := range limit {
+// 		if value, ok := list[name]; !ok {
+// 			list[name] = quantity.DeepCopy()
+// 		} else {
+// 			value.Add(quantity)
+// 			list[name] = value
+// 		}
+// 	}
+// }
 
 func calcPGMinResources(pod *corev1.Pod) *corev1.ResourceList {
-	pgMinRes := corev1.ResourceList{}
-	for _, c := range pod.Spec.Containers {
-		addResourceList(pgMinRes, c.Resources.Requests, c.Resources.Limits)
-	}
+	// pgMinRes := corev1.ResourceList{}
+	// for _, c := range pod.Spec.Containers {
+	// 	addResourceList(pgMinRes, c.Resources.Requests, c.Resources.Limits)
+	// }
+	pgMinRes, _ := core.PodUsageFunc(pod, clock.RealClock{})
 	return &pgMinRes
 }

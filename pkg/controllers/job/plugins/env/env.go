@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,6 +22,10 @@ import (
 	plugininterface "github.com/hliangzhao/volcano/pkg/controllers/job/plugins/interface"
 	corev1 "k8s.io/api/core/v1"
 )
+
+/*
+This plugin will set environment variables to the given pod.
+*/
 
 type envPlugin struct {
 	arguments []string

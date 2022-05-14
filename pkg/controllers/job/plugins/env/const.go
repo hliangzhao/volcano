@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@ package env
 const (
 	// ConfigMapMountPath mount path
 	ConfigMapMountPath = "/etc/volcano"
+
+	// TODO: the following key are used to denote the index of task in a vcjob?
 
 	// TaskVkIndex is used as key in container env
 	TaskVkIndex = "VK_TASK_INDEX"

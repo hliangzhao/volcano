@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import (
 )
 
 // JobInfo is a wrapper of job, which contains more structure information of job.
+// JobInfo is used to construct job cache stored in the volcano-scheduler.
 type JobInfo struct {
 	Namespace string
 	Name      string
@@ -56,25 +57,20 @@ func (ji *JobInfo) SetJob(job *batchv1alpha1.Job) {
 }
 
 // AddPod adds the input pod to the right place.
+// Specifically, we find the task of the given job according to the annotations,
+// and add pod to the right place of the map ji.Pods.
 func (ji *JobInfo) AddPod(pod *corev1.Pod) error {
-	// TODO: what if the job has multiple tasks? How the TaskSpecKey is used?
-	taskName, found := pod.Annotations[batchv1alpha1.TaskSpecKey]
-	if !found {
-		return fmt.Errorf("failed to find taskName of Pod <%s/%s>",
-			pod.Namespace, pod.Name)
-	}
-	_, found = pod.Annotations[batchv1alpha1.JobVersion]
-	if !found {
-		return fmt.Errorf("failed to find jobVersion of Pod <%s/%s>",
-			pod.Namespace, pod.Name)
+	taskName, err := getTaskOfPod(pod)
+	if err != nil {
+		return err
 	}
 
 	// create task if required
-	if _, found = ji.Pods[taskName]; !found {
+	if _, found := ji.Pods[taskName]; !found {
 		ji.Pods[taskName] = make(map[string]*corev1.Pod)
 	}
 	// exist pod cannot be added
-	if _, found = ji.Pods[taskName][pod.Name]; found {
+	if _, found := ji.Pods[taskName][pod.Name]; found {
 		return fmt.Errorf("duplicated pod")
 	}
 
@@ -83,23 +79,18 @@ func (ji *JobInfo) AddPod(pod *corev1.Pod) error {
 	return nil
 }
 
+// UpdatePod updates ji with the input pod.
 func (ji *JobInfo) UpdatePod(pod *corev1.Pod) error {
-	taskName, found := pod.Annotations[batchv1alpha1.TaskSpecKey]
-	if !found {
-		return fmt.Errorf("failed to find taskName of Pod <%s/%s>",
-			pod.Namespace, pod.Name)
-	}
-	_, found = pod.Annotations[batchv1alpha1.JobVersion]
-	if !found {
-		return fmt.Errorf("failed to find jobVersion of Pod <%s/%s>",
-			pod.Namespace, pod.Name)
+	taskName, err := getTaskOfPod(pod)
+	if err != nil {
+		return err
 	}
 
 	// task and pod should be found
-	if _, found = ji.Pods[taskName]; !found {
+	if _, found := ji.Pods[taskName]; !found {
 		return fmt.Errorf("cannot find task %s in cache", taskName)
 	}
-	if _, found = ji.Pods[taskName][pod.Name]; !found {
+	if _, found := ji.Pods[taskName][pod.Name]; !found {
 		return fmt.Errorf("cannot find pod <%s/%s> in cache", pod.Namespace, pod.Name)
 	}
 
@@ -109,15 +100,9 @@ func (ji *JobInfo) UpdatePod(pod *corev1.Pod) error {
 }
 
 func (ji *JobInfo) DeletePod(pod *corev1.Pod) error {
-	taskName, found := pod.Annotations[batchv1alpha1.TaskSpecKey]
-	if !found {
-		return fmt.Errorf("failed to find taskName of Pod <%s/%s>",
-			pod.Namespace, pod.Name)
-	}
-	_, found = pod.Annotations[batchv1alpha1.JobVersion]
-	if !found {
-		return fmt.Errorf("failed to find jobVersion of Pod <%s/%s>",
-			pod.Namespace, pod.Name)
+	taskName, err := getTaskOfPod(pod)
+	if err != nil {
+		return err
 	}
 
 	// delete
@@ -128,4 +113,18 @@ func (ji *JobInfo) DeletePod(pod *corev1.Pod) error {
 		}
 	}
 	return nil
+}
+
+func getTaskOfPod(pod *corev1.Pod) (string, error) {
+	taskName, found := pod.Annotations[batchv1alpha1.TaskSpecKey]
+	if !found {
+		return "", fmt.Errorf("failed to find taskName of Pod <%s/%s>",
+			pod.Namespace, pod.Name)
+	}
+	_, found = pod.Annotations[batchv1alpha1.JobVersion]
+	if !found {
+		return "", fmt.Errorf("failed to find jobVersion of Pod <%s/%s>",
+			pod.Namespace, pod.Name)
+	}
+	return taskName, nil
 }

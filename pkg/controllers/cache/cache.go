@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,9 +29,14 @@ import (
 	"time"
 )
 
+/*
+JobInfo is reconstructed in cache to JobCache.
+The Scheduling actions are made for jobs in JobCache.
+*/
+
 type jobCache struct {
 	sync.Mutex
-	jobInfos    map[string]*controllerapis.JobInfo
+	jobInfos    map[string]*controllerapis.JobInfo // {jobName: jobInfo}
 	deletedJobs workqueue.RateLimitingInterface
 }
 
@@ -74,6 +79,7 @@ func NewCache() Cache {
 	}
 }
 
+// Get returns the jobInfo stored in the cache by job key.
 func (jc *jobCache) Get(key string) (*controllerapis.JobInfo, error) {
 	jc.Lock()
 	defer jc.Unlock()
@@ -88,6 +94,7 @@ func (jc *jobCache) Get(key string) (*controllerapis.JobInfo, error) {
 	return ji.Clone(), nil
 }
 
+// GetStatus returns the status of the jobInfo stored in the cache by job key.
 func (jc *jobCache) GetStatus(key string) (*batchv1alpha1.JobStatus, error) {
 	jc.Lock()
 	defer jc.Unlock()
@@ -104,6 +111,7 @@ func (jc *jobCache) GetStatus(key string) (*batchv1alpha1.JobStatus, error) {
 	return &status, nil
 }
 
+// Add adds a new job to the cache.
 func (jc *jobCache) Add(job *batchv1alpha1.Job) error {
 	jc.Lock()
 	defer jc.Unlock()
@@ -126,6 +134,7 @@ func (jc *jobCache) Add(job *batchv1alpha1.Job) error {
 	return nil
 }
 
+// Update updates the given job in the cache.
 func (jc *jobCache) Update(job *batchv1alpha1.Job) error {
 	jc.Lock()
 	defer jc.Unlock()
@@ -145,6 +154,7 @@ func (jc *jobCache) deleteJob(ji *controllerapis.JobInfo) {
 	jc.deletedJobs.AddRateLimited(ji)
 }
 
+// Delete adds the given job (it must be stored in cache) to the deletedJobs queue.
 func (jc *jobCache) Delete(job *batchv1alpha1.Job) error {
 	jc.Lock()
 	defer jc.Unlock()
@@ -160,6 +170,7 @@ func (jc *jobCache) Delete(job *batchv1alpha1.Job) error {
 	return nil
 }
 
+// AddPod adds the given pod to the right jobInfo in the cache.
 func (jc *jobCache) AddPod(pod *corev1.Pod) error {
 	jc.Lock()
 	defer jc.Unlock()
@@ -178,6 +189,7 @@ func (jc *jobCache) AddPod(pod *corev1.Pod) error {
 	return ji.AddPod(pod)
 }
 
+// UpdatePod updates the given pod to the right jobInfo in the cache.
 func (jc *jobCache) UpdatePod(pod *corev1.Pod) error {
 	jc.Lock()
 	defer jc.Unlock()
@@ -196,6 +208,7 @@ func (jc *jobCache) UpdatePod(pod *corev1.Pod) error {
 	return ji.UpdatePod(pod)
 }
 
+// DeletePod deletes pod from the cache.
 func (jc *jobCache) DeletePod(pod *corev1.Pod) error {
 	jc.Lock()
 	defer jc.Unlock()
@@ -220,7 +233,7 @@ func (jc *jobCache) DeletePod(pod *corev1.Pod) error {
 	return nil
 }
 
-// TaskCompleted judges whether all pods of a task are succeeded.
+// TaskCompleted judges whether a specific task (located by jobKey and taskName) in cache is competed.
 func (jc *jobCache) TaskCompleted(jobKey, taskName string) bool {
 	jc.Lock()
 	defer jc.Unlock()
@@ -254,6 +267,7 @@ func (jc *jobCache) TaskCompleted(jobKey, taskName string) bool {
 	return completed >= taskReplicas
 }
 
+// TaskFailed judges whether a specific task (located by jobKey and taskName) in cache is failed.
 func (jc *jobCache) TaskFailed(jobKey, taskName string) bool {
 	jc.Lock()
 	defer jc.Unlock()
@@ -318,6 +332,7 @@ func (jc *jobCache) processCleanupJob() bool {
 	defer jc.Unlock()
 
 	if jobTerminated(ji) {
+		// the job could finally be deleted
 		jc.deletedJobs.Forget(obj)
 		key := keyFn(ji.Namespace, ji.Name)
 		delete(jc.jobInfos, key)

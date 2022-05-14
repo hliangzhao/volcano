@@ -61,7 +61,6 @@ func (qc *queueController) syncQueue(queue *schedulingv1alpha1.Queue, updateStat
 		}
 	}
 	if updateStateFn != nil {
-		// TODO: the to-be-updated is podgroups, or queueStatus? It seems to be the later.
 		updateStateFn(&queueStatus, podgroups)
 	} else {
 		queueStatus.State = queue.Status.State

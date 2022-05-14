@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -342,7 +342,7 @@ func (jc *jobController) processNextReq(count uint32) bool {
 		if err = stt.Execute(busv1alpha1.TerminateJobAction); err != nil {
 			klog.Errorf("Failed to terminate Job<%s/%s>: %v", jobInfo.Job.Namespace, jobInfo.Job.Name, err)
 		}
-		klog.Warningf("Dropping job<%s/%s> out of the queue: %v because max retries has reached",
+		klog.Warningf("Dropping job <%s/%s> out of the queue: %v because max retries has reached",
 			jobInfo.Job.Namespace, jobInfo.Job.Name, err)
 	}
 
@@ -386,7 +386,7 @@ func (jc *jobController) processReSyncedTask() {
 }
 
 func (jc *jobController) syncTask(oldTask *corev1.Pod) error {
-	// get the latest pod from cluster and update it to job-controller 's cache
+	// get the latest pod from cluster and update it to job-controller's cache
 	newPod, err := jc.kubeClient.CoreV1().Pods(oldTask.Namespace).Get(context.TODO(), oldTask.Name, metav1.GetOptions{})
 	if err != nil {
 		// pod not found in cluster, delete it from cache

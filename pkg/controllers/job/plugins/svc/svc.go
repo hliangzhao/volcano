@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,6 +34,10 @@ import (
 	"strings"
 )
 
+/*
+This plugin will create DNS name for the given pod, so that it could be searched and visited through the DNS name.
+*/
+
 type svcPlugin struct {
 	arguments            []string
 	client               plugininterface.PluginClient
@@ -66,7 +70,7 @@ func (sp *svcPlugin) Name() string {
 // OnPodCreate adds `hostname` and `subdomain` for pod, and mount service config for pod.
 func (sp *svcPlugin) OnPodCreate(pod *corev1.Pod, job *batchv1alpha1.Job) error {
 	// Add `hostname` and `subdomain` for pod, mount service config for pod.
-	// A pod with `hostname` and `subdomain` will have the fully qualified domain name(FQDN)
+	// A pod with `hostname` and `subdomain` will have the fully qualified domain name (FQDN)
 	// `hostname.subdomain.namespace.svc.cluster-domain.example`.
 	// If there exists a headless service in the same namespace as the pod and with the
 	// same name as the `subdomain`, the cluster's KubeDNS Server will return an A record for

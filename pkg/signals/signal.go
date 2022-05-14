@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -64,7 +64,7 @@ func SetupSignalContext() context.Context {
 	return ctx
 }
 
-// RequestShutdown emulates a received event that is considered as shutdown signal (SIGTERM/SIGINT)
+// RequestShutdown emulates a received event that is considered as shutdown signal (SIGTERM/SIGINT).
 // This returns whether a handler was notified.
 func RequestShutdown() bool {
 	if shutdownHandler != nil {

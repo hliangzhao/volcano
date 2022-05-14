@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -580,6 +580,7 @@ func TestApplyPolicies(t *testing.T) {
 	}
 }
 
+// TODO: This func could be removed
 func TestAddResourceList(t *testing.T) {
 	testcases := []struct {
 		Name        string

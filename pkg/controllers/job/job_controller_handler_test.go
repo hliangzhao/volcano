@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import (
 	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
 	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/apis/helpers"
-	"github.com/hliangzhao/volcano/pkg/apis/scheduling"
+	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
 	volcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
 	"github.com/hliangzhao/volcano/pkg/controllers/framework"
 	corev1 "k8s.io/api/core/v1"
@@ -521,34 +521,34 @@ func TestUpdatePodGroupFunc(t *testing.T) {
 
 	testCases := []struct {
 		Name        string
-		oldPodGroup *scheduling.PodGroup
-		newPodGroup *scheduling.PodGroup
+		oldPodGroup *schedulingv1alpha1.PodGroup
+		newPodGroup *schedulingv1alpha1.PodGroup
 		ExpectValue int
 	}{
 		{
 			Name: "AddCommand Success Case",
-			oldPodGroup: &scheduling.PodGroup{
+			oldPodGroup: &schedulingv1alpha1.PodGroup{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "pg1",
 					Namespace: namespace,
 				},
-				Spec: scheduling.PodGroupSpec{
+				Spec: schedulingv1alpha1.PodGroupSpec{
 					MinMember: 3,
 				},
-				Status: scheduling.PodGroupStatus{
-					Phase: scheduling.PodGroupPending,
+				Status: schedulingv1alpha1.PodGroupStatus{
+					Phase: schedulingv1alpha1.PodGroupPending,
 				},
 			},
-			newPodGroup: &scheduling.PodGroup{
+			newPodGroup: &schedulingv1alpha1.PodGroup{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "pg1",
 					Namespace: namespace,
 				},
-				Spec: scheduling.PodGroupSpec{
+				Spec: schedulingv1alpha1.PodGroupSpec{
 					MinMember: 3,
 				},
-				Status: scheduling.PodGroupStatus{
-					Phase: scheduling.PodGroupRunning,
+				Status: schedulingv1alpha1.PodGroupStatus{
+					Phase: schedulingv1alpha1.PodGroupRunning,
 				},
 			},
 			ExpectValue: 1,

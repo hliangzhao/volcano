@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import (
 	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
 	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/apis/helpers"
-	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling"
+	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
 	controllerapis "github.com/hliangzhao/volcano/pkg/controllers/apis"
 	controllercache "github.com/hliangzhao/volcano/pkg/controllers/cache"
 	jobhelpers "github.com/hliangzhao/volcano/pkg/controllers/job/helpers"
@@ -35,6 +35,7 @@ import (
 	"strconv"
 )
 
+// addCommand adds obj (a cmd) to job controller.
 func (jc *jobController) addCommand(obj interface{}) {
 	cmd, ok := obj.(*busv1alpha1.Command)
 	if !ok {
@@ -44,6 +45,8 @@ func (jc *jobController) addCommand(obj interface{}) {
 	jc.cmdQueue.Add(cmd)
 }
 
+// addJob adds ojb (a job) to job controller's work queue.
+// Also added to cache.
 func (jc *jobController) addJob(obj interface{}) {
 	job, ok := obj.(*batchv1alpha1.Job)
 	if !ok {
@@ -66,6 +69,8 @@ func (jc *jobController) addJob(obj interface{}) {
 	queue.Add(req)
 }
 
+// updateJob updates job (from oldObj to newObj) to job controller's work queue.
+// Also updated in cache.
 func (jc *jobController) updateJob(oldObj, newObj interface{}) {
 	oldJob, ok := oldObj.(*batchv1alpha1.Job)
 	if !ok {
@@ -105,6 +110,8 @@ func (jc *jobController) updateJob(oldObj, newObj interface{}) {
 	queue.Add(req)
 }
 
+// deleteJob deletes obj (a job) from job controller.
+// Also deleted from cache.
 func (jc *jobController) deleteJob(obj interface{}) {
 	job, ok := obj.(*batchv1alpha1.Job)
 	if !ok {
@@ -127,6 +134,8 @@ func (jc *jobController) deleteJob(obj interface{}) {
 	}
 }
 
+// addPod adds obj (a pod) to job controller's work queue.
+// Also added to cache.
 func (jc *jobController) addPod(obj interface{}) {
 	pod, ok := obj.(*corev1.Pod)
 	if !ok {
@@ -181,6 +190,8 @@ func (jc *jobController) addPod(obj interface{}) {
 	queue.Add(req)
 }
 
+// updatePod updates pod (from oldObj to newObj) to job controller's work queue.
+// TODO: Why not call jc.cache.UpdatePod() in this func?
 func (jc *jobController) updatePod(oldObj, newObj interface{}) {
 	oldPod, ok := oldObj.(*corev1.Pod)
 	if !ok {
@@ -277,6 +288,7 @@ func (jc *jobController) updatePod(oldObj, newObj interface{}) {
 	queue.Add(req)
 }
 
+// deletePod deletes obj (a pod) from job controller.
 func (jc *jobController) deletePod(obj interface{}) {
 	pod, ok := obj.(*corev1.Pod)
 	if !ok {
@@ -368,6 +380,8 @@ func (jc *jobController) processNextCommand() bool {
 	cmd := obj.(*busv1alpha1.Command)
 	defer jc.cmdQueue.Done(cmd)
 
+	// delete cmd from cluster and construct it as a request adding to work queue
+
 	if err := jc.volcanoClient.BusV1alpha1().Commands(cmd.Namespace).Delete(context.TODO(), cmd.Name, metav1.DeleteOptions{}); err != nil {
 		if !apierrors.IsNotFound(err) {
 			klog.Errorf("Failed to delete Command <%s/%s>.", cmd.Namespace, cmd.Name)
@@ -391,6 +405,7 @@ func (jc *jobController) processNextCommand() bool {
 	return true
 }
 
+// updatePodGroup updates podgroup (from oldObj to newObj) to job controller's work queue.
 func (jc *jobController) updatePodGroup(oldObj, newObj interface{}) {
 	oldPodGroup, ok := oldObj.(*schedulingv1alpha1.PodGroup)
 	if !ok {
