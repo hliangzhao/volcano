@@ -16,22 +16,24 @@ limitations under the License.
 
 package podgroup
 
+// TODO: re-test is required
+
 // TODO: just copied. Not checked.
 // Passed.
 
 import (
-	`context`
-	`github.com/hliangzhao/volcano/pkg/apis/scheduling`
-	schedulingv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1`
-	fakevolcanoclient `github.com/hliangzhao/volcano/pkg/client/clientset/versioned/fake`
-	`github.com/hliangzhao/volcano/pkg/controllers/framework`
-	corev1 `k8s.io/api/core/v1`
-	metav1 `k8s.io/apimachinery/pkg/apis/meta/v1`
-	`k8s.io/apimachinery/pkg/types`
-	`k8s.io/client-go/informers`
-	fakekubeclient `k8s.io/client-go/kubernetes/fake`
-	`reflect`
-	`testing`
+	"context"
+	"github.com/hliangzhao/volcano/pkg/apis/scheduling"
+	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
+	fakevolcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned/fake"
+	"github.com/hliangzhao/volcano/pkg/controllers/framework"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/informers"
+	fakekubeclient "k8s.io/client-go/kubernetes/fake"
+	"reflect"
+	"testing"
 )
 
 func newFakeController() *pgController {
@@ -88,7 +90,7 @@ func TestAddPodGroup(t *testing.T) {
 			},
 			expectedPodGroup: &scheduling.PodGroup{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "scheduling.volcano.sh/v1beta1",
+					APIVersion: "scheduling.hliangzhao.io/v1beta1",
 					Kind:       "PodGroup",
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -125,7 +127,7 @@ func TestAddPodGroup(t *testing.T) {
 			},
 			expectedPodGroup: &scheduling.PodGroup{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "scheduling.volcano.sh/v1beta1",
+					APIVersion: "scheduling.hliangzhao.io/v1beta1",
 					Kind:       "PodGroup",
 				},
 				ObjectMeta: metav1.ObjectMeta{

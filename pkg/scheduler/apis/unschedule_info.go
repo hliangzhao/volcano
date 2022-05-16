@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -107,6 +107,12 @@ func (f *FitErrors) SetNodeError(nodeName string, err error) {
 
 // Error returns the final error message.
 func (f *FitErrors) Error() string {
+	if f.err == "" {
+		f.err = AllNodeUnavailableMsg
+	}
+	if len(f.nodes) == 0 {
+		return f.err
+	}
 	reasons := make(map[string]int)
 
 	for _, node := range f.nodes {
@@ -124,9 +130,6 @@ func (f *FitErrors) Error() string {
 		return reasonStrings
 	}
 
-	if f.err == "" {
-		f.err = AllNodeUnavailableMsg
-	}
 	reasonMsg := fmt.Sprintf(f.err+": %v.", strings.Join(sortReasonsHistogram(), ", "))
 	return reasonMsg
 }

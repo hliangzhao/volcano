@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,13 +21,17 @@ import (
 	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	v1 "k8s.io/apiserver/pkg/apis/example/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/volumebinding"
 	"sync"
 )
+
+// TODO: NOT-FINISHED
 
 /* The fake functions defined in this file are used for code tests. */
 
@@ -91,6 +95,27 @@ func BuildPod(namespace, name, nodeName string, p corev1.PodPhase, req corev1.Re
 	}
 }
 
+func BuildPodWithPVC(namespace, name, nodeName string, p corev1.PodPhase, req corev1.ResourceList, pvc *corev1.PersistentVolumeClaim,
+	groupName string, labels map[string]string, selector map[string]string) *corev1.Pod {
+	// TODO
+	return nil
+}
+
+func BuildDynamicPVC(namespace, name string, req corev1.ResourceList) (*corev1.PersistentVolumeClaim, *corev1.PersistentVolume, *storagev1.StorageClass) {
+	// TODO
+	return nil, nil, nil
+}
+
+func BuildBestEffortPod(namespace, name, nodeName string, p v1.PodPhase, groupName string, labels map[string]string, selector map[string]string) *corev1.Pod {
+	// TODO
+	return nil
+}
+
+func BuildPodWithPriority(namespace, name, nodeName string, p v1.PodPhase, req corev1.ResourceList, groupName string, labels map[string]string, selector map[string]string, priority *int32) *corev1.Pod {
+	// TODO
+	return nil
+}
+
 // FakeBinder is used as fake binder
 type FakeBinder struct {
 	Binds   map[string]string
@@ -98,7 +123,7 @@ type FakeBinder struct {
 }
 
 // Bind binds each task to its allocated node.
-func (fb *FakeBinder) Bind(kubeClient *kubernetes.Clientset, tasks []*apis.TaskInfo) (error, []*apis.TaskInfo) {
+func (fb *FakeBinder) Bind(kubeClient *kubernetes.Clientset, tasks []*apis.TaskInfo) ([]*apis.TaskInfo, error) {
 	for _, p := range tasks {
 		key := fmt.Sprintf("%v/%v", p.Namespace, p.Name)
 		fb.Binds[key] = p.NodeName
@@ -151,14 +176,26 @@ func (fsu *FakeStatusUpdater) UpdatePodGroup(pg *apis.PodGroup) (*apis.PodGroup,
 type FakeVolumeBinder struct {
 }
 
+func NewFakeVolumeBinder(kubeClient kubernetes.Interface) *FakeVolumeBinder {
+	// TODO
+	return nil
+}
+
 func (fvb *FakeVolumeBinder) AllocateVolumes(task *apis.TaskInfo, hostname string, podVolumes *volumebinding.PodVolumes) error {
+	// TODO
 	return nil
 }
 
 func (fvb *FakeVolumeBinder) BindVolumes(task *apis.TaskInfo, podVolumes *volumebinding.PodVolumes) error {
+	// TODO
 	return nil
 }
 
 func (fvb *FakeVolumeBinder) GetPodVolumes(task *apis.TaskInfo, node *corev1.Node) (*volumebinding.PodVolumes, error) {
+	// TODO
 	return nil, nil
+}
+
+func (fvb *FakeVolumeBinder) RevertVolumes(task *apis.TaskInfo, podVolumes *volumebinding.PodVolumes) {
+	// TODO
 }

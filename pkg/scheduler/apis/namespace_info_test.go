@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,29 +16,34 @@ limitations under the License.
 
 package apis
 
-// TODO: just copied. Not checked.
-// Passed.
+// TODO: just copied.
+//  Passed.
 
 import (
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 )
 
-func newQuota(name string, weight int) *v1.ResourceQuota {
-	q := &v1.ResourceQuota{
+func newQuota(name string, weight, req int) *corev1.ResourceQuota {
+	q := &corev1.ResourceQuota{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-		Spec: v1.ResourceQuotaSpec{
-			Hard: make(v1.ResourceList),
+		Spec: corev1.ResourceQuotaSpec{
+			Hard: make(corev1.ResourceList),
+		},
+		Status: corev1.ResourceQuotaStatus{
+			Hard: corev1.ResourceList{
+				corev1.ResourceCPU: *resource.NewQuantity(int64(req), resource.DecimalSI),
+			},
 		},
 	}
 
 	if weight >= 0 {
-		q.Spec.Hard[v1.ResourceName(NamespaceWeightKey)] = *resource.NewQuantity(int64(weight), resource.DecimalSI)
+		q.Spec.Hard[corev1.ResourceName(NamespaceWeightKey)] = *resource.NewQuantity(int64(weight), resource.DecimalSI)
 	}
 
 	return q
@@ -46,21 +51,75 @@ func newQuota(name string, weight int) *v1.ResourceQuota {
 
 func TestNamespaceCollection(t *testing.T) {
 	c := NewNamespaceCollection("testCollection")
-	c.Update(newQuota("abc", 123))
-	c.Update(newQuota("abc", 456))
-	c.Update(newQuota("def", -1))
-	c.Update(newQuota("def", 16))
-	c.Update(newQuota("ghi", 0))
+	c.Update(newQuota("abc", 123, 1))
 
 	info := c.Snapshot()
-	if info.Weight != 456 {
-		t.Errorf("weight of namespace should be %d, but not %d", 456, info.Weight)
+	req := info.QuotaStatus["abc"].Hard[corev1.ResourceCPU]
+	if req.Value() != 1 {
+		t.Errorf("cpu request of quota %s should be %d, but got %d", "abc", 1, req.Value())
 	}
 
-	c.Delete(newQuota("abc", 0))
+	c.Update(newQuota("abc", 456, 2))
+	c.Update(newQuota("def", -1, 4))
+	c.Update(newQuota("def", 16, 8))
+	c.Update(newQuota("ghi", 0, 16))
+
+	info = c.Snapshot()
+	if info.Weight != 456 {
+		t.Errorf("weight of namespace should be %d, but got %d", 456, info.Weight)
+	}
+	req = info.QuotaStatus["abc"].Hard[corev1.ResourceCPU]
+	if req.Value() != 2 {
+		t.Errorf("cpu request of quota %s should be %d, but got %d", "abc", 2, req.Value())
+	}
+
+	c.Delete(newQuota("abc", 0, 0))
 
 	info = c.Snapshot()
 	if info.Weight != 16 {
 		t.Errorf("weight of namespace should be %d, but not %d", 16, info.Weight)
+	}
+	if _, ok := info.QuotaStatus["abc"]; ok {
+		t.Errorf("QuotaStatus abc of namespace should not exist")
+	}
+
+	c.Delete(newQuota("abc", 0, 0))
+	c.Delete(newQuota("def", 15, 0))
+	c.Delete(newQuota("ghi", -1, 0))
+
+	info = c.Snapshot()
+	if info.Weight != DefaultNamespaceWeight {
+		t.Errorf("weight of namespace should be default weight %d, but not %d", DefaultNamespaceWeight, info.Weight)
+	}
+}
+
+func TestEmptyNamespaceCollection(t *testing.T) {
+	c := NewNamespaceCollection("testEmptyCollection")
+
+	info := c.Snapshot()
+	if info.Weight != DefaultNamespaceWeight {
+		t.Errorf("weight of namespace should be %d, but not %d", DefaultNamespaceWeight, info.Weight)
+	}
+
+	// snapshot can be called anytime
+	info = c.Snapshot()
+	if info.Weight != DefaultNamespaceWeight {
+		t.Errorf("weight of namespace should be %d, but not %d", DefaultNamespaceWeight, info.Weight)
+	}
+
+	c.Delete(newQuota("abc", 0, 0))
+
+	info = c.Snapshot()
+	if info.Weight != DefaultNamespaceWeight {
+		t.Errorf("weight of namespace should be %d, but not %d", DefaultNamespaceWeight, info.Weight)
+	}
+
+	c.Delete(newQuota("abc", 0, 0))
+	c.Delete(newQuota("def", 15, 0))
+	c.Delete(newQuota("ghi", -1, 0))
+
+	info = c.Snapshot()
+	if info.Weight != DefaultNamespaceWeight {
+		t.Errorf("weight of namespace should be default weight %d, but not %d", DefaultNamespaceWeight, info.Weight)
 	}
 }

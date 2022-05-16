@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,7 +21,9 @@ import (
 	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
 	"gopkg.in/square/go-jose.v2/json"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/klog/v2"
+	"k8s.io/kubernetes/pkg/features"
 	"strconv"
 	"strings"
 	"time"
@@ -63,6 +65,12 @@ func GetPodResourceWithoutInitContainers(pod *corev1.Pod) *Resource {
 	for _, container := range pod.Spec.Containers {
 		result.Add(NewResource(container.Resources.Requests))
 	}
+
+	// if PodOverhead feature is supported, add overhead for running a pod
+	if pod.Spec.Overhead != nil && feature.DefaultFeatureGate.Enabled(features.PodOverhead) {
+		result.Add(NewResource(pod.Spec.Overhead))
+	}
+
 	return result
 }
 
@@ -75,7 +83,7 @@ func GetPodResourceRequest(pod *corev1.Pod) *Resource {
 	return result
 }
 
-// GetPodPreemptable returns the value of annotation/label `volcano.sh/preemptable` of pod.
+// GetPodPreemptable returns the value of annotation/label `hliangzhao.io/preemptable` of pod.
 func GetPodPreemptable(pod *corev1.Pod) bool {
 	// check annotations
 	if len(pod.Annotations) > 0 {
@@ -104,7 +112,7 @@ func GetPodPreemptable(pod *corev1.Pod) bool {
 	return false
 }
 
-// GetPodRevocableZone return `volcano.sh/revocable-zone` value for pod/podgroup.
+// GetPodRevocableZone return `hliangzhao.io/revocable-zone` value for pod/podgroup.
 func GetPodRevocableZone(pod *corev1.Pod) string {
 	if len(pod.Annotations) > 0 {
 		if value, found := pod.Annotations[schedulingv1alpha1.RevocableZone]; found {
@@ -122,7 +130,7 @@ func GetPodRevocableZone(pod *corev1.Pod) string {
 	return ""
 }
 
-// GetPodTopologyInfo return `volcano.sh/numa-topology-policy` value for pod.
+// GetPodTopologyInfo return `hliangzhao.io/numa-topology-policy` value for pod.
 func GetPodTopologyInfo(pod *corev1.Pod) *TopologyInfo {
 	info := TopologyInfo{
 		ResMap: map[int]corev1.ResourceList{},

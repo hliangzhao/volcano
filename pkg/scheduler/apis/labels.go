@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,25 +17,27 @@ limitations under the License.
 package apis
 
 const (
+	GroupName = "hliangzhao.io"
+
 	// VolcanoGPUResource extended gpu resource
-	VolcanoGPUResource = "volcano.sh/gpu-memory"
+	VolcanoGPUResource = GroupName + "/gpu-memory"
 	// VolcanoGPUNumber virtual GPU card number
-	VolcanoGPUNumber = "volcano.sh/gpu-number"
+	VolcanoGPUNumber = GroupName + "/gpu-number"
 
 	// PredicateTime is the key of predicate time
-	PredicateTime = "volcano.sh/predicate-time"
+	PredicateTime = GroupName + "/predicate-time"
 	// GPUIndex is the key of gpu index
-	GPUIndex = "volcano.sh/gpu-index"
+	GPUIndex = GroupName + "/gpu-index"
 
 	// OverSubscriptionNode is the key of node oversubscription
-	OverSubscriptionNode = "volcano.sh/oversubscription"
+	OverSubscriptionNode = GroupName + "/oversubscription"
 	// OverSubscriptionCPU is the key of cpu oversubscription
-	OverSubscriptionCPU = "volcano.sh/oversubscription-cpu"
+	OverSubscriptionCPU = GroupName + "/oversubscription-cpu"
 	// OverSubscriptionMemory is the key of memory oversubscription
-	OverSubscriptionMemory = "volcano.sh/oversubscription-memory"
+	OverSubscriptionMemory = GroupName + "/oversubscription-memory"
 	// OfflineJobEvicting node will not schedule pod due to offline job evicting
-	OfflineJobEvicting = "volcano.sh/offline-job-evicting"
+	OfflineJobEvicting = GroupName + "/offline-job-evicting"
 
 	// TopologyDecisionAnnotation is the key of topology decision about pod request resource
-	TopologyDecisionAnnotation = "volcano.sh/topology-decision"
+	TopologyDecisionAnnotation = GroupName + "/topology-decision"
 )

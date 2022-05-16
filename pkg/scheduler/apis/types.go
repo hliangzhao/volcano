@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,8 +19,6 @@ package apis
 import (
 	k8sframework "k8s.io/kubernetes/pkg/scheduler/framework"
 )
-
-// TODO: rename this file to predicates.go?
 
 // LessFn is the func declaration used by sort or priority queue.
 type LessFn func(interface{}, interface{}) bool

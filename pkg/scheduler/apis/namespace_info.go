@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import (
 
 const (
 	// NamespaceWeightKey is the key in ResourceQuota.spec.hard indicating the weight of this namespace
-	NamespaceWeightKey = "volcano.sh/namespace.weight"
+	NamespaceWeightKey = "hliangzhao.io/namespace.weight"
 
 	// DefaultNamespaceWeight is the default weight of namespace
 	DefaultNamespaceWeight = 1
@@ -39,6 +39,9 @@ type NamespaceInfo struct {
 
 	// Weight is the highest weight among many ResourceQuota
 	Weight int64
+
+	// QuotaStatus stores the ResourceQuotaStatus of all ResourceQuotas in this namespace
+	QuotaStatus map[string]corev1.ResourceQuotaStatus
 }
 
 func (ni *NamespaceInfo) GetWeight() int64 {
@@ -75,13 +78,22 @@ func quotaItemLessFunc(a interface{}, b interface{}) bool {
 type NamespaceCollection struct {
 	Name        string
 	quotaWeight *cache.Heap
+	QuotaStatus map[string]corev1.ResourceQuotaStatus
 }
 
 func NewNamespaceCollection(name string) *NamespaceCollection {
-	return &NamespaceCollection{
+	n := &NamespaceCollection{
 		Name:        name,
 		quotaWeight: cache.NewHeap(quotaItemKeyFunc, quotaItemLessFunc),
+		QuotaStatus: map[string]corev1.ResourceQuotaStatus{},
 	}
+	// add at least one item into quotaWeight.
+	// Because cache.Heap.Pop would be blocked until queue is not empty
+	n.updateWeight(&quotaItem{
+		name:   NamespaceWeightKey,
+		weight: DefaultNamespaceWeight,
+	})
+	return n
 }
 
 /* delete and update func of NamespaceCollection */
@@ -109,10 +121,12 @@ func itemFromQuota(quota *corev1.ResourceQuota) *quotaItem {
 
 func (nc *NamespaceCollection) Update(quota *corev1.ResourceQuota) {
 	nc.updateWeight(itemFromQuota(quota))
+	nc.QuotaStatus[quota.Name] = quota.Status
 }
 
 func (nc *NamespaceCollection) Delete(quota *corev1.ResourceQuota) {
 	nc.deleteWeight(itemFromQuota(quota))
+	delete(nc.QuotaStatus, quota.Name)
 }
 
 // Snapshot clones a NamespaceInfo without Heap according NamespaceCollection.
@@ -131,7 +145,8 @@ func (nc *NamespaceCollection) Snapshot() *NamespaceInfo {
 
 	// the weight we get is used to create the snapshot
 	return &NamespaceInfo{
-		Name:   NamespaceName(nc.Name),
-		Weight: weight,
+		Name:        NamespaceName(nc.Name),
+		Weight:      weight,
+		QuotaStatus: nc.QuotaStatus,
 	}
 }

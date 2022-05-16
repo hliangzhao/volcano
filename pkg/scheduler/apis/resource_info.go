@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	"math"
+	"strings"
 )
 
 const (
@@ -611,4 +612,8 @@ func (rl ResourceNameList) Contains(rrl ResourceNameList) bool {
 		}
 	}
 	return true
+}
+
+func IsCountQuota(name corev1.ResourceName) bool {
+	return strings.HasPrefix(string(name), "count/")
 }

@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,11 +16,12 @@ limitations under the License.
 
 package apis
 
-// TODO: just copied. Not checked.
-// Passed.
+// TODO: just copied.
+//  Passed.
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"reflect"
 	"testing"
 )
@@ -151,6 +152,30 @@ func TestGetPodResourceWithoutInitContainers(t *testing.T) {
 				},
 			},
 			expectedResource: NewResource(buildResourceList("3000m", "2G")),
+		},
+		{
+			name: "get resource for pod with overhead",
+			pod: &corev1.Pod{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Resources: corev1.ResourceRequirements{
+								Requests: buildResourceList("1000m", "1G"),
+							},
+						},
+						{
+							Resources: corev1.ResourceRequirements{
+								Requests: buildResourceList("2000m", "1G"),
+							},
+						},
+					},
+					Overhead: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("500m"),
+						corev1.ResourceMemory: resource.MustParse("1G"),
+					},
+				},
+			},
+			expectedResource: NewResource(buildResourceList("3500m", "3G")),
 		},
 	}
 

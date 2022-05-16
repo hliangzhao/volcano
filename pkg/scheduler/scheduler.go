@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,8 +36,6 @@ import (
 	"time"
 )
 
-// TODO: not checked
-
 var defaultSchedulerConf = `
 actions: "enqueue, allocate, backfill"
 tiers:
@@ -57,8 +55,8 @@ tiers:
 // nodes that they fit on and writes bindings back to the api server.
 type Scheduler struct {
 	cache          cache.Cache
-	schedulerConf  string
-	fileWatcher    filewatcher.FileWatcher
+	schedulerConf  string                  // the path of scheduler's config
+	fileWatcher    filewatcher.FileWatcher // file watcher on scheduler's config
 	schedulePeriod time.Duration
 	once           sync.Once
 
@@ -66,6 +64,7 @@ type Scheduler struct {
 	actions        []framework.Action
 	plugins        []conf.Tier
 	configurations []conf.Configuration
+	metricsConf    map[string]string
 }
 
 func NewScheduler(config *rest.Config, schedulerName string, schedulerConf string,
@@ -97,7 +96,8 @@ func (s *Scheduler) Run(stopCh <-chan struct{}) {
 	go s.watchSchedulerConf(stopCh)
 
 	// start cache for policy
-	s.cache.Run(stopCh)
+	s.cache.SetMetricsConf(s.metricsConf)
+	go s.cache.Run(stopCh)
 	s.cache.WaitForCacheSync(stopCh)
 
 	klog.V(2).Infof("scheduler completes Initialization and start to run")
@@ -136,12 +136,12 @@ func readSchedulerConf(confPath string) (string, error) {
 }
 
 // unmarshalSchedulerConf unmarshal the vc scheduler config string to schedulerConf.
-func unmarshalSchedulerConf(configStr string) ([]framework.Action, []conf.Tier, []conf.Configuration, error) {
+func unmarshalSchedulerConf(configStr string) ([]framework.Action, []conf.Tier, []conf.Configuration, map[string]string, error) {
 	var actions []framework.Action
 	schedulerConf := &conf.SchedulerConfiguration{}
 
 	if err := yaml.Unmarshal([]byte(configStr), schedulerConf); err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	// Set default settings for each plugin if not set
@@ -161,7 +161,7 @@ func unmarshalSchedulerConf(configStr string) ([]framework.Action, []conf.Tier, 
 			plugins.ApplyPluginConfDefaults(&schedulerConf.Tiers[i].Plugins[j])
 		}
 		if hdrf && proportion {
-			return nil, nil, nil, fmt.Errorf("proportion and drf with hierarchy enabled conflicts")
+			return nil, nil, nil, nil, fmt.Errorf("proportion and drf with hierarchy enabled conflicts")
 		}
 	}
 
@@ -170,11 +170,11 @@ func unmarshalSchedulerConf(configStr string) ([]framework.Action, []conf.Tier, 
 		if action, found := framework.GetAction(strings.TrimSpace(actionName)); found {
 			actions = append(actions, action)
 		} else {
-			return nil, nil, nil, fmt.Errorf("failed to find Action %s, ignore it", actionName)
+			return nil, nil, nil, nil, fmt.Errorf("failed to find Action %s, ignore it", actionName)
 		}
 	}
 
-	return actions, schedulerConf.Tiers, schedulerConf.Configurations, nil
+	return actions, schedulerConf.Tiers, schedulerConf.Configurations, schedulerConf.MetricsConfiguration, nil
 }
 
 func (s *Scheduler) loadSchedulerConf() {
@@ -182,7 +182,7 @@ func (s *Scheduler) loadSchedulerConf() {
 
 	// set default vc scheduler config only once
 	s.once.Do(func() {
-		s.actions, s.plugins, s.configurations, err = unmarshalSchedulerConf(defaultSchedulerConf)
+		s.actions, s.plugins, s.configurations, s.metricsConf, err = unmarshalSchedulerConf(defaultSchedulerConf)
 		if err != nil {
 			klog.Errorf("unmarshal scheduler config %s failed: %v", defaultSchedulerConf, err)
 			panic("invalid default configuration")
@@ -199,7 +199,7 @@ func (s *Scheduler) loadSchedulerConf() {
 		}
 	}
 
-	actions, plgs, configurations, err := unmarshalSchedulerConf(configStr)
+	actions, plgs, configurations, metricsConf, err := unmarshalSchedulerConf(configStr)
 	if err != nil {
 		klog.Errorf("scheduler config %s is invalid: %v", configStr, err)
 		return
@@ -211,6 +211,7 @@ func (s *Scheduler) loadSchedulerConf() {
 	s.actions = actions
 	s.plugins = plgs
 	s.configurations = configurations
+	s.metricsConf = metricsConf
 }
 
 func (s *Scheduler) watchSchedulerConf(stopCh <-chan struct{}) {

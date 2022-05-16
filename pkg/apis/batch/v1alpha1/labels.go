@@ -17,30 +17,32 @@ limitations under the License.
 package v1alpha1
 
 const (
+	GroupName = "hliangzhao.io"
+
 	// TaskSpecKey task spec key used in pod annotation
-	TaskSpecKey = "volcano.sh/task-spec"
+	TaskSpecKey = GroupName + "/task-spec"
 	// JobNameKey job name key used in pod annotation/labels
-	JobNameKey = "volcano.sh/job-name"
+	JobNameKey = GroupName + "/job-name"
 	// QueueNameKey queue name key used in pod annotation/labels
-	QueueNameKey = "volcano.sh/queue-name"
+	QueueNameKey = GroupName + "/queue-name"
 	// JobNamespaceKey job namespace key
-	JobNamespaceKey = "volcano.sh/job-namespace"
+	JobNamespaceKey = GroupName + "/job-namespace"
 	// DefaultTaskSpec default task spec value
 	DefaultTaskSpec = "default"
 	// JobVersion job version key used in pod annotation
-	JobVersion = "volcano.sh/job-version"
+	JobVersion = GroupName + "/job-version"
 	// JobTypeKey job type key used in labels
-	JobTypeKey = "volcano.sh/job-type"
+	JobTypeKey = GroupName + "/job-type"
 	// PodgroupNamePrefix podgroup name prefix
 	PodgroupNamePrefix = "podgroup-"
 	// PodTemplateKey type specify an equivalence pod class
-	PodTemplateKey = "volcano.sh/template-uid"
+	PodTemplateKey = GroupName + "/template-uid"
 	// JobForwardingKey job forwarding key used in job annotation
-	JobForwardingKey = "volcano.sh/job-forwarding"
+	JobForwardingKey = GroupName + "/job-forwarding"
 	// ForwardClusterKey cluster key used in pod annotation
-	ForwardClusterKey = "volcano.sh/forward-cluster"
+	ForwardClusterKey = GroupName + "/forward-cluster"
 	// OriginalNameKey annotation key for resource name
-	OriginalNameKey = "volcano.sh/burst-name"
+	OriginalNameKey = GroupName + "/burst-name"
 	// BurstToSiloClusterAnnotation labels key for resource only in silo cluster
-	BurstToSiloClusterAnnotation = "volcano.sh/silo-resource"
+	BurstToSiloClusterAnnotation = GroupName + "/silo-resource"
 )

@@ -46,7 +46,7 @@ func getPodTemplateUID(pod *corev1.Pod) string {
 func (pc *predicateCache) PredicateWithCache(nodeName string, pod *corev1.Pod) (bool, error) {
 	podTemplateUID := getPodTemplateUID(pod)
 	if podTemplateUID == "" {
-		return false, fmt.Errorf("no anonation of volcano.sh/template-uid in pod %s", pod.Name)
+		return false, fmt.Errorf("no anonation of hliangzhao.io/template-uid in pod %s", pod.Name)
 	}
 	pc.RLock()
 	defer pc.RUnlock()

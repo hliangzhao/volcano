@@ -23,21 +23,22 @@ import (
 )
 
 const (
+	GroupName = "hliangzhao.io"
 	// PluginName indicates name of volcano scheduler plugin
 	PluginName = "task-topology"
 	// PluginWeight is task-topology plugin weight in nodeOrderFn
 	PluginWeight = "task-topology.weight"
 	// JobAffinityKey is the key to read in task-topology arguments from job annotations
-	JobAffinityKey = "volcano.sh/task-topology"
+	JobAffinityKey = GroupName + "/task-topology"
 	// OutOfBucket indicates whether task is out of any bucket
 	OutOfBucket = -1
 
 	// JobAffinityAnnotations is the key to read in task-topology affinity arguments from podgroup annotations
-	JobAffinityAnnotations = "volcano.sh/task-topology-affinity"
+	JobAffinityAnnotations = GroupName + "/task-topology-affinity"
 	// JobAntiAffinityAnnotations is the key to read in task-topology anti-affinity arguments from podgroup annotations
-	JobAntiAffinityAnnotations = "volcano.sh/task-topology-anti-affinity"
+	JobAntiAffinityAnnotations = GroupName + "/task-topology-anti-affinity"
 	// TaskOrderAnnotations is the key to read in task-topology task order arguments from podgroup annotations
-	TaskOrderAnnotations = "volcano.sh/task-topology-task-order"
+	TaskOrderAnnotations = GroupName + "/task-topology-task-order"
 )
 
 // TaskTopology is used to save affinity infos of a job read from job plugin or annotations

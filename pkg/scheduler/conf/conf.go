@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -103,4 +103,7 @@ type SchedulerConfiguration struct {
 
 	// Configurations defines configurations for actions
 	Configurations []Configuration `yaml:"configurations"`
+
+	// MetricsConfiguration defines configurations for prometheus metrics
+	MetricsConfiguration map[string]string `yaml:"metrics"`
 }

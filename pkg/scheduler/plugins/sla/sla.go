@@ -60,7 +60,7 @@ tiers:
 	  sla-waiting-time: 1h2m3s4ms5µs6ns
 
 Meanwhile, user can give individual job waiting time settings for one job via job annotations:
-apiVersion: batch.volcano.sh/v1alpha1
+apiVersion: batch.hliangzhao.io/v1alpha1
 kind: Job
 metadata:
   annotations:

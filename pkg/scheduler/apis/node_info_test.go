@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@ limitations under the License.
 
 package apis
 
-// TODO: just copied. Not checked.
-// Passed.
+// TODO: just copied.
+//  Passed.
 
 import (
 	corev1 "k8s.io/api/core/v1"
@@ -60,6 +60,7 @@ func TestNodeInfo_AddPod(t *testing.T) {
 				OversubscriptionResource: EmptyResource(),
 				Allocatable:              buildResource("8000m", "10G"),
 				Capability:               buildResource("8000m", "10G"),
+				ResourceUsage:            &NodeUsage{},
 				State:                    NodeState{Phase: Ready},
 				Tasks: map[TaskID]*TaskInfo{
 					"c1/p1": NewTaskInfo(case01Pod1),
@@ -82,6 +83,7 @@ func TestNodeInfo_AddPod(t *testing.T) {
 				OversubscriptionResource: EmptyResource(),
 				Allocatable:              buildResource("2000m", "1G"),
 				Capability:               buildResource("2000m", "1G"),
+				ResourceUsage:            &NodeUsage{},
 				State:                    NodeState{Phase: Ready},
 				Tasks:                    map[TaskID]*TaskInfo{},
 				GPUDevices:               make(map[int]*GPUDevice),
@@ -140,6 +142,7 @@ func TestNodeInfo_RemovePod(t *testing.T) {
 				Pipelined:                EmptyResource(),
 				Allocatable:              buildResource("8000m", "10G"),
 				Capability:               buildResource("8000m", "10G"),
+				ResourceUsage:            &NodeUsage{},
 				State:                    NodeState{Phase: Ready},
 				Tasks: map[TaskID]*TaskInfo{
 					"c1/p1": NewTaskInfo(case01Pod1),
@@ -155,12 +158,12 @@ func TestNodeInfo_RemovePod(t *testing.T) {
 
 		for _, pod := range test.pods {
 			pi := NewTaskInfo(pod)
-			ni.AddTask(pi)
+			_ = ni.AddTask(pi)
 		}
 
 		for _, pod := range test.rmPods {
 			pi := NewTaskInfo(pod)
-			ni.RemoveTask(pi)
+			_ = ni.RemoveTask(pi)
 		}
 
 		if !nodeInfoEqual(ni, test.expected) {
@@ -200,6 +203,7 @@ func TestNodeInfo_SetNode(t *testing.T) {
 				Pipelined:                EmptyResource(),
 				Allocatable:              buildResource("10", "10G"),
 				Capability:               buildResource("10", "10G"),
+				ResourceUsage:            &NodeUsage{},
 				State:                    NodeState{Phase: NotReady, Reason: "OutOfSync"},
 				Tasks: map[TaskID]*TaskInfo{
 					"c1/p1": NewTaskInfo(case01Pod1),
@@ -215,7 +219,7 @@ func TestNodeInfo_SetNode(t *testing.T) {
 		ni := NewNodeInfo(test.node)
 		for _, pod := range test.pods {
 			pi := NewTaskInfo(pod)
-			ni.AddTask(pi)
+			_ = ni.AddTask(pi)
 			ni.Name = pod.Spec.NodeName
 		}
 

@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,19 +19,17 @@ package cache
 import (
 	"fmt"
 	"github.com/hliangzhao/volcano/pkg/apis/scheduling"
+	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
-	"strings"
-	"testing"
-
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
-
-	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
+	"strings"
+	"testing"
 )
 
-// TODO: just copied. Not checked.
-// Passed.
+// TODO: just copied.
+//  Passed.
 
 func TestSchedulerCache_updateTask(t *testing.T) {
 	namespace := "test"
@@ -85,10 +83,10 @@ func TestSchedulerCache_updateTask(t *testing.T) {
 		test.OldTaskInfo = apis.NewTaskInfo(test.OldPod)
 		test.NewTaskInfo = apis.NewTaskInfo(test.NewPod)
 
-		err := cache.updateTask(test.OldTaskInfo, test.NewTaskInfo)
+		new := cache.updateTask(test.OldTaskInfo, test.NewTaskInfo)
 
-		if test.Expected != nil && err != nil && !strings.Contains(err.Error(), test.Expected.Error()) {
-			t.Errorf("Expected Error to be %v but got %v in case %d", test.Expected, err, i)
+		if test.Expected != nil && new != nil && !strings.Contains(new.Error(), test.Expected.Error()) {
+			t.Errorf("Expected Error to be %v but got %v in case %d", test.Expected, new, i)
 		}
 	}
 }
@@ -137,10 +135,10 @@ func TestSchedulerCache_UpdatePod(t *testing.T) {
 
 		cache.AddPod(test.OldPod)
 
-		err := cache.updatePod(test.OldPod, test.NewPod)
+		new := cache.updatePod(test.OldPod, test.NewPod)
 
-		if test.Expected != nil && err != nil && !strings.Contains(err.Error(), test.Expected.Error()) {
-			t.Errorf("Expected Error to be %v but got %v in case %d", test.Expected, err, i)
+		if test.Expected != nil && new != nil && !strings.Contains(new.Error(), test.Expected.Error()) {
+			t.Errorf("Expected Error to be %v but got %v in case %d", test.Expected, new, i)
 		}
 	}
 }

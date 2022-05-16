@@ -16,7 +16,7 @@ limitations under the License.
 
 package v1alpha1
 
-const GroupName = "scheduling.hliangzhao.io"
+const GroupName = "hliangzhao.io"
 
 // JobWaitingTime is the key of sla plugin to set maximum waiting time
 // that a job could stay Pending in service level agreement

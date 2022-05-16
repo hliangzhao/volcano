@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,7 +33,27 @@ func (e *AllocateFailError) Error() string {
 	return e.Reason
 }
 
-/* NodePhase, NodeState, and NodeInfo */
+/* NodeUsage, NodePhase, NodeState, and NodeInfo */
+
+// NodeUsage defines the usage info of a node.
+type NodeUsage struct {
+	CPUUsageAvg map[string]float64
+	MEMUsageAvg map[string]float64
+}
+
+func (nu *NodeUsage) DeepCopy() *NodeUsage {
+	ret := &NodeUsage{
+		CPUUsageAvg: map[string]float64{},
+		MEMUsageAvg: map[string]float64{},
+	}
+	for cpuName, cpuUsage := range nu.CPUUsageAvg {
+		ret.CPUUsageAvg[cpuName] = cpuUsage
+	}
+	for memName, memUsage := range nu.MEMUsageAvg {
+		ret.MEMUsageAvg[memName] = memUsage
+	}
+	return ret
+}
 
 // NodePhase defines the phase of a node.
 type NodePhase int
@@ -77,8 +97,9 @@ type NodeInfo struct {
 	// The used resource on that node, including running and terminating pods
 	Used *Resource
 
-	Allocatable *Resource
-	Capability  *Resource
+	Allocatable   *Resource
+	Capability    *Resource
+	ResourceUsage *NodeUsage
 
 	Tasks             map[TaskID]*TaskInfo
 	NumaInfo          *NumaTopoInfo
@@ -243,8 +264,9 @@ func NewNodeInfo(node *corev1.Node) *NodeInfo {
 		Idle:      EmptyResource(),
 		Used:      EmptyResource(),
 
-		Allocatable: EmptyResource(),
-		Capability:  EmptyResource(),
+		Allocatable:   EmptyResource(),
+		Capability:    EmptyResource(),
+		ResourceUsage: &NodeUsage{},
 
 		OversubscriptionResource: EmptyResource(),
 		Tasks:                    map[TaskID]*TaskInfo{},
@@ -358,8 +380,13 @@ func (ni *NodeInfo) Clone() *NodeInfo {
 	for _, p := range ni.Tasks {
 		_ = res.AddTask(p)
 	}
+
 	if ni.NumaInfo != nil {
 		res.NumaInfo = ni.NumaInfo.DeepCopy()
+	}
+
+	if ni.ResourceUsage != nil {
+		res.ResourceUsage = ni.ResourceUsage.DeepCopy()
 	}
 
 	if ni.NumaSchedulerInfo != nil {

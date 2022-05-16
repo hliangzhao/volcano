@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -49,4 +49,9 @@ func UpdateJobShare(jobNS, jobID string, share float64) {
 // RegisterJobRetries gets total number of job retries.
 func RegisterJobRetries(jobID string) {
 	jobRetryCount.WithLabelValues(jobID).Inc()
+}
+
+// DeleteJobShare delete jobShare for one job
+func DeleteJobShare(jobNs, jobID string) {
+	jobShare.DeleteLabelValues(jobNs, jobID)
 }

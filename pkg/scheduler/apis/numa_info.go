@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,6 +35,9 @@ const (
 
 	// NumaInfoLessFlag indicate the received allocatable resource is getting less
 	NumaInfoLessFlag NumaChangeFlag = 0b10
+
+	// DefaultMaxNodeScore indicates the default max node score
+	DefaultMaxNodeScore = 100
 )
 
 // PodResourceDecision is the resource allocation determined by scheduler, and passed to kubelet through pod annotation.
@@ -198,7 +201,7 @@ func (info *NumaTopoInfo) RemoveTask(ti *TaskInfo) {
 	}
 
 	// update numa topo info
-	for numaId, resList := range decision {
+	for numaId, resList := range ti.NumaInfo.ResMap {
 		for resName, resQuantity := range resList {
 			info.NumaResMap[string(resName)].UsedPerNuma[numaId] -= ResQuantity2Float64(resName, resQuantity)
 		}
@@ -260,4 +263,10 @@ func (resSets ResNumaSets) Clone() ResNumaSets {
 		newSets[resName] = resSets[resName].Clone()
 	}
 	return newSets
+}
+
+// ScoredNode is the wrapper for node during scoring
+type ScoredNode struct {
+	NodeName string
+	Score    int64
 }

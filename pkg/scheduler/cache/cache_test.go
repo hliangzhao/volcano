@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@ limitations under the License.
 
 package cache
 
-// TODO: just copied. Not checked.
-// Passed.
+// TODO: just copied.
+//  Passed.
 
 import (
 	"fmt"
@@ -213,7 +213,7 @@ func TestSchedulerCache_Bind_NodeWithInsufficientResources(t *testing.T) {
 		t.Errorf("expected task to remain the same after failed bind: \n %#v\n %#v", taskBeforeBind, taskAfterBind)
 	}
 
-	nodeAfterBind := cache.Nodes["n1"]
+	nodeAfterBind := cache.Nodes["n1"].Clone()
 	if !reflect.DeepEqual(nodeBeforeBind, nodeAfterBind) {
 		t.Errorf("expected node to remain the same after failed bind")
 	}

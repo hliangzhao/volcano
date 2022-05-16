@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,12 +25,13 @@ import (
 	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
 	volcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
 	"github.com/hliangzhao/volcano/pkg/client/clientset/versioned/scheme"
-	vcinformer "github.com/hliangzhao/volcano/pkg/client/informers/externalversions"
 	volcanoinformers "github.com/hliangzhao/volcano/pkg/client/informers/externalversions"
 	nodeinfoinformersv1alpha1 "github.com/hliangzhao/volcano/pkg/client/informers/externalversions/nodeinfo/v1alpha1"
 	schedulinginformersv1alpha1 "github.com/hliangzhao/volcano/pkg/client/informers/externalversions/scheduling/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
 	"github.com/hliangzhao/volcano/pkg/scheduler/metrics"
+	"github.com/prometheus/client_golang/api"
+	prometheusv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	corev1 "k8s.io/api/core/v1"
 	schedulingv1 "k8s.io/api/scheduling/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -59,6 +60,16 @@ import (
 	"time"
 )
 
+// constants for prometheus
+const (
+	// record name of cpu average usage defined in prometheus rules
+	cpuUsageAvg = "cpu_usage_avg"
+	// record name of mem average usage defined in prometheus rules
+	memUsageAvg = "mem_usage_avg"
+	// default interval for sync data from metrics server, the value is 5s
+	defaultMetricsInternal = 5
+)
+
 // init registers all GVKs
 func init() {
 	schemeBuilder := runtime.SchemeBuilder{
@@ -71,7 +82,7 @@ func init() {
 /* Binder related. Binder is used to bind task to node. */
 
 type defaultBinder struct {
-	kubeClient *kubernetes.Clientset
+	// kubeClient *kubernetes.Clientset
 }
 
 func NewBinder() *defaultBinder {
@@ -79,7 +90,7 @@ func NewBinder() *defaultBinder {
 }
 
 // Bind sends bind request to api server through the kube client.
-func (binder *defaultBinder) Bind(kubeClient *kubernetes.Clientset, tasks []*apis.TaskInfo) (error, []*apis.TaskInfo) {
+func (binder *defaultBinder) Bind(kubeClient *kubernetes.Clientset, tasks []*apis.TaskInfo) ([]*apis.TaskInfo, error) {
 	var errTasks []*apis.TaskInfo
 	for _, task := range tasks {
 		pod := task.Pod
@@ -105,7 +116,7 @@ func (binder *defaultBinder) Bind(kubeClient *kubernetes.Clientset, tasks []*api
 	}
 
 	if len(errTasks) > 0 {
-		return fmt.Errorf("failed to bind pods"), errTasks
+		return errTasks, fmt.Errorf("failed to bind pods")
 	}
 
 	return nil, nil
@@ -119,6 +130,7 @@ type defaultEvictor struct {
 }
 
 // Evict evicts pod because of reason.
+// Evict is used to guarantee that both task and job could be in the original state if error happens.
 func (evictor *defaultEvictor) Evict(pod *corev1.Pod, reason string) error {
 	klog.V(3).Infof("Evicting pod %v/%v, because of %v", pod.Namespace, pod.Name, reason)
 
@@ -213,14 +225,35 @@ func (vb *defaultVolumeBinder) AllocateVolumes(task *apis.TaskInfo, hostname str
 	return err
 }
 
+func (vb *defaultVolumeBinder) RevertVolumes(task *apis.TaskInfo, podVolumes *volumebinding.PodVolumes) {
+	if podVolumes != nil {
+		klog.Infof("Revert assumed volumes for task %v/%v on node %s", task.Namespace, task.Name, task.NodeName)
+		vb.volumeBinder.RevertAssumedPodVolumes(podVolumes)
+		task.VolumeReady = false
+		task.PodVolumes = nil
+	}
+}
+
 // GetPodVolumes gets pod volume binding status of task on the given node.
 func (vb *defaultVolumeBinder) GetPodVolumes(task *apis.TaskInfo, node *corev1.Node) (*volumebinding.PodVolumes, error) {
-	boundClaims, claimsToBind, _, err := vb.volumeBinder.GetPodVolumes(task.Pod)
+	boundClaims, claimsToBind, unboundClaimsImmediate, err := vb.volumeBinder.GetPodVolumes(task.Pod)
 	if err != nil {
 		return nil, err
 	}
+	if len(unboundClaimsImmediate) > 0 {
+		return nil, fmt.Errorf("pod has unbound immeidate PersistentVolumeClaims")
+	}
 
-	podVolumes, _, err := vb.volumeBinder.FindPodVolumes(task.Pod, boundClaims, claimsToBind, node)
+	podVolumes, reasons, err := vb.volumeBinder.FindPodVolumes(task.Pod, boundClaims, claimsToBind, node)
+	if err != nil {
+		return nil, err
+	} else if len(reasons) > 0 {
+		var errors []string
+		for _, reason := range reasons {
+			errors = append(errors, string(reason))
+		}
+		return nil, fmt.Errorf(strings.Join(errors, ","))
+	}
 	return podVolumes, err
 }
 
@@ -240,7 +273,7 @@ type pgBinder struct {
 	vcClient   *volcanoclient.Clientset
 }
 
-// Bind binds job to cluster. Specifically, it adds silo cluster annotation on pod and podgroup.
+// Bind binds job to podgroup. Specifically, it adds silo cluster annotation on pod and podgroup.
 func (pgb *pgBinder) Bind(job *apis.JobInfo, cluster string) (*apis.JobInfo, error) {
 	if len(job.Tasks) == 0 {
 		klog.V(4).Infof("Job pods have not been created yet")
@@ -327,6 +360,7 @@ type SchedulerCache struct {
 	defaultQueue         string
 	schedulerName        string
 	nodeSelectorLabels   map[string]string
+	metricsConf          map[string]string
 
 	NamespaceCollection map[string]*apis.NamespaceCollection
 
@@ -511,6 +545,7 @@ func newSchedulerCache(config *rest.Config, schedulerName string, defaultQueue s
 	// }
 	// TODO: temporarily replacement
 	capacityCheck = nil
+
 	sc.VolumeBinder = &defaultVolumeBinder{
 		volumeBinder: volumebinding.NewVolumeBinder(
 			sc.kubeClient,
@@ -576,7 +611,7 @@ func newSchedulerCache(config *rest.Config, schedulerName string, defaultQueue s
 		DeleteFunc: sc.DeleteResourceQuota,
 	})
 
-	vcInformers := vcinformer.NewSharedInformerFactory(sc.vcClient, 0)
+	vcInformers := volcanoinformers.NewSharedInformerFactory(sc.vcClient, 0)
 	sc.vcInformerFactory = vcInformers
 
 	// create informer for PodGroup information
@@ -814,6 +849,7 @@ func (sc *SchedulerCache) processCleanupJob() {
 
 	if apis.JobTerminated(job) {
 		delete(sc.Jobs, job.UID)
+		metrics.DeleteJobShare(job.Namespace, job.Name)
 		klog.V(3).Infof("Job <%v:%v/%v> was deleted.", job.UID, job.Namespace, job.Name)
 	} else {
 		// Retry
@@ -891,6 +927,13 @@ func (sc *SchedulerCache) Run(stopCh <-chan struct{}) {
 
 	// Bind volumes and hosts for tasks.
 	go wait.Until(sc.processBindTask, time.Millisecond*20, stopCh)
+
+	// Get metrics data
+	interval, err := time.ParseDuration(sc.metricsConf["interval"])
+	if err != nil || interval <= 0 {
+		interval = time.Duration(defaultMetricsInternal)
+	}
+	go wait.Until(sc.GetMetricsData, interval, stopCh)
 }
 
 // Evict will evict the pod. If error occurs both task and job are guaranteed to be in the original state.
@@ -913,8 +956,6 @@ func (sc *SchedulerCache) Evict(taskInfo *apis.TaskInfo, reason string) error {
 	if err = job.UpdateTaskStatus(task, apis.Releasing); err != nil {
 		return err
 	}
-
-	// TODO: why before evict, bind it to node first?
 
 	// Add new task to node.
 	if err = node.UpdateTask(task); err != nil {
@@ -1001,6 +1042,10 @@ func podConditionHaveUpdate(status *corev1.PodStatus, condition *corev1.PodCondi
 		condition.Message == oldCondition.Message &&
 		condition.LastProbeTime.Equal(&oldCondition.LastProbeTime) &&
 		lastTransitTime.Equal(&oldCondition.LastTransitionTime))
+}
+
+func (sc *SchedulerCache) EventRecorder() record.EventRecorder {
+	return sc.Recorder
 }
 
 // taskUnschedulable updates pod status of pending task
@@ -1093,7 +1138,7 @@ func (sc *SchedulerCache) UpdateJobStatus(job *apis.JobInfo, updatePg bool) (*ap
 func (sc *SchedulerCache) Bind(tasks []*apis.TaskInfo) error {
 	go func(taskArr []*apis.TaskInfo) {
 		tmp := time.Now()
-		err, errTasks := sc.Binder.Bind(sc.kubeClient, taskArr)
+		errTasks, err := sc.Binder.Bind(sc.kubeClient, taskArr)
 		if err != nil {
 			klog.V(3).Infof("bind ok, latency %v", time.Since(tmp))
 			for _, task := range tasks {
@@ -1103,6 +1148,7 @@ func (sc *SchedulerCache) Bind(tasks []*apis.TaskInfo) error {
 		} else {
 			for _, task := range errTasks {
 				klog.V(2).Infof("reSyncTask task %s", task.Name)
+				sc.VolumeBinder.RevertVolumes(task, task.PodVolumes)
 				sc.reSyncTask(task)
 			}
 		}
@@ -1122,6 +1168,10 @@ func (sc *SchedulerCache) BindPodGroup(job *apis.JobInfo, cluster string) error 
 
 func (sc *SchedulerCache) BindVolumes(task *apis.TaskInfo, podVolumes *volumebinding.PodVolumes) error {
 	return sc.VolumeBinder.BindVolumes(task, podVolumes)
+}
+
+func (sc *SchedulerCache) RevertVolumes(task *apis.TaskInfo, podVolumes *volumebinding.PodVolumes) {
+	sc.VolumeBinder.RevertVolumes(task, podVolumes)
 }
 
 func (sc *SchedulerCache) AllocateVolumes(task *apis.TaskInfo, hostname string, podVolumes *volumebinding.PodVolumes) error {
@@ -1154,6 +1204,12 @@ func (sc *SchedulerCache) AddBindTask(taskInfo *apis.TaskInfo) error {
 	if err = job.UpdateTaskStatus(task, apis.Binding); err != nil {
 		return err
 	}
+
+	err = taskInfo.SetPodResourceDecision()
+	if err != nil {
+		return fmt.Errorf("set task %v/%v resource decision failed, err %v", task.Namespace, task.Name, err)
+	}
+	task.NumaInfo = taskInfo.NumaInfo.Clone()
 
 	// Add task to the node.
 	if err = node.AddTask(task); err != nil {
@@ -1188,4 +1244,79 @@ func (sc *SchedulerCache) findJobAndTask(taskInfo *apis.TaskInfo) (*apis.JobInfo
 	}
 
 	return job, task, nil
+}
+
+func (sc *SchedulerCache) SetMetricsConf(conf map[string]string) {
+	sc.metricsConf = conf
+}
+
+func (sc *SchedulerCache) GetMetricsData() {
+	// NOTE: this func demonstrates how to use prometheus client to collect usage info, which could be used for RL agent training
+	address := sc.metricsConf["address"]
+	if len(address) == 0 {
+		return
+	}
+	klog.V(4).Infof("Get metrics from Prometheus: %s", address)
+	client, err := api.NewClient(api.Config{
+		Address: address,
+	})
+	if err != nil {
+		klog.Errorf("Error creating client: %v\n", err)
+		return
+	}
+	v1api := prometheusv1.NewAPI(client)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	nodeUsageMap := make(map[string]*apis.NodeUsage)
+	sc.Mutex.Lock()
+	for k := range sc.Nodes {
+		nodeUsageMap[k] = &apis.NodeUsage{
+			CPUUsageAvg: make(map[string]float64),
+			MEMUsageAvg: make(map[string]float64),
+		}
+	}
+	sc.Mutex.Unlock()
+
+	supportedPeriods := []string{"5m"}
+	supportedMetrics := []string{cpuUsageAvg, memUsageAvg}
+	for node := range nodeUsageMap {
+		for _, period := range supportedPeriods {
+			for _, metric := range supportedMetrics {
+				queryStr := fmt.Sprintf("%s_%s{instance=\"%s\"}", metric, period, node)
+				klog.V(4).Infof("Query prometheus by %s", queryStr)
+				res, warnings, err := v1api.Query(ctx, queryStr, time.Now())
+				if err != nil {
+					klog.Errorf("Error querying Prometheus: %v", err)
+				}
+				if len(warnings) > 0 {
+					klog.V(3).Infof("Warning querying Prometheus: %v", warnings)
+				}
+
+				rowValues := strings.Split(strings.TrimSpace(res.String()), "=>")
+				value := strings.Split(strings.TrimSpace(rowValues[1]), " ")
+				switch metric {
+				case cpuUsageAvg:
+					cpuUsage, _ := strconv.ParseFloat(value[0], 64)
+					nodeUsageMap[node].CPUUsageAvg[period] = cpuUsage
+					klog.V(4).Infof("node: %v, CpuUsageAvg: %v, period:%v", node, cpuUsage, period)
+				case memUsageAvg:
+					memUsage, _ := strconv.ParseFloat(value[0], 64)
+					nodeUsageMap[node].MEMUsageAvg[period] = memUsage
+					klog.V(4).Infof("node: %v, MemUsageAvg: %v, period:%v", node, memUsage, period)
+				}
+			}
+		}
+	}
+	sc.setMetricsData(nodeUsageMap)
+}
+
+func (sc *SchedulerCache) setMetricsData(usageInfo map[string]*apis.NodeUsage) {
+	sc.Mutex.Lock()
+	defer sc.Mutex.Unlock()
+	for k := range usageInfo {
+		nodeInfo, ok := sc.Nodes[k]
+		if ok {
+			nodeInfo.ResourceUsage = usageInfo[k]
+		}
+	}
 }
