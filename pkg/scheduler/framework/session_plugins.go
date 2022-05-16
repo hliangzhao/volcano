@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -109,10 +109,15 @@ func (sess *Session) AddOverusedFn(name string, fn apis.ValidateFn) {
 	sess.overUsedFns[name] = fn
 }
 
-// AddUnderusedResourceFn adds underused function.
-func (sess *Session) AddUnderusedResourceFn(name string, fn apis.UnderUsedResourceFn) {
-	sess.underUsedFns[name] = fn
+// AddAllocatableFn add allocatable function
+func (sess *Session) AddAllocatableFn(name string, fn apis.AllocatableFn) {
+	sess.allocatableFns[name] = fn
 }
+
+// AddUnderusedResourceFn adds underused function.
+// func (sess *Session) AddUnderusedResourceFn(name string, fn apis.UnderUsedResourceFn) {
+// 	sess.underUsedFns[name] = fn
+// }
 
 // AddJobValidFn adds job valid function.
 func (sess *Session) AddJobValidFn(name string, fn apis.ValidateExFn) {
@@ -140,7 +145,7 @@ func (sess *Session) AddReservedNodesFn(name string, fn apis.ReservedNodesFn) {
 }
 
 // AddVictimTasksFns adds victimTasksFns function.
-func (sess *Session) AddVictimTasksFns(name string, fn apis.VictimTasksFn) {
+func (sess *Session) AddVictimTasksFns(name string, fn []apis.VictimTasksFn) {
 	sess.victimTasksFns[name] = fn
 }
 
@@ -272,24 +277,41 @@ func (sess *Session) Overused(queue *apis.QueueInfo) bool {
 	return false
 }
 
-// UnderusedResources invokes the underused func of the plugins, and it returns underUsedResourceList.
-func (sess *Session) UnderusedResources(queue *apis.QueueInfo) apis.ResourceNameList {
-	if len(sess.underUsedFns) == 0 {
-		return nil
-	}
-	// TODO: what if there are multiple underUsedFns?
+// Allocatable invoke allocatable function of the plugins
+func (sess *Session) Allocatable(queue *apis.QueueInfo, candidate *apis.TaskInfo) bool {
 	for _, tier := range sess.Tiers {
 		for _, plugin := range tier.Plugins {
-			fn, found := sess.underUsedFns[plugin.Name]
+			af, found := sess.allocatableFns[plugin.Name]
 			if !found {
 				continue
 			}
-			underUsedResourceList := fn(queue)
-			return underUsedResourceList
+			if !af(queue, candidate) {
+				return false
+			}
 		}
 	}
-	return apis.ResourceNameList{}
+
+	return true
 }
+
+// UnderusedResources invokes the underused func of the plugins, and it returns underUsedResourceList.
+// func (sess *Session) UnderusedResources(queue *apis.QueueInfo) apis.ResourceNameList {
+// 	if len(sess.underUsedFns) == 0 {
+// 		return nil
+// 	}
+// 	// TODO: what if there are multiple underUsedFns?
+// 	for _, tier := range sess.Tiers {
+// 		for _, plugin := range tier.Plugins {
+// 			fn, found := sess.underUsedFns[plugin.Name]
+// 			if !found {
+// 				continue
+// 			}
+// 			underUsedResourceList := fn(queue)
+// 			return underUsedResourceList
+// 		}
+// 	}
+// 	return apis.ResourceNameList{}
+// }
 
 // JobReady invoke job ready function of the plugins, and it returns true is the input obj is judged as ready by all plugins in sess.
 func (sess *Session) JobReady(obj interface{}) bool {
@@ -452,46 +474,69 @@ func (sess *Session) TargetJob(jobs []*apis.JobInfo) *apis.JobInfo {
 }
 
 // VictimTasks invokes ReservedNodes function of the plugins.
-func (sess *Session) VictimTasks() []*apis.TaskInfo {
-	var victims []*apis.TaskInfo
-	var init bool
-
+func (sess *Session) VictimTasks(tasks []*apis.TaskInfo) map[*apis.TaskInfo]bool {
+	// var victims []*apis.TaskInfo
+	// var init bool
+	//
+	// for _, tier := range sess.Tiers {
+	// 	for _, plugin := range tier.Plugins {
+	// 		if !isEnabled(plugin.EnabledVictim) {
+	// 			continue
+	// 		}
+	//
+	// 		fn, found := sess.victimTasksFns[plugin.Name]
+	// 		if !found {
+	// 			continue
+	// 		}
+	// 		candidates := fn()
+	// 		if !init {
+	// 			victims = candidates
+	// 			init = true
+	// 		} else {
+	// 			var intersection []*apis.TaskInfo
+	// 			// Get intersection of victims and candidates.
+	// 			for _, v := range victims {
+	// 				for _, c := range candidates {
+	// 					if v.UID == c.UID {
+	// 						intersection = append(intersection, v)
+	// 					}
+	// 				}
+	// 			}
+	//
+	// 			// Update victims to intersection
+	// 			victims = intersection
+	// 		}
+	// 	}
+	// 	// Plugins in this tier made decision if victims is not nil
+	// 	if victims != nil {
+	// 		return victims
+	// 	}
+	// }
+	//
+	// return victims
+	// different filters may add the same task to victims, so use a map to remove duplicate tasks.
+	victimSet := make(map[*apis.TaskInfo]bool)
 	for _, tier := range sess.Tiers {
 		for _, plugin := range tier.Plugins {
 			if !isEnabled(plugin.EnabledVictim) {
 				continue
 			}
-
-			fn, found := sess.victimTasksFns[plugin.Name]
+			fns, found := sess.victimTasksFns[plugin.Name]
 			if !found {
 				continue
 			}
-			candidates := fn()
-			if !init {
-				victims = candidates
-				init = true
-			} else {
-				var intersection []*apis.TaskInfo
-				// Get intersection of victims and candidates.
-				for _, v := range victims {
-					for _, c := range candidates {
-						if v.UID == c.UID {
-							intersection = append(intersection, v)
-						}
-					}
+			for _, fn := range fns {
+				victimTasks := fn(tasks)
+				for _, victim := range victimTasks {
+					victimSet[victim] = true
 				}
-
-				// Update victims to intersection
-				victims = intersection
 			}
 		}
-		// Plugins in this tier made decision if victims is not nil
-		if victims != nil {
-			return victims
+		if len(victimSet) > 0 {
+			return victimSet
 		}
 	}
-
-	return victims
+	return victimSet
 }
 
 // ReservedNodes invokes ReservedNodes function of the plugins.
@@ -636,7 +681,7 @@ func (sess *Session) TaskOrderFn(l, r interface{}) bool {
 		return res < 0
 	}
 
-	// If no task order funcs, order task by default func.
+	// If no task order functions, order task by default func.
 	lv := l.(*apis.TaskInfo)
 	rv := r.(*apis.TaskInfo)
 	return helpers.CompareTask(lv, rv)

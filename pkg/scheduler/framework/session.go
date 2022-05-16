@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@ package framework
 import (
 	"fmt"
 	"github.com/hliangzhao/volcano/pkg/apis/scheduling"
+	schedulingscheme "github.com/hliangzhao/volcano/pkg/apis/scheduling/scheme"
+	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
 	"github.com/hliangzhao/volcano/pkg/scheduler/cache"
 	"github.com/hliangzhao/volcano/pkg/scheduler/conf"
@@ -30,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/volumebinding"
 )
@@ -41,6 +44,7 @@ type Session struct {
 
 	// kube client, informers, and volcano scheduler cache
 	kubeClient      kubernetes.Interface
+	recorder        record.EventRecorder
 	cache           cache.Cache
 	informerFactory informers.SharedInformerFactory
 
@@ -78,16 +82,17 @@ type Session struct {
 	preemptableFns    map[string]apis.EvictableFn
 	reclaimableFns    map[string]apis.EvictableFn
 	overUsedFns       map[string]apis.ValidateFn
-	underUsedFns      map[string]apis.UnderUsedResourceFn
-	jobReadyFns       map[string]apis.ValidateFn
-	jobPipelinedFns   map[string]apis.VoteFn
-	jobValidFns       map[string]apis.ValidateExFn
-	jobEnqueuableFns  map[string]apis.VoteFn
-	jobEnqueuedFns    map[string]apis.JobEnqueuedFn
-	targetJobFns      map[string]apis.TargetJobFn
-	reservedNodesFns  map[string]apis.ReservedNodesFn
-	victimTasksFns    map[string]apis.VictimTasksFn
-	jobStarvingFns    map[string]apis.ValidateFn
+	allocatableFns    map[string]apis.AllocatableFn
+	// underUsedFns      map[string]apis.UnderUsedResourceFn
+	jobReadyFns      map[string]apis.ValidateFn
+	jobPipelinedFns  map[string]apis.VoteFn
+	jobValidFns      map[string]apis.ValidateExFn
+	jobEnqueuableFns map[string]apis.VoteFn
+	jobEnqueuedFns   map[string]apis.JobEnqueuedFn
+	targetJobFns     map[string]apis.TargetJobFn
+	reservedNodesFns map[string]apis.ReservedNodesFn
+	victimTasksFns   map[string][]apis.VictimTasksFn
+	jobStarvingFns   map[string]apis.ValidateFn
 }
 
 // openSession opens a scheduling session based on the input cluster cache info.
@@ -95,6 +100,7 @@ func openSession(cache cache.Cache) *Session {
 	sess := &Session{
 		UID:             uuid.NewUUID(),
 		kubeClient:      cache.Client(),
+		recorder:        cache.EventRecorder(),
 		cache:           cache,
 		informerFactory: cache.SharedInformerFactory(),
 
@@ -121,16 +127,17 @@ func openSession(cache cache.Cache) *Session {
 		preemptableFns:    map[string]apis.EvictableFn{},
 		reclaimableFns:    map[string]apis.EvictableFn{},
 		overUsedFns:       map[string]apis.ValidateFn{},
-		underUsedFns:      map[string]apis.UnderUsedResourceFn{},
-		jobReadyFns:       map[string]apis.ValidateFn{},
-		jobPipelinedFns:   map[string]apis.VoteFn{},
-		jobValidFns:       map[string]apis.ValidateExFn{},
-		jobEnqueuableFns:  map[string]apis.VoteFn{},
-		jobEnqueuedFns:    map[string]apis.JobEnqueuedFn{},
-		targetJobFns:      map[string]apis.TargetJobFn{},
-		reservedNodesFns:  map[string]apis.ReservedNodesFn{},
-		victimTasksFns:    map[string]apis.VictimTasksFn{},
-		jobStarvingFns:    map[string]apis.ValidateFn{},
+		allocatableFns:    map[string]apis.AllocatableFn{},
+		// underUsedFns:      map[string]apis.UnderUsedResourceFn{},
+		jobReadyFns:      map[string]apis.ValidateFn{},
+		jobPipelinedFns:  map[string]apis.VoteFn{},
+		jobValidFns:      map[string]apis.ValidateExFn{},
+		jobEnqueuableFns: map[string]apis.VoteFn{},
+		jobEnqueuedFns:   map[string]apis.JobEnqueuedFn{},
+		targetJobFns:     map[string]apis.TargetJobFn{},
+		reservedNodesFns: map[string]apis.ReservedNodesFn{},
+		victimTasksFns:   map[string][]apis.VictimTasksFn{},
+		jobStarvingFns:   map[string]apis.ValidateFn{},
 	}
 
 	snapshot := cache.Snapshot()
@@ -198,6 +205,20 @@ func closeSession(sess *Session) {
 	sess.TotalResource = nil
 
 	klog.V(3).Infof("Close Session %v", sess.UID)
+}
+
+// RecordPodGroupEvent records podGroup events.
+func (sess Session) RecordPodGroupEvent(podGroup *apis.PodGroup, eventType, reason, msg string) {
+	if podGroup == nil {
+		return
+	}
+
+	pg := &schedulingv1alpha1.PodGroup{}
+	if err := schedulingscheme.Scheme.Convert(&podGroup.PodGroup, pg, nil); err != nil {
+		klog.Errorf("Error while converting PodGroup to v1alpha1.PodGroup with error: %v", err)
+		return
+	}
+	sess.recorder.Eventf(pg, eventType, reason, msg)
 }
 
 // String returns nodes and jobs information in the session.
@@ -349,6 +370,11 @@ func (sess *Session) Allocate(task *apis.TaskInfo, nodeInfo *apis.NodeInfo) erro
 	if err := sess.cache.AllocateVolumes(task, hostname, podVolumes); err != nil {
 		return err
 	}
+	defer func() {
+		if err != nil {
+			sess.cache.RevertVolumes(task, podVolumes)
+		}
+	}()
 
 	task.Pod.Spec.NodeName = hostname
 	task.PodVolumes = podVolumes
@@ -399,6 +425,8 @@ func (sess *Session) Allocate(task *apis.TaskInfo, nodeInfo *apis.NodeInfo) erro
 				return err
 			}
 		}
+	} else {
+		sess.cache.RevertVolumes(task, podVolumes)
 	}
 
 	return nil

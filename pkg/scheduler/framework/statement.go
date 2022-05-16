@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -306,6 +306,12 @@ func (s *Statement) Allocate(task *apis.TaskInfo, nodeInfo *apis.NodeInfo) error
 	if err = s.sess.cache.AllocateVolumes(task, hostname, podVolumes); err != nil {
 		return err
 	}
+	defer func() {
+		if err != nil {
+			s.sess.cache.RevertVolumes(task, podVolumes)
+		}
+	}()
+
 	task.Pod.Spec.NodeName = hostname
 	task.PodVolumes = podVolumes
 

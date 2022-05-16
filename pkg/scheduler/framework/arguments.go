@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,10 +19,9 @@ package framework
 import (
 	"github.com/hliangzhao/volcano/pkg/scheduler/conf"
 	"k8s.io/klog/v2"
-	"strconv"
 )
 
-type Arguments map[string]string
+type Arguments map[string]interface{}
 
 // GetArgOfActionFromConf returns argument of action reading from configuration of schedule.
 func GetArgOfActionFromConf(configs []conf.Configuration, actionName string) Arguments {
@@ -34,7 +33,7 @@ func GetArgOfActionFromConf(configs []conf.Configuration, actionName string) Arg
 	return nil
 }
 
-/* The following funcs parse input pointer and get corresponding param of different types. */
+/* The following functions parse input pointer and get corresponding param of different types. */
 
 func (a Arguments) GetInt(ptr *int, key string) {
 	if ptr == nil {
@@ -46,9 +45,9 @@ func (a Arguments) GetInt(ptr *int, key string) {
 		return
 	}
 
-	value, err := strconv.Atoi(argv)
-	if err != nil {
-		klog.Warningf("Could not parse argument: %s for key %s, with err %v", argv, key, err)
+	value, ok := argv.(int)
+	if !ok {
+		klog.Warningf("Could not parse argument: %s for key %s to int", argv, key)
 		return
 	}
 
@@ -61,13 +60,13 @@ func (a Arguments) GetFloat64(ptr *float64, key string) {
 	}
 
 	argv, ok := a[key]
-	if !ok || len(argv) == 0 {
+	if !ok {
 		return
 	}
 
-	value, err := strconv.ParseFloat(argv, 64)
-	if err != nil {
-		klog.Warningf("Could not parse argument: %s for key %s, with err %v", argv, key, err)
+	value, ok := argv.(float64)
+	if !ok {
+		klog.Warningf("Could not parse argument: %s for key %s to float64", argv, key)
 		return
 	}
 
@@ -80,13 +79,13 @@ func (a Arguments) GetBool(ptr *bool, key string) {
 	}
 
 	argv, ok := a[key]
-	if !ok || argv == "" {
+	if !ok {
 		return
 	}
 
-	value, err := strconv.ParseBool(argv)
-	if err != nil {
-		klog.Warningf("Could not parse argument: %s for key %s, with err %v", argv, key, err)
+	value, ok := argv.(bool)
+	if !ok {
+		klog.Warningf("Could not parse argument: %s for key %s to bool", argv, key)
 		return
 	}
 

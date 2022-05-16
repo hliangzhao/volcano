@@ -76,7 +76,7 @@ type PluginOption struct {
 	EnabledJobStarving *bool `yaml:"enableJobStarving"`
 
 	// Arguments defines the different arguments that can be given to different plugins
-	Arguments map[string]string `yaml:"arguments"`
+	Arguments map[string]interface{} `yaml:"arguments"`
 }
 
 // Tier defines plugin tier.
@@ -90,7 +90,7 @@ type Configuration struct {
 	Name string `yaml:"name"`
 
 	// Arguments defines the different arguments that can be given to specified action
-	Arguments map[string]string `yaml:"arguments"`
+	Arguments map[string]interface{} `yaml:"arguments"`
 }
 
 // SchedulerConfiguration defines the configuration of scheduler.

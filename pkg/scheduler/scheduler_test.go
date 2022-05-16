@@ -16,6 +16,9 @@ limitations under the License.
 
 package scheduler
 
+// TODO: just copied.
+//  Passed.
+
 import (
 	_ "github.com/hliangzhao/volcano/pkg/scheduler/actions"
 	"github.com/hliangzhao/volcano/pkg/scheduler/conf"
