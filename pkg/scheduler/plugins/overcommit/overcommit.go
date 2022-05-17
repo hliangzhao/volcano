@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import (
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
 	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
 	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/utils"
+	corev1 `k8s.io/api/core/v1`
 	"k8s.io/klog/v2"
 )
 
@@ -90,9 +91,19 @@ func (op *overcommitPlugin) OnSessionOpen(sess *framework.Session) {
 
 	// calculate inqueue job resources
 	for _, job := range sess.Jobs {
-		if job.PodGroup.Status.Phase == scheduling.PodGroupInqueue &&
-			job.PodGroup.Spec.MinResources != nil {
+		if job.PodGroup.Status.Phase == scheduling.PodGroupInqueue && job.PodGroup.Spec.MinResources != nil {
 			op.inqueueResource.Add(apis.NewResource(*job.PodGroup.Spec.MinResources))
+			continue
+		}
+		// calculate inqueue resource for running jobs
+		// the judgement 'job.PodGroup.Status.Running >= job.PodGroup.Spec.MinMember' will work on cases such as the following condition:
+		// Considering a Spark job is completed(driver pod is completed) while the podgroup keeps running, the allocated resource will be reserved again if without the judgement.
+		if job.PodGroup.Status.Phase == scheduling.PodGroupRunning &&
+			job.PodGroup.Spec.MinResources != nil &&
+			job.PodGroup.Status.Running >= job.PodGroup.Spec.MinMember {
+			allocated := utils.GetAllocatedResource(job)
+			inqueued := utils.GetInqueueResource(job, allocated)
+			op.inqueueResource.Add(inqueued)
 		}
 	}
 
@@ -114,6 +125,7 @@ func (op *overcommitPlugin) OnSessionOpen(sess *framework.Session) {
 		}
 		klog.V(4).Infof("Resource in cluster is overused, reject job <%s/%s> to be inqueue",
 			job.Namespace, job.Name)
+		sess.RecordPodGroupEvent(job.PodGroup, corev1.EventTypeNormal, string(scheduling.PodGroupUnschedulableType), "resource in cluster is overused")
 		return utils.Reject
 	})
 

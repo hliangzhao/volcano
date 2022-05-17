@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -271,4 +271,53 @@ func NormalizeScore(maxPriority int64, reverse bool, scores map[string]int64) {
 		}
 		scores[key] = score
 	}
+}
+
+// GetAllocatedResource returns allocated resource for given job
+func GetAllocatedResource(job *apis.JobInfo) *apis.Resource {
+	allocated := &apis.Resource{}
+	for status, tasks := range job.TaskStatusIndex {
+		if apis.AllocatedStatus(status) {
+			for _, t := range tasks {
+				allocated.Add(t.ResReq)
+			}
+		}
+	}
+	return allocated
+}
+
+// GetInqueueResource returns reserved resource for running job whose part of pods have not been allocated resource.
+func GetInqueueResource(job *apis.JobInfo, allocated *apis.Resource) *apis.Resource {
+	inqueue := &apis.Resource{}
+	for rName, rQuantity := range *job.PodGroup.Spec.MinResources {
+		switch rName {
+		case corev1.ResourceCPU:
+			reservedCPU := float64(rQuantity.Value()) - allocated.MilliCPU
+			if reservedCPU > 0 {
+				inqueue.MilliCPU = reservedCPU
+			}
+		case corev1.ResourceMemory:
+			reservedMemory := float64(rQuantity.Value()) - allocated.Memory
+			if reservedMemory > 0 {
+				inqueue.Memory = reservedMemory
+			}
+		default:
+			if apis.IsCountQuota(rName) || !apis.IsScalarResourceName(rName) {
+				continue
+			}
+
+			if inqueue.ScalarResources == nil {
+				inqueue.ScalarResources = make(map[corev1.ResourceName]float64)
+			}
+			if allocatedMount, ok := allocated.ScalarResources[rName]; !ok {
+				inqueue.ScalarResources[rName] = float64(rQuantity.Value())
+			} else {
+				reservedScalarRes := float64(rQuantity.Value()) - allocatedMount
+				if reservedScalarRes > 0 {
+					inqueue.ScalarResources[rName] = reservedScalarRes
+				}
+			}
+		}
+	}
+	return inqueue
 }

@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -109,8 +109,12 @@ func (reclaim *Action) Execute(sess *framework.Session) {
 			task = tasks.Pop().(*apis.TaskInfo)
 		}
 
-		taskRequest := task.ResReq.ResourceNames()
-		if underusedResources := sess.UnderusedResources(queue); underusedResources != nil && !underusedResources.Contains(taskRequest) {
+		// taskRequest := task.ResReq.ResourceNames()
+		// if underusedResources := sess.UnderusedResources(queue); underusedResources != nil && !underusedResources.Contains(taskRequest) {
+		// 	klog.V(3).Infof("Queue <%s> is overused when considering task <%s>, ignore it.", queue.Name, task.Name)
+		// 	continue
+		// }
+		if !sess.Allocatable(queue, task) {
 			klog.V(3).Infof("Queue <%s> is overused when considering task <%s>, ignore it.", queue.Name, task.Name)
 			continue
 		}

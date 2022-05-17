@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -130,7 +130,10 @@ func calculateWeight(args framework.Arguments) priorityWeight {
 		weight.BinPackingMem = 1
 	}
 
-	resStr := args[AdditionalResources]
+	resStr, ok := args[AdditionalResources].(string)
+	if !ok {
+		resStr = ""
+	}
 	resources := strings.Split(resStr, ",")
 	for _, res := range resources {
 		res = strings.TrimSpace(res)

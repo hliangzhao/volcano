@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,6 +24,10 @@ import (
 	"k8s.io/klog/v2"
 )
 
+const (
+	Preempt = "preempt"
+)
+
 type Action struct{}
 
 func New() *Action {
@@ -31,7 +35,7 @@ func New() *Action {
 }
 
 func (preempt *Action) Name() string {
-	return "preempt"
+	return Preempt
 }
 
 func (preempt *Action) Initialize() {}
@@ -52,7 +56,7 @@ func (preempt *Action) Execute(sess *framework.Session) {
 			continue
 		}
 		if valid := sess.JobValid(job); valid != nil && !valid.Pass {
-			klog.V(4).Infof("Job <%s/%s> Queue <%s> skip preemption, reason: %v, message %v",
+			klog.V(4).Infof("Job <%s/%s> Queue <%s> skip preempt, reason: %v, message %v",
 				job.Namespace, job.Name, job.Queue, valid.Reason, valid.Message)
 			continue
 		}
@@ -188,7 +192,7 @@ func (preempt *Action) UnInitialize() {}
 func preemption(sess *framework.Session, stmt *framework.Statement, preemptor *apis.TaskInfo,
 	filter func(*apis.TaskInfo) bool, predicateHelper utils.PredicateHelper) (bool, error) {
 
-	// preemption is successful or not
+	// preempt is successful or not
 	assigned := false
 
 	allNodes := sess.NodeList
@@ -205,7 +209,7 @@ func preemption(sess *framework.Session, stmt *framework.Statement, preemptor *a
 		klog.V(3).Infof("Considering Task <%s/%s> on Node <%s>.",
 			preemptor.Namespace, preemptor.Name, node.Name)
 
-		// get victims of this preemption
+		// get victims of this preempt
 		var preemptees []*apis.TaskInfo
 		for _, task := range node.Tasks {
 			if filter == nil {
@@ -268,11 +272,16 @@ func preemption(sess *framework.Session, stmt *framework.Statement, preemptor *a
 
 func victimTasks(sess *framework.Session) {
 	stmt := framework.NewStatement(sess)
-	vTasks := sess.VictimTasks()
-	for _, v := range vTasks {
-		if err := stmt.Evict(v.Clone(), "evict"); err != nil {
+	tasks := make([]*apis.TaskInfo, 0)
+	victimTasksMap := sess.VictimTasks(tasks)
+	vts := make([]*apis.TaskInfo, 0)
+	for task := range victimTasksMap {
+		vts = append(vts, task)
+	}
+	for _, victim := range vts {
+		if err := stmt.Evict(victim.Clone(), "evict"); err != nil {
 			klog.Errorf("Failed to evict Task <%s/%s>: %v",
-				v.Namespace, v.Name, err)
+				victim.Namespace, victim.Name, err)
 			continue
 		}
 	}

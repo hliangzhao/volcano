@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,6 +23,10 @@ import (
 	"k8s.io/klog/v2"
 )
 
+const (
+	Backfill = "backfill"
+)
+
 type Action struct{}
 
 func New() *Action {
@@ -30,7 +34,7 @@ func New() *Action {
 }
 
 func (backfill *Action) Name() string {
-	return "backfill"
+	return Backfill
 }
 
 func (backfill *Action) Initialize() {}

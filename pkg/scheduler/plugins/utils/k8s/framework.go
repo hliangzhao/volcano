@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ type Framework struct {
 }
 
 // TODO: To make Framework legal, we need to implement the inherited functions.
-//  Currently, they re not implemented.
+//  Currently, they are not implemented.
 
 var _ k8sframework.Handle = &Framework{}
 

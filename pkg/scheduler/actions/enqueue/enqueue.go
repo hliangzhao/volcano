@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,6 +26,10 @@ import (
 	"time"
 )
 
+const (
+	Enqueue = "enqueue"
+)
+
 type Action struct{}
 
 func New() *Action {
@@ -33,7 +37,7 @@ func New() *Action {
 }
 
 func (enqueue *Action) Name() string {
-	return "enqueue"
+	return Enqueue
 }
 
 func (enqueue *Action) Initialize() {}

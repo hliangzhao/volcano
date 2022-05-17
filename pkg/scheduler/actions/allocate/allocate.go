@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,6 +24,10 @@ import (
 	"k8s.io/klog/v2"
 )
 
+const (
+	Allocate = "allocate"
+)
+
 // targetJob stores the jobs which are of the highest priority and waits for the longest time.
 var targetJob = utils.Reservation.TargetJob
 
@@ -34,7 +38,7 @@ func New() *Action {
 }
 
 func (alloc *Action) Name() string {
-	return "allocate"
+	return Allocate
 }
 
 func (alloc *Action) Initialize() {}
@@ -207,8 +211,12 @@ func (alloc *Action) Execute(sess *framework.Session) {
 			task := tasks.Pop().(*apis.TaskInfo)
 
 			// Check whether the queue is overused on the dimension that the task requested
-			taskRequest := task.ResReq.ResourceNames()
-			if underUsedResources := sess.UnderusedResources(queue); underUsedResources != nil && !underUsedResources.Contains(taskRequest) {
+			// taskRequest := task.ResReq.ResourceNames()
+			// if underUsedResources := sess.UnderusedResources(queue); underUsedResources != nil && !underUsedResources.Contains(taskRequest) {
+			// 	klog.V(3).Infof("Queue <%s> is overused when considering task <%s>, ignore it.", queue.Name, task.Name)
+			// 	continue
+			// }
+			if !sess.Allocatable(queue, task) {
 				klog.V(3).Infof("Queue <%s> is overused when considering task <%s>, ignore it.", queue.Name, task.Name)
 				continue
 			}
@@ -235,16 +243,20 @@ func (alloc *Action) Execute(sess *framework.Session) {
 			}
 
 			// secondly, scoring each node and sort them for obtaining the best node
-			nodeScores := utils.PrioritizeNodes(
-				task,
-				candidateNodes,
-				sess.BatchNodeOrderFn,
-				sess.NodeOrderMapFn,
-				sess.NodeOrderReduceFn,
-			)
-			node := sess.BestNodeFn(task, nodeScores)
-			if node == nil {
-				node = utils.SelectBestNode(nodeScores)
+			var node *apis.NodeInfo
+			switch {
+			case len(candidateNodes) == 0: // If not candidate nodes for this task, skip it.
+				continue
+			case len(candidateNodes) == 1: // If only one node after predicate, just use it.
+				node = candidateNodes[0]
+			case len(candidateNodes) > 1: // If more than one node after predicate, using "the best" one
+				nodeScores := utils.PrioritizeNodes(
+					task, candidateNodes, sess.BatchNodeOrderFn, sess.NodeOrderMapFn, sess.NodeOrderReduceFn,
+				)
+				node = sess.BestNodeFn(task, nodeScores)
+				if node == nil {
+					node = utils.SelectBestNode(nodeScores)
+				}
 			}
 
 			// allocate the resources of the best nodes to the task
