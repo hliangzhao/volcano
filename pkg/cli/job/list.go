@@ -19,9 +19,9 @@ package job
 import (
 	"context"
 	"fmt"
-	`github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1`
-	`github.com/hliangzhao/volcano/pkg/cli/utils`
-	volcanoclient `github.com/hliangzhao/volcano/pkg/client/clientset/versioned`
+	"github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
+	"github.com/hliangzhao/volcano/pkg/cli/utils"
+	volcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
 	"github.com/spf13/cobra"
 	"io"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

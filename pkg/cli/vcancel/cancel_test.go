@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package job
+package vcancel
 
 // TODO: just copied.
 //  Passed.
@@ -28,9 +28,9 @@ import (
 	"testing"
 )
 
-func TestListJob(t *testing.T) {
-	response := batchv1alpha1.JobList{}
-	response.Items = append(response.Items, batchv1alpha1.Job{})
+func TestCancelJobJob(t *testing.T) {
+	response := batchv1alpha1.Job{}
+	response.Name = "testJob"
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -44,34 +44,22 @@ func TestListJob(t *testing.T) {
 	server := httptest.NewServer(handler)
 	defer server.Close()
 
+	cancelJobFlags.Master = server.URL
+	cancelJobFlags.Namespace = "test"
+	cancelJobFlags.JobName = "testJob"
+
 	testCases := []struct {
-		Name         string
-		ExpectValue  error
-		AllNamespace bool
-		Selector     string
+		Name        string
+		ExpectValue error
 	}{
 		{
-			Name:        "ListJob",
+			Name:        "CancelJob",
 			ExpectValue: nil,
-		},
-		{
-			Name:         "ListAllNamespaceJob",
-			ExpectValue:  nil,
-			AllNamespace: true,
 		},
 	}
 
 	for i, testcase := range testCases {
-		listJobFlags = &listFlags{
-			commonFlags: commonFlags{
-				Master: server.URL,
-			},
-			Namespace:    "test",
-			allNamespace: testcase.AllNamespace,
-			selector:     testcase.Selector,
-		}
-
-		err := ListJobs()
+		err := CancelJob()
 		if err != nil {
 			t.Errorf("case %d (%s): expected: %v, got %v ", i, testcase.Name, testcase.ExpectValue, err)
 		}
@@ -79,21 +67,15 @@ func TestListJob(t *testing.T) {
 
 }
 
-func TestInitListFlags(t *testing.T) {
+func TestInitDeleteFlags(t *testing.T) {
 	var cmd cobra.Command
-	InitListFlags(&cmd)
+	InitCancelFlags(&cmd)
 
 	if cmd.Flag("namespace") == nil {
 		t.Errorf("Could not find the flag namespace")
 	}
-	if cmd.Flag("scheduler") == nil {
-		t.Errorf("Could not find the flag scheduler")
-	}
-	if cmd.Flag("all-namespaces") == nil {
-		t.Errorf("Could not find the flag all-namespaces")
-	}
-	if cmd.Flag("selector") == nil {
-		t.Errorf("Could not find the flag selector")
+	if cmd.Flag("name") == nil {
+		t.Errorf("Could not find the flag name")
 	}
 
 }

@@ -14,24 +14,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package job
+package vsub
 
 import (
 	"context"
 	"fmt"
+	"github.com/google/shlex"
 	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/cli/utils"
 	volcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
 	"github.com/spf13/cobra"
-	"io/ioutil"
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/yaml"
-	"strings"
+	"os"
 )
 
 type runFlags struct {
-	commonFlags
+	utils.CommonFlags
 
 	Name      string
 	Namespace string
@@ -43,23 +42,78 @@ type runFlags struct {
 	Limits        string
 	SchedulerName string
 	FileName      string
+	Command       string
 }
 
 var launchJobFlags = &runFlags{}
 
+const (
+	// SchedulerNameEnv is the env name of default scheduler name.
+	SchedulerNameEnv = "VOLCANO_SCHEDULER_NAME"
+
+	// DefaultImageEnv is the env name of default image.
+	DefaultImageEnv = "VOLCANO_DEFAULT_IMAGE"
+
+	// DefaultJobNamespaceEnv is the env name of default namespace of the job
+	DefaultJobNamespaceEnv = "VOLCANO_DEFAULT_JOB_NAMESPACE"
+
+	defaultImage         = "busybox"
+	defaultSchedulerName = "volcano"
+	defaultJobNamespace  = "default"
+)
+
 // InitRunFlags init the run flags.
 func InitRunFlags(cmd *cobra.Command) {
-	initFlags(cmd, &launchJobFlags.commonFlags)
+	utils.InitFlags(cmd, &launchJobFlags.CommonFlags)
 
-	cmd.Flags().StringVarP(&launchJobFlags.Image, "image", "i", "busybox", "the container image of job")
-	cmd.Flags().StringVarP(&launchJobFlags.Namespace, "namespace", "n", "default", "the namespace of job")
-	cmd.Flags().StringVarP(&launchJobFlags.Name, "name", "N", "", "the name of job")
+	cmd.Flags().StringVarP(&launchJobFlags.Image, "image", "i", "",
+		fmt.Sprintf("the container image of job, overwrite the value of '%s' (default \"%s\")",
+			DefaultImageEnv, defaultImage))
+	cmd.Flags().StringVarP(&launchJobFlags.Namespace, "namespace", "N", "",
+		fmt.Sprintf("the namespace of job, overwrite the value of '%s' (default \"%s\")", DefaultJobNamespaceEnv, defaultJobNamespace))
+	cmd.Flags().StringVarP(&launchJobFlags.Name, "name", "n", "", "the name of job")
 	cmd.Flags().IntVarP(&launchJobFlags.MinAvailable, "min", "m", 1, "the minimal available tasks of job")
 	cmd.Flags().IntVarP(&launchJobFlags.Replicas, "replicas", "r", 1, "the total tasks of job")
 	cmd.Flags().StringVarP(&launchJobFlags.Requests, "requests", "R", "cpu=1000m,memory=100Mi", "the resource request of the task")
 	cmd.Flags().StringVarP(&launchJobFlags.Limits, "limits", "L", "cpu=1000m,memory=100Mi", "the resource limit of the task")
-	cmd.Flags().StringVarP(&launchJobFlags.SchedulerName, "scheduler", "S", "volcano", "the scheduler for this job")
-	cmd.Flags().StringVarP(&launchJobFlags.FileName, "filename", "f", "", "the yaml file of job")
+	cmd.Flags().StringVarP(&launchJobFlags.SchedulerName, "scheduler", "S", "",
+		fmt.Sprintf("the scheduler for this job, overwrite the value of '%s' (default \"%s\")",
+			SchedulerNameEnv, defaultSchedulerName))
+	cmd.Flags().StringVarP(&launchJobFlags.Command, "command", "c", "", "the command of of job")
+
+	setDefaultArgs()
+}
+
+func setDefaultArgs() {
+	if launchJobFlags.SchedulerName == "" {
+		schedulerName := os.Getenv(SchedulerNameEnv)
+
+		if schedulerName != "" {
+			launchJobFlags.SchedulerName = schedulerName
+		} else {
+			launchJobFlags.SchedulerName = defaultSchedulerName
+		}
+	}
+
+	if launchJobFlags.Image == "" {
+		image := os.Getenv(DefaultImageEnv)
+
+		if image != "" {
+			launchJobFlags.Image = image
+		} else {
+			launchJobFlags.Image = defaultImage
+		}
+	}
+
+	if launchJobFlags.Namespace == "" {
+		namespace := os.Getenv(DefaultJobNamespaceEnv)
+
+		if namespace != "" {
+			launchJobFlags.Namespace = namespace
+		} else {
+			launchJobFlags.Namespace = defaultJobNamespace
+		}
+	}
 }
 
 var jobName = "job.volcano.sh"
@@ -71,28 +125,24 @@ func RunJob() error {
 		return err
 	}
 
-	if launchJobFlags.Name == "" && launchJobFlags.FileName == "" {
+	if launchJobFlags.Name == "" {
 		err = fmt.Errorf("job name cannot be left blank")
 		return err
 	}
 
-	req, err := populateResourceListV1(launchJobFlags.Requests)
+	req, err := utils.PopulateResourceListV1(launchJobFlags.Requests)
 	if err != nil {
 		return err
 	}
 
-	limit, err := populateResourceListV1(launchJobFlags.Limits)
+	limit, err := utils.PopulateResourceListV1(launchJobFlags.Limits)
 	if err != nil {
 		return err
 	}
 
-	job, err := readFile(launchJobFlags.FileName)
+	job, err := constructLaunchJobFlagsJob(launchJobFlags, req, limit)
 	if err != nil {
 		return err
-	}
-
-	if job == nil {
-		job = constructLaunchJobFlagsJob(launchJobFlags, req, limit)
 	}
 
 	jobClient := volcanoclient.NewForConfigOrDie(config)
@@ -110,29 +160,16 @@ func RunJob() error {
 	return nil
 }
 
-func readFile(filename string) (*batchv1alpha1.Job, error) {
-	if filename == "" {
-		return nil, nil
+func constructLaunchJobFlagsJob(launchJobFlags *runFlags, req, limit v1.ResourceList) (*batchv1alpha1.Job, error) {
+	var commands []string
+
+	if launchJobFlags.Command != "" {
+		var err error
+		if commands, err = shlex.Split(launchJobFlags.Command); err != nil {
+			return nil, err
+		}
 	}
 
-	if !strings.Contains(filename, ".yaml") && !strings.Contains(filename, ".yml") {
-		return nil, fmt.Errorf("only support yaml file")
-	}
-
-	file, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file, err: %v", err)
-	}
-
-	var job batchv1alpha1.Job
-	if err := yaml.Unmarshal(file, &job); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal file, err:  %v", err)
-	}
-
-	return &job, nil
-}
-
-func constructLaunchJobFlagsJob(launchJobFlags *runFlags, req, limit corev1.ResourceList) *batchv1alpha1.Job {
 	return &batchv1alpha1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      launchJobFlags.Name,
@@ -145,19 +182,20 @@ func constructLaunchJobFlagsJob(launchJobFlags *runFlags, req, limit corev1.Reso
 				{
 					Replicas: int32(launchJobFlags.Replicas),
 
-					Template: corev1.PodTemplateSpec{
+					Template: v1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:   launchJobFlags.Name,
 							Labels: map[string]string{jobName: launchJobFlags.Name},
 						},
-						Spec: corev1.PodSpec{
-							RestartPolicy: corev1.RestartPolicyNever,
-							Containers: []corev1.Container{
+						Spec: v1.PodSpec{
+							RestartPolicy: v1.RestartPolicyNever,
+							Containers: []v1.Container{
 								{
 									Image:           launchJobFlags.Image,
 									Name:            launchJobFlags.Name,
-									ImagePullPolicy: corev1.PullIfNotPresent,
-									Resources: corev1.ResourceRequirements{
+									ImagePullPolicy: v1.PullIfNotPresent,
+									Command:         commands,
+									Resources: v1.ResourceRequirements{
 										Limits:   limit,
 										Requests: req,
 									},
@@ -168,5 +206,5 @@ func constructLaunchJobFlagsJob(launchJobFlags *runFlags, req, limit corev1.Reso
 				},
 			},
 		},
-	}
+	}, nil
 }

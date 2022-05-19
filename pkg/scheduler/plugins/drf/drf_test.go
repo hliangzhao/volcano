@@ -20,7 +20,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/agiledragon/gomonkey/v2"
-	`github.com/hliangzhao/volcano/cmd/scheduler/app/options`
+	"github.com/hliangzhao/volcano/cmd/scheduler/app/options"
 	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/scheduler/actions/allocate"
 	api "github.com/hliangzhao/volcano/pkg/scheduler/apis"

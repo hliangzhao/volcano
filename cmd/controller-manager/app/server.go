@@ -17,27 +17,27 @@ limitations under the License.
 package app
 
 import (
-	`context`
-	`fmt`
-	`github.com/hliangzhao/volcano/cmd/controller-manager/app/options`
-	`github.com/hliangzhao/volcano/pkg/apis/helpers`
-	clientset `github.com/hliangzhao/volcano/pkg/client/clientset/versioned`
-	`github.com/hliangzhao/volcano/pkg/controllers/framework`
-	`github.com/hliangzhao/volcano/pkg/controllers/job`
-	`github.com/hliangzhao/volcano/pkg/kube`
-	corev1 `k8s.io/api/core/v1`
-	`k8s.io/apimachinery/pkg/util/uuid`
-	`k8s.io/client-go/informers`
-	`k8s.io/client-go/kubernetes`
-	`k8s.io/client-go/kubernetes/scheme`
-	typedcorev1 `k8s.io/client-go/kubernetes/typed/core/v1`
-	`k8s.io/client-go/rest`
-	`k8s.io/client-go/tools/leaderelection`
-	`k8s.io/client-go/tools/leaderelection/resourcelock`
-	`k8s.io/client-go/tools/record`
-	`k8s.io/klog/v2`
-	`os`
-	`time`
+	"context"
+	"fmt"
+	"github.com/hliangzhao/volcano/cmd/controller-manager/app/options"
+	"github.com/hliangzhao/volcano/pkg/apis/helpers"
+	clientset "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
+	"github.com/hliangzhao/volcano/pkg/controllers/framework"
+	"github.com/hliangzhao/volcano/pkg/controllers/job"
+	"github.com/hliangzhao/volcano/pkg/kube"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/uuid"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
+	"k8s.io/client-go/tools/record"
+	"k8s.io/klog/v2"
+	"os"
+	"time"
 )
 
 const (

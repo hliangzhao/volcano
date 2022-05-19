@@ -14,17 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package job
+package vsuspend
 
 import (
 	"fmt"
-	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
+	"github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/cli/utils"
 	"github.com/spf13/cobra"
 )
 
 type suspendFlags struct {
-	commonFlags
+	utils.CommonFlags
 
 	Namespace string
 	JobName   string
@@ -34,10 +34,10 @@ var suspendJobFlags = &suspendFlags{}
 
 // InitSuspendFlags init suspend related flags.
 func InitSuspendFlags(cmd *cobra.Command) {
-	initFlags(cmd, &suspendJobFlags.commonFlags)
+	utils.InitFlags(cmd, &suspendJobFlags.CommonFlags)
 
-	cmd.Flags().StringVarP(&suspendJobFlags.Namespace, "namespace", "n", "default", "the namespace of job")
-	cmd.Flags().StringVarP(&suspendJobFlags.JobName, "name", "N", "", "the name of job")
+	cmd.Flags().StringVarP(&suspendJobFlags.Namespace, "namespace", "N", "default", "the namespace of job")
+	cmd.Flags().StringVarP(&suspendJobFlags.JobName, "name", "n", "", "the name of job")
 }
 
 // SuspendJob suspends the job.
@@ -52,7 +52,7 @@ func SuspendJob() error {
 		return err
 	}
 
-	return createJobCommand(config,
+	return utils.CreateJobCommand(config,
 		suspendJobFlags.Namespace, suspendJobFlags.JobName,
-		busv1alpha1.AbortJobAction)
+		v1alpha1.AbortJobAction)
 }

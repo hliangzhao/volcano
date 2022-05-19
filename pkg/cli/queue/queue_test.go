@@ -16,10 +16,13 @@ limitations under the License.
 
 package queue
 
+// TODO: just copied.
+//  Passed.
+
 import (
 	"encoding/json"
 	"fmt"
-	schedulingv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1`
+	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/http"

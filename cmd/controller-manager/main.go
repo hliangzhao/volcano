@@ -17,17 +17,17 @@ limitations under the License.
 package main
 
 import (
-	`fmt`
-	`github.com/hliangzhao/volcano/cmd/controller-manager/app`
-	`github.com/hliangzhao/volcano/cmd/controller-manager/app/options`
-	`github.com/hliangzhao/volcano/pkg/version`
-	`github.com/spf13/pflag`
-	`k8s.io/apimachinery/pkg/util/wait`
-	`k8s.io/component-base/cli/flag`
-	`k8s.io/klog/v2`
-	`os`
-	`runtime`
-	`time`
+	"fmt"
+	"github.com/hliangzhao/volcano/cmd/controller-manager/app"
+	"github.com/hliangzhao/volcano/cmd/controller-manager/app/options"
+	"github.com/hliangzhao/volcano/pkg/version"
+	"github.com/spf13/pflag"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/component-base/cli/flag"
+	"k8s.io/klog/v2"
+	"os"
+	"runtime"
+	"time"
 
 	_ "github.com/hliangzhao/volcano/pkg/controllers/garbagecollector"
 	_ "github.com/hliangzhao/volcano/pkg/controllers/job"

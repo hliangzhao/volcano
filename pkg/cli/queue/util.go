@@ -19,9 +19,9 @@ package queue
 import (
 	"context"
 	"fmt"
-	busv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1`
-	`github.com/hliangzhao/volcano/pkg/apis/helpers`
-	volcanoclient `github.com/hliangzhao/volcano/pkg/client/clientset/versioned`
+	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
+	"github.com/hliangzhao/volcano/pkg/apis/helpers"
+	volcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"

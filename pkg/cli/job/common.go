@@ -17,9 +17,9 @@ limitations under the License.
 package job
 
 import (
-	`github.com/spf13/cobra`
-	`os`
-	`path/filepath`
+	"github.com/spf13/cobra"
+	"os"
+	"path/filepath"
 )
 
 type commonFlags struct {

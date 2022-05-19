@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package job
+package vcancel
 
 import (
 	"context"
@@ -25,40 +25,40 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type deleteFlags struct {
-	commonFlags
+type cancelFlags struct {
+	utils.CommonFlags
 
 	Namespace string
 	JobName   string
 }
 
-var deleteJobFlags = &deleteFlags{}
+var cancelJobFlags = &cancelFlags{}
 
-// InitDeleteFlags init the delete command flags.
-func InitDeleteFlags(cmd *cobra.Command) {
-	initFlags(cmd, &deleteJobFlags.commonFlags)
+// InitCancelFlags init the cancel command flags.
+func InitCancelFlags(cmd *cobra.Command) {
+	utils.InitFlags(cmd, &cancelJobFlags.CommonFlags)
 
-	cmd.Flags().StringVarP(&deleteJobFlags.Namespace, "namespace", "n", "default", "the namespace of job")
-	cmd.Flags().StringVarP(&deleteJobFlags.JobName, "name", "N", "", "the name of job")
+	cmd.Flags().StringVarP(&cancelJobFlags.Namespace, "namespace", "N", "default", "the namespace of job")
+	cmd.Flags().StringVarP(&cancelJobFlags.JobName, "name", "n", "", "the name of job")
 }
 
-// DeleteJob delete the job.
-func DeleteJob() error {
-	config, err := utils.BuildConfig(deleteJobFlags.Master, deleteJobFlags.Kubeconfig)
+// CancelJob cancel the job.
+func CancelJob() error {
+	config, err := utils.BuildConfig(cancelJobFlags.Master, cancelJobFlags.Kubeconfig)
 	if err != nil {
 		return err
 	}
 
-	if deleteJobFlags.JobName == "" {
-		err := fmt.Errorf("job name is mandatory to delete a particular job")
+	if cancelJobFlags.JobName == "" {
+		err := fmt.Errorf("job name is mandatory to cancel a particular job")
 		return err
 	}
 
 	jobClient := volcanoclient.NewForConfigOrDie(config)
-	err = jobClient.BatchV1alpha1().Jobs(deleteJobFlags.Namespace).Delete(context.TODO(), deleteJobFlags.JobName, metav1.DeleteOptions{})
+	err = jobClient.BatchV1alpha1().Jobs(cancelJobFlags.Namespace).Delete(context.TODO(), cancelJobFlags.JobName, metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
-	fmt.Printf("delete job %v successfully\n", deleteJobFlags.JobName)
+	fmt.Printf("cancel job %v successfully\n", cancelJobFlags.JobName)
 	return nil
 }

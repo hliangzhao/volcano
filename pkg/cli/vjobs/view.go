@@ -14,18 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package job
+package vjobs
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
+	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/cli/utils"
 	volcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
 	"github.com/spf13/cobra"
 	"io"
-	corev1 "k8s.io/api/core/v1"
+	coreV1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -34,26 +34,52 @@ import (
 )
 
 type viewFlags struct {
-	commonFlags
+	utils.CommonFlags
 
-	Namespace string
-	JobName   string
+	Namespace     string
+	JobName       string
+	SchedulerName string
+	allNamespace  bool
+	selector      string
 }
 
-// level of print indent.
 const (
+	// Level0 is the level of print indent
 	Level0 = iota
+	// Level1 is the level of print indent
 	Level1
+	// Level2 is the level of print indent
 	Level2
+
+	Name        string = "Name"
+	Creation    string = "Creation"
+	Phase       string = "Phase"
+	Replicas    string = "Replicas"
+	Min         string = "Min"
+	Scheduler   string = "Scheduler"
+	Pending     string = "Pending"
+	Running     string = "Running"
+	Succeeded   string = "Succeeded"
+	Terminating string = "Terminating"
+	Version     string = "Version"
+	Failed      string = "Failed"
+	Unknown     string = "Unknown"
+	RetryCount  string = "RetryCount"
+	JobType     string = "JobType"
+	Namespace   string = "Namespace"
 )
 
 var viewJobFlags = &viewFlags{}
 
 // InitViewFlags init the view command flags.
 func InitViewFlags(cmd *cobra.Command) {
-	initFlags(cmd, &viewJobFlags.commonFlags)
-	cmd.Flags().StringVarP(&viewJobFlags.Namespace, "namespace", "n", "default", "the namespace of job")
-	cmd.Flags().StringVarP(&viewJobFlags.JobName, "name", "N", "", "the name of job")
+	utils.InitFlags(cmd, &viewJobFlags.CommonFlags)
+
+	cmd.Flags().StringVarP(&viewJobFlags.Namespace, "namespace", "N", "default", "the namespace of job")
+	cmd.Flags().StringVarP(&viewJobFlags.JobName, "name", "n", "", "the name of job")
+	cmd.Flags().StringVarP(&viewJobFlags.SchedulerName, "scheduler", "S", "", "list job with specified scheduler name")
+	cmd.Flags().BoolVarP(&viewJobFlags.allNamespace, "all-namespaces", "", false, "list jobs in all namespaces")
+	cmd.Flags().StringVarP(&viewJobFlags.selector, "selector", "", "", "fuzzy matching jobName")
 }
 
 // ViewJob gives full details of the job.
@@ -63,7 +89,7 @@ func ViewJob() error {
 		return err
 	}
 	if viewJobFlags.JobName == "" {
-		err := fmt.Errorf("job name (specified by --name or -N) is mandatory to view a particular job")
+		err := ListJobs()
 		return err
 	}
 
@@ -82,24 +108,21 @@ func ViewJob() error {
 }
 
 // PrintJobInfo print the job detailed info into writer.
-func PrintJobInfo(job *v1alpha1.Job, writer io.Writer) {
+func PrintJobInfo(job *batchv1alpha1.Job, writer io.Writer) {
 	WriteLine(writer, Level0, "Name:       \t%s\n", job.Name)
 	WriteLine(writer, Level0, "Namespace:  \t%s\n", job.Namespace)
-
 	if len(job.Labels) > 0 {
 		label, _ := json.Marshal(job.Labels)
 		WriteLine(writer, Level0, "Labels:     \t%s\n", string(label))
 	} else {
 		WriteLine(writer, Level0, "Labels:     \t<none>\n")
 	}
-
 	if len(job.Annotations) > 0 {
 		annotation, _ := json.Marshal(job.Annotations)
 		WriteLine(writer, Level0, "Annotations:\t%s\n", string(annotation))
 	} else {
 		WriteLine(writer, Level0, "Annotations:\t<none>\n")
 	}
-
 	WriteLine(writer, Level0, "API Version:\t%s\n", job.APIVersion)
 	WriteLine(writer, Level0, "Kind:       \t%s\n", job.Kind)
 
@@ -117,7 +140,6 @@ func PrintJobInfo(job *v1alpha1.Job, writer io.Writer) {
 	WriteLine(writer, Level2, "Env:\t%v\n", job.Spec.Plugins["env"])
 	WriteLine(writer, Level2, "Ssh:\t%v\n", job.Spec.Plugins["ssh"])
 	WriteLine(writer, Level1, "Scheduler Name:    \t%s\n", job.Spec.SchedulerName)
-
 	WriteLine(writer, Level1, "Tasks:\n")
 	for i := 0; i < len(job.Spec.Tasks); i++ {
 		WriteLine(writer, Level2, "Name:\t%s\n", job.Spec.Tasks[i].Name)
@@ -126,7 +148,7 @@ func PrintJobInfo(job *v1alpha1.Job, writer io.Writer) {
 		WriteLine(writer, Level2+1, "Metadata:\n")
 		WriteLine(writer, Level2+2, "Annotations:\n")
 		WriteLine(writer, Level2+3, "Cri . Cci . Io / Container - Type:          \t%s\n", job.Spec.Tasks[i].Template.ObjectMeta.Annotations["cri.cci.io/container-type"])
-		WriteLine(writer, Level2+3, "Kubernetes . Io / AvailableZone:            \t%s\n", job.Spec.Tasks[i].Template.ObjectMeta.Annotations["kubernetes.io/availablezone"])
+		WriteLine(writer, Level2+3, "Kubernetes . Io / Availablezone:            \t%s\n", job.Spec.Tasks[i].Template.ObjectMeta.Annotations["kubernetes.io/availablezone"])
 		WriteLine(writer, Level2+3, "Network . Alpha . Kubernetes . Io / Network:\t%s\n", job.Spec.Tasks[i].Template.ObjectMeta.Annotations["network.alpha.kubernetes.io/network"])
 		WriteLine(writer, Level2+2, "Creation Timestamp:\t%s\n", job.Spec.Tasks[i].Template.ObjectMeta.CreationTimestamp)
 
@@ -153,7 +175,6 @@ func PrintJobInfo(job *v1alpha1.Job, writer io.Writer) {
 			WriteLine(writer, Level2+5, "Memory:\t%s\n", job.Spec.Tasks[i].Template.Spec.Containers[j].Resources.Requests.Memory())
 			WriteLine(writer, Level2+4, "Working Dir:\t%s\n", job.Spec.Tasks[i].Template.Spec.Containers[j].WorkingDir)
 		}
-
 		WriteLine(writer, Level2+2, "Image Pull Secrets:\n")
 		for j := 0; j < len(job.Spec.Tasks[i].Template.Spec.ImagePullSecrets); j++ {
 			WriteLine(writer, Level2+3, "Name:     \t%s\n", job.Spec.Tasks[i].Template.Spec.ImagePullSecrets[j].Name)
@@ -198,27 +219,19 @@ func PrintJobInfo(job *v1alpha1.Job, writer io.Writer) {
 			WriteLine(writer, Level2, "%s: \t%s\n", key, value)
 		}
 	}
-	if len(job.Status.Conditions) > 0 {
-		WriteLine(writer, Level1, "Conditions:\n    Status\tTransitionTime\n")
-		for _, c := range job.Status.Conditions {
-			WriteLine(writer, Level2, "%v \t%v \n",
-				c.Status,
-				c.LastTransitionTime)
-		}
-	}
 }
 
 // PrintEvents print event info to writer.
-func PrintEvents(events []corev1.Event, writer io.Writer) {
+func PrintEvents(events []coreV1.Event, writer io.Writer) {
 	if len(events) > 0 {
 		WriteLine(writer, Level0, "%s:\n%-15s\t%-40s\t%-30s\t%-40s\t%s\n", "Events", "Type", "Reason", "Age", "Form", "Message")
 		WriteLine(writer, Level0, "%-15s\t%-40s\t%-30s\t%-40s\t%s\n", "-------", "-------", "-------", "-------", "-------")
 		for _, e := range events {
 			var interval string
 			if e.Count > 1 {
-				interval = fmt.Sprintf("%s (x%d over %s)", translateTimestampSince(e.LastTimestamp), e.Count, translateTimestampSince(e.FirstTimestamp))
+				interval = fmt.Sprintf("%s (x%d over %s)", utils.TranslateTimestampSince(e.LastTimestamp), e.Count, utils.TranslateTimestampSince(e.FirstTimestamp))
 			} else {
-				interval = translateTimestampSince(e.FirstTimestamp)
+				interval = utils.TranslateTimestampSince(e.FirstTimestamp)
 			}
 			EventSourceString := []string{e.Source.Component}
 			if len(e.Source.Host) > 0 {
@@ -238,14 +251,14 @@ func PrintEvents(events []corev1.Event, writer io.Writer) {
 }
 
 // GetEvents get the job event by config.
-func GetEvents(config *rest.Config, job *v1alpha1.Job) []corev1.Event {
+func GetEvents(config *rest.Config, job *batchv1alpha1.Job) []coreV1.Event {
 	kubeClient, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		fmt.Printf("%v\n", err)
 		return nil
 	}
 	events, _ := kubeClient.CoreV1().Events(viewJobFlags.Namespace).List(context.TODO(), metav1.ListOptions{})
-	var jobEvents []corev1.Event
+	var jobEvents []coreV1.Event
 	for _, v := range events.Items {
 		if strings.HasPrefix(v.ObjectMeta.Name, job.Name+".") {
 			jobEvents = append(jobEvents, v)
@@ -260,5 +273,94 @@ func WriteLine(writer io.Writer, spaces int, content string, params ...interface
 	for i := 0; i < spaces; i++ {
 		prefix += "  "
 	}
-	_, _ = fmt.Fprintf(writer, prefix+content, params...)
+	fmt.Fprintf(writer, prefix+content, params...)
+}
+
+// ListJobs lists all jobs details.
+func ListJobs() error {
+	config, err := utils.BuildConfig(viewJobFlags.Master, viewJobFlags.Kubeconfig)
+	if err != nil {
+		return err
+	}
+	if viewJobFlags.allNamespace {
+		viewJobFlags.Namespace = ""
+	}
+	jobClient := volcanoclient.NewForConfigOrDie(config)
+	jobs, err := jobClient.BatchV1alpha1().Jobs(viewJobFlags.Namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	if len(jobs.Items) == 0 {
+		fmt.Printf("No resources found\n")
+		return nil
+	}
+	PrintJobs(jobs, os.Stdout)
+
+	return nil
+}
+
+// PrintJobs prints all jobs details.
+func PrintJobs(jobs *batchv1alpha1.JobList, writer io.Writer) {
+	maxLenInfo := getMaxLen(jobs)
+
+	titleFormat := "%%-%ds%%-15s%%-12s%%-12s%%-12s%%-6s%%-10s%%-10s%%-12s%%-10s%%-12s%%-10s\n"
+	contentFormat := "%%-%ds%%-15s%%-12s%%-12s%%-12d%%-6d%%-10d%%-10d%%-12d%%-10d%%-12d%%-10d\n"
+
+	var err error
+	if viewJobFlags.allNamespace {
+		_, err = fmt.Fprintf(writer, fmt.Sprintf("%%-%ds"+titleFormat, maxLenInfo[1], maxLenInfo[0]),
+			Namespace, Name, Creation, Phase, JobType, Replicas, Min, Pending, Running, Succeeded, Failed, Unknown, RetryCount)
+	} else {
+		_, err = fmt.Fprintf(writer, fmt.Sprintf(titleFormat, maxLenInfo[0]),
+			Name, Creation, Phase, JobType, Replicas, Min, Pending, Running, Succeeded, Failed, Unknown, RetryCount)
+	}
+	if err != nil {
+		fmt.Printf("Failed to print list command result: %s.\n", err)
+	}
+
+	for _, job := range jobs.Items {
+		if viewJobFlags.SchedulerName != "" && viewJobFlags.SchedulerName != job.Spec.SchedulerName {
+			continue
+		}
+		if !strings.Contains(job.Name, viewJobFlags.selector) {
+			continue
+		}
+		replicas := int32(0)
+		for _, ts := range job.Spec.Tasks {
+			replicas += ts.Replicas
+		}
+		jobType := job.ObjectMeta.Labels[batchv1alpha1.JobTypeKey]
+		if jobType == "" {
+			jobType = "Batch"
+		}
+
+		if viewJobFlags.allNamespace {
+			_, err = fmt.Fprintf(writer, fmt.Sprintf("%%-%ds"+contentFormat, maxLenInfo[1], maxLenInfo[0]),
+				job.Namespace, job.Name, job.CreationTimestamp.Format("2006-01-02"), job.Status.State.Phase, jobType, replicas,
+				job.Status.MinAvailable, job.Status.Pending, job.Status.Running, job.Status.Succeeded, job.Status.Failed, job.Status.Unknown, job.Status.RetryCount)
+		} else {
+			_, err = fmt.Fprintf(writer, fmt.Sprintf(contentFormat, maxLenInfo[0]),
+				job.Name, job.CreationTimestamp.Format("2006-01-02"), job.Status.State.Phase, jobType, replicas,
+				job.Status.MinAvailable, job.Status.Pending, job.Status.Running, job.Status.Succeeded, job.Status.Failed, job.Status.Unknown, job.Status.RetryCount)
+		}
+		if err != nil {
+			fmt.Printf("Failed to print list command result: %s.\n", err)
+		}
+	}
+}
+
+func getMaxLen(jobs *batchv1alpha1.JobList) []int {
+	maxNameLen := len(Name)
+	maxNamespaceLen := len(Namespace)
+	for _, job := range jobs.Items {
+		if len(job.Name) > maxNameLen {
+			maxNameLen = len(job.Name)
+		}
+		if len(job.Namespace) > maxNamespaceLen {
+			maxNamespaceLen = len(job.Namespace)
+		}
+	}
+
+	return []int{maxNameLen + 3, maxNamespaceLen + 3}
 }

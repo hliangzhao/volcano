@@ -17,18 +17,18 @@ limitations under the License.
 package job
 
 import (
-	`context`
-	`fmt`
-	busv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1`
-	`github.com/hliangzhao/volcano/pkg/apis/helpers`
-	volcanoclient `github.com/hliangzhao/volcano/pkg/client/clientset/versioned`
-	v1 `k8s.io/api/core/v1`
-	`k8s.io/apimachinery/pkg/api/resource`
-	metav1 `k8s.io/apimachinery/pkg/apis/meta/v1`
-	`k8s.io/client-go/rest`
-	`os`
-	`strings`
-	`time`
+	"context"
+	"fmt"
+	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
+	"github.com/hliangzhao/volcano/pkg/apis/helpers"
+	volcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
+	"os"
+	"strings"
+	"time"
 )
 
 func homeDir() string {

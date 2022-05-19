@@ -19,7 +19,7 @@ package queue
 import (
 	"context"
 	"fmt"
-	volcanoclient `github.com/hliangzhao/volcano/pkg/client/clientset/versioned`
+	volcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

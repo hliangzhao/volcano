@@ -14,17 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package job
+package vresume
 
 import (
 	"fmt"
-	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
+	"github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/cli/utils"
 	"github.com/spf13/cobra"
 )
 
 type resumeFlags struct {
-	commonFlags
+	utils.CommonFlags
 
 	Namespace string
 	JobName   string
@@ -34,10 +34,10 @@ var resumeJobFlags = &resumeFlags{}
 
 // InitResumeFlags init resume command flags.
 func InitResumeFlags(cmd *cobra.Command) {
-	initFlags(cmd, &resumeJobFlags.commonFlags)
+	utils.InitFlags(cmd, &resumeJobFlags.CommonFlags)
 
-	cmd.Flags().StringVarP(&resumeJobFlags.Namespace, "namespace", "n", "default", "the namespace of job")
-	cmd.Flags().StringVarP(&resumeJobFlags.JobName, "name", "N", "", "the name of job")
+	cmd.Flags().StringVarP(&resumeJobFlags.Namespace, "namespace", "N", "default", "the namespace of job")
+	cmd.Flags().StringVarP(&resumeJobFlags.JobName, "name", "n", "", "the name of job")
 }
 
 // ResumeJob resumes the job.
@@ -51,7 +51,7 @@ func ResumeJob() error {
 		return err
 	}
 
-	return createJobCommand(config,
+	return utils.CreateJobCommand(config,
 		resumeJobFlags.Namespace, resumeJobFlags.JobName,
-		busv1alpha1.ResumeJobAction)
+		v1alpha1.ResumeJobAction)
 }

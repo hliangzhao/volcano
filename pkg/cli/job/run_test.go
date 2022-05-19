@@ -21,7 +21,7 @@ package job
 
 import (
 	"encoding/json"
-	batchv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1`
+	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"net/http"
