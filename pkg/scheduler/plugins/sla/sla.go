@@ -74,7 +74,11 @@ func (sp *slaPlugin) OnSessionOpen(sess *framework.Session) {
 	// read in sla waiting time for global cluster from sla plugin arguments
 	// if not set, job waiting time still can set in job yaml separately, otherwise job have no sla limits
 	if _, exist := sp.pluginArguments[JobWaitingTime]; exist {
-		jwt, err := time.ParseDuration(sp.pluginArguments[JobWaitingTime])
+		jwtStr, ok := sp.pluginArguments[JobWaitingTime].(string)
+		if !ok {
+			jwtStr = ""
+		}
+		jwt, err := time.ParseDuration(jwtStr)
 		if err != nil {
 			klog.Errorf("Error occurs in parsing global job waiting time in sla plugin, err: %s.", err.Error())
 		}

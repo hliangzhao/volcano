@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,20 +22,23 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func checkNodeResourceIsProportional(task *apis.TaskInfo, node *apis.NodeInfo, proportional map[corev1.ResourceName]baseResource) (bool, error) {
-	for resName := range proportional {
-		if val, found := task.ResReq.ScalarResources[resName]; found && val > 0 {
+// checkNodeResourceIsProportional checks if a gpu:cpu:memory is Proportional
+func checkNodeResourceIsProportional(task *apis.TaskInfo, node *apis.NodeInfo,
+	proportional map[corev1.ResourceName]baseResource) (bool, error) {
+
+	for resourceName := range proportional {
+		if value, found := task.ResReq.ScalarResources[resourceName]; found && value > 0 {
 			return true, nil
 		}
 	}
-	for resName, resRate := range proportional {
-		if val, found := node.Idle.ScalarResources[resName]; found {
-			cpuReserved := val * resRate.CPU
-			memReserved := val * resRate.Memory * 1000 * 1000
+	for resourceName, resourceRate := range proportional {
+		if value, found := node.Idle.ScalarResources[resourceName]; found {
+			cpuReserved := value * resourceRate.CPU
+			memoryReserved := value * resourceRate.Memory * 1000 * 1000
 			r := node.Idle.Clone()
 			r = r.Sub(task.ResReq)
-			if r.MilliCPU < cpuReserved || r.Memory < memReserved {
-				return false, fmt.Errorf("proportional of resource %s check failed", resName)
+			if r.MilliCPU < cpuReserved || r.Memory < memoryReserved {
+				return false, fmt.Errorf("proportional of resource %s check failed", resourceName)
 			}
 		}
 	}

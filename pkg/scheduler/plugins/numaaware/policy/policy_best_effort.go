@@ -16,6 +16,8 @@ limitations under the License.
 
 package policy
 
+import `k8s.io/klog/v2`
+
 type policyBestEffort struct {
 	numaNodes []int
 }
@@ -27,11 +29,14 @@ func NewPolicyBestEffort(numaNodes []int) Policy {
 }
 
 func (p *policyBestEffort) Predicate(providersHints []map[string][]TopologyHint) (TopologyHint, bool) {
-	// TODO
-	return TopologyHint{}, false
+	filteredProvidersHints := filterProvidersHints(providersHints)
+	bestHint := mergeFilteredHints(p.numaNodes, filteredProvidersHints)
+	admit := p.canAdmitPodResult(&bestHint)
+
+	klog.V(4).Infof("bestHint: %v admit %v\n", bestHint, admit)
+	return bestHint, admit
 }
 
 func (p *policyBestEffort) canAdmitPodResult(hint *TopologyHint) bool {
-	// TODO
 	return true
 }

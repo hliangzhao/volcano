@@ -17,64 +17,150 @@ limitations under the License.
 package policy
 
 import (
-	batchv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1`
-	nodeinfov1alpha1 `github.com/hliangzhao/volcano/pkg/apis/nodeinfo/v1alpha1`
-	`github.com/hliangzhao/volcano/pkg/scheduler/apis`
-	corev1 `k8s.io/api/core/v1`
-	`k8s.io/kubernetes/pkg/kubelet/cm/cpuset`
+	`k8s.io/klog/v2`
 	`k8s.io/kubernetes/pkg/kubelet/cm/topologymanager/bitmask`
 )
 
-// TopologyHint is a struct containing the NUMANodeAffinity for a Container
-type TopologyHint struct {
-	NumaNodeAffinity bitmask.BitMask
-	// Preferred is set to true when the NUMANodeAffinity encodes a preferred
-	// allocation for the Container. It is set to false otherwise.
-	Preferred bool
-}
+func filterProvidersHints(providersHints []map[string][]TopologyHint) [][]TopologyHint {
+	var allProviderHints [][]TopologyHint
+	for _, hints := range providersHints {
+		// If hints is nil, insert a single, preferred any-numa hint into allProviderHints.
+		if len(hints) == 0 {
+			klog.Infof("[numatopo] Hint Provider has no preference for NUMA affinity with any resource")
+			allProviderHints = append(allProviderHints, []TopologyHint{{nil, true}})
+			continue
+		}
 
-// Policy is an interface for topology manager policy
-type Policy interface {
-	// Predicate gets the best hit
-	Predicate(providersHints []map[string][]TopologyHint) (TopologyHint, bool)
-}
+		// Otherwise, accumulate the hints for each resource type into allProviderHints.
+		for resource := range hints {
+			if hints[resource] == nil {
+				klog.Infof("[numatopo] Hint Provider has no preference for NUMA affinity with resource '%s'", resource)
+				allProviderHints = append(allProviderHints, []TopologyHint{{nil, true}})
+				continue
+			}
 
-// HintProvider is an interface for components that want to collaborate to
-// achieve globally optimal concrete resource alignment with respect to
-// NUMA locality.
-type HintProvider interface {
-	// Name returns provider name used for register and logging.
-	Name() string
-	// GetTopologyHints returns hints if this hint provider has a preference,
-	GetTopologyHints(container *corev1.Container, topoInfo *apis.NumaTopoInfo, resNumaSets apis.ResNumaSets) map[string][]TopologyHint
-	Allocate(container *corev1.Container, bestHit *TopologyHint, topoInfo *apis.NumaTopoInfo, resNumaSets apis.ResNumaSets) map[string]cpuset.CPUSet
-}
+			if len(hints[resource]) == 0 {
+				klog.Infof("[numatopo] Hint Provider has no possible NUMA affinities for resource '%s'", resource)
+				allProviderHints = append(allProviderHints, []TopologyHint{{nil, false}})
+				continue
+			}
 
-// GetPolicy return the interface matched the input task topology config
-func GetPolicy(node *apis.NodeInfo, numaNodes []int) Policy {
-	switch batchv1alpha1.NumaPolicy(node.NumaSchedulerInfo.Policies[nodeinfov1alpha1.TopologyManagerPolicy]) {
-	case batchv1alpha1.None:
-		return NewPolicyNone(numaNodes)
-	case batchv1alpha1.BestEffort:
-		return NewPolicyBestEffort(numaNodes)
-	case batchv1alpha1.Restricted:
-		return NewPolicyRestricted(numaNodes)
-	case batchv1alpha1.SingleNumaNode:
-		return NewPolicySingleNumaNode(numaNodes)
+			allProviderHints = append(allProviderHints, hints[resource])
+		}
 	}
-	return &policyNone{}
+	return allProviderHints
 }
 
-// AccumulateProvidersHints return all TopologyHint collection from different providers
-func AccumulateProvidersHints(container *corev1.Container, topoInfo *apis.NumaTopoInfo,
-	resNumaSets apis.ResNumaSets, hintProviders []HintProvider) (providersHints []map[string][]TopologyHint) {
-	// TODO
-	return nil
+func mergeFilteredHints(numaNodes []int, filteredHints [][]TopologyHint) TopologyHint {
+	// Set the default affinity as an any-numa affinity containing the list
+	// of NUMA Nodes available on this machine.
+	defaultAffinity, _ := bitmask.NewBitMask(numaNodes...)
+
+	// Set the bestHint to return from this function as {nil false}.
+	// This will only be returned if no better hint can be found when
+	// merging hints from each hint provider.
+	bestHint := TopologyHint{defaultAffinity, false}
+	iterateAllProviderTopologyHints(filteredHints, func(permutation []TopologyHint) {
+		// Get the NUMANodeAffinity from each hint in the permutation and see if any
+		// of them encode un-preferred allocations.
+		mergedHint := mergePermutation(numaNodes, permutation)
+		// Only consider mergedHints that result in a NUMANodeAffinity > 0 to
+		// replace the current bestHint.
+		if mergedHint.NumaNodeAffinity.Count() == 0 {
+			return
+		}
+
+		// If the current bestHint is non-preferred and the new mergedHint is
+		// preferred, always choose the preferred hint over the non-preferred one.
+		if mergedHint.Preferred && !bestHint.Preferred {
+			bestHint = mergedHint
+			return
+		}
+
+		// If the current bestHint is preferred and the new mergedHint is
+		// non-preferred, never update bestHint, regardless of mergedHint's
+		// narrowness.
+		if !mergedHint.Preferred && bestHint.Preferred {
+			return
+		}
+
+		// If mergedHint and bestHint has the same preference, only consider
+		// mergedHints that have a narrower NUMANodeAffinity than the
+		// NUMANodeAffinity in the current bestHint.
+		if !mergedHint.NumaNodeAffinity.IsNarrowerThan(bestHint.NumaNodeAffinity) {
+			return
+		}
+
+		// In all other cases, update bestHint to the current mergedHint
+		bestHint = mergedHint
+	})
+
+	return bestHint
 }
 
-// Allocate return all resource assignment collection from different providers
-func Allocate(container *corev1.Container, bestHit *TopologyHint,
-	topoInfo *apis.NumaTopoInfo, resNumaSets apis.ResNumaSets, hintProviders []HintProvider) map[string]cpuset.CPUSet {
-	// TODO
-	return nil
+// Iterate over all permutations of hints in 'allProviderHints [][]TopologyHint'.
+//
+// This procedure is implemented as a recursive function over the set of hints
+// in 'allProviderHints[i]'. It applies the function 'callback' to each
+// permutation as it is found. It is the equivalent of:
+//
+// for i := 0; i < len(providerHints[0]); i++
+//     for j := 0; j < len(providerHints[1]); j++
+//         for k := 0; k < len(providerHints[2]); k++
+//             ...
+//             for z := 0; z < len(providerHints[-1]); z++
+//                 permutation := []TopologyHint{
+//                     providerHints[0][i],
+//                     providerHints[1][j],
+//                     providerHints[2][k],
+//                     ...
+//                     providerHints[-1][z]
+//                 }
+//                 callback(permutation)
+func iterateAllProviderTopologyHints(allProviderHints [][]TopologyHint, callback func([]TopologyHint)) {
+	// Internal helper function to accumulate the permutation before calling the callback.
+	var iterate func(i int, accum []TopologyHint)
+	iterate = func(i int, accum []TopologyHint) {
+		// Base case: we have looped through all providers and have a full permutation.
+		if i == len(allProviderHints) {
+			callback(accum)
+			return
+		}
+
+		// Loop through all hints for provider 'i', and recurse to build
+		// the permutation of this hint with all hints from providers 'i++'.
+		for j := range allProviderHints[i] {
+			iterate(i+1, append(accum, allProviderHints[i][j]))
+		}
+	}
+	iterate(0, []TopologyHint{})
+}
+
+// Merge a TopologyHints permutation to a single hint by performing a bitwise-AND
+// of their affinity masks. The hint shall be preferred if all hits in the permutation
+// are preferred.
+func mergePermutation(numaNodes []int, permutation []TopologyHint) TopologyHint {
+	// Get the NUMANodeAffinity from each hint in the permutation and see if any
+	// of them encode un-preferred allocations.
+	preferred := true
+	defaultAffinity, _ := bitmask.NewBitMask(numaNodes...)
+	var numaAffinities []bitmask.BitMask
+	for _, hint := range permutation {
+		// Only consider hints that have an actual NUMANodeAffinity set.
+		if hint.NumaNodeAffinity == nil {
+			numaAffinities = append(numaAffinities, defaultAffinity)
+		} else {
+			numaAffinities = append(numaAffinities, hint.NumaNodeAffinity)
+		}
+
+		if !hint.Preferred {
+			preferred = false
+		}
+	}
+
+	// Merge the affinities using a bitwise-and operation.
+	mergedAffinity := bitmask.And(defaultAffinity, numaAffinities...)
+	// Build a mergedHint from the merged affinity mask, indicating if an
+	// preferred allocation was used to generate the affinity mask or not.
+	return TopologyHint{mergedAffinity, preferred}
 }

@@ -249,27 +249,31 @@ func (nl *NodeLister) List() ([]*corev1.Node, error) {
 	return nodes, nil
 }
 
-func NormalizeScore(maxPriority int64, reverse bool, scores map[string]int64) {
-	var maxCnt int64
-	for _, score := range scores {
-		if score > maxCnt {
-			maxCnt = score
+// NormalizeScore normalizes the score for each filteredNode
+func NormalizeScore(maxPriority int64, reverse bool, scores []apis.ScoredNode) {
+	var maxCount int64
+	for _, scoreNode := range scores {
+		if scoreNode.Score > maxCount {
+			maxCount = scoreNode.Score
 		}
 	}
-	if maxCnt == 0 {
+
+	if maxCount == 0 {
 		if reverse {
-			for key := range scores {
-				scores[key] = maxPriority
+			for idx := range scores {
+				scores[idx].Score = maxPriority
 			}
 		}
 		return
 	}
-	for key, score := range scores {
-		score = maxPriority * score / maxCnt
+
+	for idx, scoreNode := range scores {
+		score := maxPriority * scoreNode.Score / maxCount
 		if reverse {
 			score = maxPriority - score
 		}
-		scores[key] = score
+
+		scores[idx].Score = score
 	}
 }
 

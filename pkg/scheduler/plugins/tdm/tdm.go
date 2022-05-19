@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,14 +17,16 @@ limitations under the License.
 package tdm
 
 import (
-	"fmt"
-	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
-	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
-	"github.com/hliangzhao/volcano/pkg/scheduler/utils"
-	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/klog/v2"
-	"strings"
-	"time"
+	`fmt`
+	`github.com/hliangzhao/volcano/pkg/scheduler/apis`
+	`github.com/hliangzhao/volcano/pkg/scheduler/framework`
+	plgutils `github.com/hliangzhao/volcano/pkg/scheduler/plugins/utils`
+	`github.com/hliangzhao/volcano/pkg/scheduler/utils`
+	`k8s.io/apimachinery/pkg/util/intstr`
+	`k8s.io/klog/v2`
+	k8sframework `k8s.io/kubernetes/pkg/scheduler/framework`
+	`strings`
+	`time`
 )
 
 const (
@@ -52,59 +54,39 @@ var lastEvictAt time.Time
 
 type tdmPlugin struct {
 	revocableZone map[string]string
-	evictPeriod   time.Duration
+	// evictPeriod default 1m
+	evictPeriod time.Duration
 }
 
-func New(arguments framework.Arguments) framework.Plugin {
+// New function returns prioritizePlugin object
+func New(args framework.Arguments) framework.Plugin {
 	revocableZone := make(map[string]string)
 	evictPeriod := time.Minute
 
-	for k, v := range arguments {
+	for k, v := range args {
 		if strings.Contains(k, revocableZoneLabelPrefix) {
-			revocableZone[strings.Replace(k, revocableZoneLabelPrefix, "", 1)] = v
+			revocableZone[strings.Replace(k, revocableZoneLabelPrefix, "", 1)] = v.(string)
 		}
 	}
 
-	if period, ok := arguments[evictPeriodLabel]; ok {
-		if d, err := time.ParseDuration(period); err == nil {
+	if period, ok := args[evictPeriodLabel]; ok {
+		if d, err := time.ParseDuration(period.(string)); err == nil {
 			evictPeriod = d
 		}
 	}
 
-	return &tdmPlugin{
-		revocableZone: revocableZone,
-		evictPeriod:   evictPeriod,
-	}
+	return &tdmPlugin{revocableZone, evictPeriod}
 }
 
 func (tp *tdmPlugin) Name() string {
 	return PluginName
 }
 
-func (tp *tdmPlugin) OnSessionOpen(sess *framework.Session) {
-	klog.V(4).Infof("Enter tdm plugin ...")
-	if klog.V(4).Enabled() {
-		defer func() {
-			klog.V(4).Infof("Leaving tdm plugin.")
-		}()
-	}
+func parseRevocableZone(rzRaw string) (start, end time.Time, err error) {
+	rzValues := strings.Split(strings.TrimSpace(rzRaw), "-")
 
-	sess.AddPredicateFn(tp.Name(), func(taskInfo *apis.TaskInfo, nodeInfo *apis.NodeInfo) error {
-		if nodeInfo.RevocableZone == "" {
-			return nil
-		}
-		if err := tp.availableRevocableZone(nodeInfo.RevocableZone); err != nil {
-			// TODO
-		}
-	})
-}
-
-func (tp *tdmPlugin) OnSessionClose(sess *framework.Session) {}
-
-func parseRevocableZone(rz string) (start, end time.Time, err error) {
-	rzValues := strings.Split(strings.TrimSpace(rz), "-")
 	if len(rzValues) != 2 {
-		err = fmt.Errorf("revocable zone %v format error", rz)
+		err = fmt.Errorf("revocable zone %v format error", rzRaw)
 		return
 	}
 
@@ -112,34 +94,38 @@ func parseRevocableZone(rz string) (start, end time.Time, err error) {
 	if err != nil {
 		return
 	}
+
 	t2, err := time.Parse(revocableZoneLayout, rzValues[1])
 	if err != nil {
 		return
 	}
 
 	now := time.Now()
+
 	start = time.Date(now.Year(), now.Month(), now.Day(), t1.Hour(), t1.Minute(), 0, 0, now.Location())
 	if t1.After(t2) || t1.Equal(t2) {
-		start = time.Date(now.Year(), now.Month(), now.Day()+1, t2.Hour(), t2.Minute(), 0, 0, now.Location())
+		end = time.Date(now.Year(), now.Month(), now.Day()+1, t2.Hour(), t2.Minute(), 0, 0, now.Location())
 	} else {
-		start = time.Date(now.Year(), now.Month(), now.Day(), t2.Hour(), t2.Minute(), 0, 0, now.Location())
+		end = time.Date(now.Year(), now.Month(), now.Day(), t2.Hour(), t2.Minute(), 0, 0, now.Location())
 	}
 
 	return
 }
 
 func (tp *tdmPlugin) availableRevocableZone(rz string) error {
+	// rzRaw format 00:00-23:59
 	rzRaw, ok := tp.revocableZone[rz]
 	if !ok {
 		return fmt.Errorf("revocable zone %v not support", rz)
 	}
+
+	now := time.Now()
 
 	start, end, err := parseRevocableZone(rzRaw)
 	if err != nil {
 		return err
 	}
 
-	now := time.Now()
 	if now.Unix() < start.Unix() || now.Unix() > end.Unix() {
 		return fmt.Errorf("current time beyond revocable zone %v:%v", rz, rzRaw)
 	}
@@ -147,18 +133,184 @@ func (tp *tdmPlugin) availableRevocableZone(rz string) error {
 	return nil
 }
 
-func (tp *tdmPlugin) maxVictims(job *apis.JobInfo, victims []*apis.TaskInfo) []*apis.TaskInfo {
-	maxPodEvictNum := tp.getMaxPodVictimNum(job)
-	targetNum := utils.GetMinInt(maxPodEvictNum, len(victims))
+func (tp *tdmPlugin) OnSessionOpen(ssn *framework.Session) {
+	klog.V(4).Infof("Enter tdm plugin ...")
+	if klog.V(4).Enabled() {
+		defer func() {
+			klog.V(4).Infof("Leaving tdm plugin.")
+		}()
+	}
 
-	klog.V(3).Infof("Job <%s/%s> max evict: %v, potential victims number:%v, max victims number:%v",
+	// tdm plugin just handle revocable node
+	predicateFn := func(task *apis.TaskInfo, node *apis.NodeInfo) error {
+		if node.RevocableZone == "" {
+			return nil
+		}
+
+		if err := tp.availableRevocableZone(node.RevocableZone); err != nil {
+			return fmt.Errorf("plugin %s predicates %w", tp.Name(), err)
+		}
+
+		klog.V(4).Infof("TDM node %v revocable zone %v:%v is active", node.Name, node.RevocableZone, tp.revocableZone[node.RevocableZone])
+
+		if len(task.RevocableZone) == 0 {
+			msg := fmt.Sprintf("task %s/%s is not allow to dispatch to revocable node %s", task.Namespace, task.Name, node.Name)
+			return fmt.Errorf("plugin %s predicates %s", tp.Name(), msg)
+		}
+
+		klog.V(4).Infof("TDM filter for Task %s/%s on node %s pass.", task.Namespace, task.Name, node.Name)
+		return nil
+	}
+
+	// tdm plugin just handle revocable node
+	nodeOrderFn := func(task *apis.TaskInfo, node *apis.NodeInfo) (float64, error) {
+		score := 0.0
+
+		if node.RevocableZone == "" {
+			return score, nil
+		}
+
+		if err := tp.availableRevocableZone(node.RevocableZone); err != nil {
+			klog.V(4).Infof("TDM not available %s", err)
+			return score, err
+		}
+
+		if len(task.RevocableZone) == 0 {
+			klog.V(4).Infof("TDM task %s/%s is not allow to dispatch to revocable node %s", task.Namespace, task.Name, node.Name)
+			return score, nil
+		}
+
+		score = float64(k8sframework.MaxNodeScore)
+
+		klog.V(4).Infof("TDM score for Task %s/%s on node %s is: %v", task.Namespace, task.Name, node.Name, score)
+		return score, nil
+	}
+
+	preemptableFn := func(preemptor *apis.TaskInfo, preemptees []*apis.TaskInfo) ([]*apis.TaskInfo, int) {
+		// for the preemptable or can use revocable zone workload, they can not preempt other tasks.
+		if preemptor.Preemptable || len(preemptor.RevocableZone) > 0 {
+			klog.V(4).Infof("TDM task %s/%s is preemptable, do nothing skip", preemptor.Namespace, preemptor.Name)
+			return nil, plgutils.Reject
+		}
+
+		var victims []*apis.TaskInfo
+		tasksMap := make(map[apis.JobID][]*apis.TaskInfo)
+
+		// find preemptable tasks which appear on none revocable node
+		for _, task := range preemptees {
+			if !task.Preemptable || task.Status != apis.Running {
+				continue
+			}
+
+			node, ok := ssn.Nodes[task.NodeName]
+			if !ok {
+				continue
+			}
+
+			if node.RevocableZone != "" {
+				continue
+			}
+
+			tasksMap[task.Job] = append(tasksMap[task.Job], task)
+		}
+
+		for jobID, preemptableTasks := range tasksMap {
+			if job, ok := ssn.Jobs[jobID]; ok {
+				victims = append(victims, tp.maxVictims(job, preemptableTasks)...)
+			}
+		}
+
+		klog.V(4).Infof("TDM victims are %+v", victims)
+
+		return victims, plgutils.Permit
+	}
+
+	victimsFn := func([]*apis.TaskInfo) []*apis.TaskInfo {
+		if lastEvictAt.Add(tp.evictPeriod).After(time.Now()) {
+			klog.V(4).Infof("TDM next evict time at %v", lastEvictAt)
+			return nil
+		}
+
+		klog.V(4).Infof("TDM start to find victims")
+
+		// find preemptable task on timeout revocable zone node
+		victims := make([]*apis.TaskInfo, 0)
+		for rz := range tp.revocableZone {
+			if err := tp.availableRevocableZone(rz); err != nil {
+				klog.V(4).Infof("TDM revocable zone %v disactive, %v", rz, err)
+				// rz disactive, then evict preemptable tasks by job from the revocable node
+				for jobID, preemtableTasks := range tp.revocableNodePreemptableTask(rz, ssn) {
+					if job, ok := ssn.Jobs[jobID]; ok {
+						victims = append(victims, tp.maxVictims(job, preemtableTasks)...)
+					}
+				}
+			}
+		}
+
+		// need to consider concurrency?
+		lastEvictAt = time.Now()
+
+		klog.V(4).Infof("TDM got %v victims", len(victims))
+
+		return victims
+	}
+
+	jobOrderFn := func(l, r interface{}) int {
+		lv := l.(*apis.JobInfo)
+		rv := r.(*apis.JobInfo)
+
+		if lv.Preemptable == rv.Preemptable {
+			return 0
+		}
+
+		if !lv.Preemptable {
+			return -1
+		}
+
+		return 1
+	}
+
+	jobPipelinedFn := func(obj interface{}) int {
+		jobInfo := obj.(*apis.JobInfo)
+		occupied := jobInfo.WaitingTaskNum() + jobInfo.ReadyTaskNum()
+		if occupied >= jobInfo.MinAvailable {
+			return plgutils.Permit
+		}
+		return plgutils.Reject
+	}
+
+	jobStarvingFn := func(obj interface{}) bool {
+		jobInfo := obj.(*apis.JobInfo)
+		// allow none preemptable elastic job (deployment) preempt task
+		if jobInfo.Preemptable {
+			return false
+		}
+		return len(jobInfo.TaskStatusIndex[apis.Pending]) > 0
+	}
+
+	victimsFns := make([]apis.VictimTasksFn, 0)
+	victimsFns = append(victimsFns, victimsFn)
+	ssn.AddPredicateFn(tp.Name(), predicateFn)
+	ssn.AddNodeOrderFn(tp.Name(), nodeOrderFn)
+	ssn.AddPreemptableFn(tp.Name(), preemptableFn)
+	ssn.AddVictimTasksFns(tp.Name(), victimsFns)
+	ssn.AddJobOrderFn(tp.Name(), jobOrderFn)
+	ssn.AddJobPipelinedFn(tp.Name(), jobPipelinedFn)
+	ssn.AddJobStarvingFns(tp.Name(), jobStarvingFn)
+}
+
+func (tp *tdmPlugin) maxVictims(job *apis.JobInfo, victims []*apis.TaskInfo) []*apis.TaskInfo {
+	maxPodEvictNum := tp.getMaxPodEvictNum(job)
+	targetNum := utils.GetMinInt(maxPodEvictNum, len(victims))
+	klog.V(3).Infof("Job <%s/%s> max evict:%v, potential victims number:%v, max victims number:%v",
 		job.Namespace, job.Name, maxPodEvictNum, len(victims), targetNum)
+
 	return victims[:targetNum]
 }
 
-func (tp *tdmPlugin) getMaxPodVictimNum(job *apis.JobInfo) int {
+// get max pod evict number from job budget configure
+func (tp *tdmPlugin) getMaxPodEvictNum(job *apis.JobInfo) int {
 	jobRunningTaskNum := len(job.TaskStatusIndex[apis.Running])
-
 	if job.Budget.MaxUnavailable != "" {
 		maxUnavailable := tp.parseIntStr(job.Budget.MaxUnavailable, len(job.Tasks))
 		finalTaskNum := len(job.TaskStatusIndex[apis.Succeeded]) + len(job.TaskStatusIndex[apis.Failed])
@@ -171,7 +323,7 @@ func (tp *tdmPlugin) getMaxPodVictimNum(job *apis.JobInfo) int {
 
 	if job.Budget.MinAvailable != "" {
 		minAvailable := tp.parseIntStr(job.Budget.MinAvailable, len(job.Tasks))
-		if jobRunningTaskNum >= -minAvailable {
+		if jobRunningTaskNum >= minAvailable {
 			return jobRunningTaskNum - minAvailable
 		}
 	}
@@ -180,22 +332,22 @@ func (tp *tdmPlugin) getMaxPodVictimNum(job *apis.JobInfo) int {
 }
 
 func (tp *tdmPlugin) parseIntStr(input string, taskNum int) int {
-	resVal := 0
+	resultValue := 0
 	tmp := intstr.Parse(input)
 	switch tmp.Type {
 	case intstr.Int:
-		resVal = tmp.IntValue()
+		resultValue = tmp.IntValue()
 	case intstr.String:
-		if v, err := intstr.GetScaledValueFromIntOrPercent(&tmp, taskNum, true); err == nil {
-			resVal = v
+		if v, err := intstr.GetValueFromIntOrPercent(&tmp, taskNum, true); err == nil {
+			resultValue = v
 		} else {
 			klog.Warningf("TDM get percent value err: %v", err)
 		}
 	}
-	return resVal
+
+	return resultValue
 }
 
-// revocableNodePreemptableTask returns the running tasks that could be preempted.
 func (tp *tdmPlugin) revocableNodePreemptableTask(rz string, sess *framework.Session) map[apis.JobID][]*apis.TaskInfo {
 	tasksMap := make(map[apis.JobID][]*apis.TaskInfo)
 	for _, node := range sess.RevocableNodes {
@@ -210,5 +362,8 @@ func (tp *tdmPlugin) revocableNodePreemptableTask(rz string, sess *framework.Ses
 			}
 		}
 	}
+
 	return tasksMap
 }
+
+func (tp *tdmPlugin) OnSessionClose(sess *framework.Session) {}

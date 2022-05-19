@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -74,7 +74,7 @@ func (pp *predicatePlugin) OnSessionOpen(sess *framework.Session) {
 	pl := utils.NewPodListerFromNode(sess)
 	nodeMap := utils.GenerateNodeMapAndSlice(sess.Nodes)
 
-	predicateCache := newPredicateCache()
+	pCache := newPredicateCache()
 	predicates := enablePredicate(pp.arguments)
 
 	kubeClient := sess.KubeClient()
@@ -168,7 +168,10 @@ func (pp *predicatePlugin) OnSessionOpen(sess *framework.Session) {
 	nodeUnschedulableFilter := plugin.(*nodeunschedulable.NodeUnschedulable)
 
 	// 2. NodeAffinity
-	plugin, _ = nodeaffinity.New(nil, handle)
+	nodeAffinityArgs := config.NodeAffinityArgs{
+		AddedAffinity: &corev1.NodeAffinity{},
+	}
+	plugin, _ = nodeaffinity.New(&nodeAffinityArgs, handle)
 	nodeAffinityFilter := plugin.(*nodeaffinity.NodeAffinity)
 
 	// 3. NodePorts
@@ -180,9 +183,9 @@ func (pp *predicatePlugin) OnSessionOpen(sess *framework.Session) {
 	tolerationFilter := plugin.(*tainttoleration.TaintToleration)
 
 	// 5. InterPodAffinity
-	plArgs := config.InterPodAffinityArgs{}
+	interPodAffinityArgs := config.InterPodAffinityArgs{}
 	fts := feature.Features{}
-	plugin, _ = interpodaffinity.New(&plArgs, handle, fts)
+	plugin, _ = interpodaffinity.New(&interPodAffinityArgs, handle, fts)
 	podAffinityFilter := plugin.(*interpodaffinity.InterPodAffinity)
 
 	sess.AddPredicateFn(pp.Name(), func(taskInfo *apis.TaskInfo, node *apis.NodeInfo) error {
@@ -225,10 +228,10 @@ func (pp *predicatePlugin) OnSessionOpen(sess *framework.Session) {
 			var err error
 			var fit bool
 			if predicates.cacheEnable {
-				fit, err = predicateCache.PredicateWithCache(node.Name, taskInfo.Pod)
+				fit, err = pCache.PredicateWithCache(node.Name, taskInfo.Pod)
 				if err != nil {
 					fit, err = predicateByStableFilter(taskInfo.Pod, nodeInfo)
-					predicateCache.UpdateCache(node.Name, taskInfo.Pod, fit)
+					pCache.UpdateCache(node.Name, taskInfo.Pod, fit)
 				} else {
 					if !fit {
 						err = fmt.Errorf("plugin equivalence cache predicates failed")
@@ -334,7 +337,10 @@ func enablePredicate(arguments framework.Arguments) predicateEnable {
 	arguments.GetBool(&predicate.cacheEnable, CachePredicate)
 	arguments.GetBool(&predicate.proportionalEnable, ProportionalPredicate)
 	resProportional := make(map[corev1.ResourceName]baseResource)
-	resStr := arguments[ProportionalResource]
+	resStr, ok := arguments[ProportionalResource].(string)
+	if !ok {
+		resStr = ""
+	}
 	resources := strings.Split(resStr, ",")
 	for _, res := range resources {
 		res = strings.TrimSpace(res)

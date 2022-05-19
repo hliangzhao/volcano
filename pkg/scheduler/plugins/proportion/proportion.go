@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import (
 	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
 	"github.com/hliangzhao/volcano/pkg/scheduler/metrics"
 	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/utils"
-	corev1 "k8s.io/api/core/v1"
+	corev1 `k8s.io/api/core/v1`
 	"k8s.io/klog/v2"
 	"math"
 	"reflect"
@@ -40,6 +40,8 @@ type queueAttr struct {
 	deserved  *apis.Resource
 	allocated *apis.Resource
 	request   *apis.Resource
+	// elastic represents the sum of job's elastic resource, job's elastic = job.allocated - job.minAvailable
+	elastic *apis.Resource
 	// inqueue represents the resource request of the inqueue job
 	inqueue    *apis.Resource
 	capability *apis.Resource
@@ -53,15 +55,15 @@ type proportionPlugin struct {
 	totalGuarantee *apis.Resource
 	queueOpts      map[apis.QueueID]*queueAttr
 
-	pluginArguments framework.Arguments
+	args framework.Arguments
 }
 
 func New(arguments framework.Arguments) framework.Plugin {
 	return &proportionPlugin{
-		totalResource:   apis.EmptyResource(),
-		totalGuarantee:  apis.EmptyResource(),
-		queueOpts:       map[apis.QueueID]*queueAttr{},
-		pluginArguments: arguments,
+		totalResource:  apis.EmptyResource(),
+		totalGuarantee: apis.EmptyResource(),
+		queueOpts:      map[apis.QueueID]*queueAttr{},
+		args:           arguments,
 	}
 }
 
@@ -70,6 +72,9 @@ func (pp *proportionPlugin) Name() string {
 }
 
 func (pp *proportionPlugin) OnSessionOpen(sess *framework.Session) {
+	klog.V(4).Infof("Enter proportion plugin ...")
+	defer klog.V(4).Infof("Leaving proportion plugin.")
+
 	pp.totalResource.Add(sess.TotalResource)
 	klog.V(4).Infof("The total resource is <%v>", pp.totalResource)
 
@@ -95,6 +100,7 @@ func (pp *proportionPlugin) OnSessionOpen(sess *framework.Session) {
 				deserved:  apis.EmptyResource(),
 				allocated: apis.EmptyResource(),
 				request:   apis.EmptyResource(),
+				elastic:   apis.EmptyResource(),
 				inqueue:   apis.EmptyResource(),
 				guarantee: apis.EmptyResource(),
 			}
@@ -142,6 +148,19 @@ func (pp *proportionPlugin) OnSessionOpen(sess *framework.Session) {
 		if job.PodGroup.Status.Phase == scheduling.PodGroupInqueue {
 			attr.inqueue.Add(job.GetMinResources())
 		}
+
+		// calculate inqueue resource for running jobs
+		// the judgement 'job.PodGroup.Status.Running >= job.PodGroup.Spec.MinMember' will work on cases such as the following condition:
+		// Considering a Spark job is completed (driver pod is completed) while the podgroup keeps running,
+		// the allocated resource will be reserved again if without the judgement.
+		if job.PodGroup.Status.Phase == scheduling.PodGroupRunning &&
+			job.PodGroup.Spec.MinResources != nil &&
+			job.PodGroup.Status.Running >= job.PodGroup.Spec.MinMember {
+			allocated := utils.GetAllocatedResource(job)
+			inqueued := utils.GetInqueueResource(job, allocated)
+			attr.inqueue.Add(inqueued)
+		}
+		attr.elastic.Add(job.GetElasticResources())
 	}
 
 	// record metrics
@@ -278,26 +297,38 @@ func (pp *proportionPlugin) OnSessionOpen(sess *framework.Session) {
 		return overused
 	})
 
-	sess.AddUnderusedResourceFn(pp.Name(), func(queue *apis.QueueInfo) apis.ResourceNameList {
-		underusedResNames := apis.ResourceNameList{}
+	// sess.AddUnderusedResourceFn(pp.Name(), func(queue *apis.QueueInfo) apis.ResourceNameList {
+	// 	underusedResNames := apis.ResourceNameList{}
+	// 	attr := pp.queueOpts[queue.UID]
+	//
+	// 	_, underusedRes := attr.allocated.Diff(attr.deserved, apis.Zero)
+	// 	if underusedRes.MilliCPU >= apis.GetMinResource() {
+	// 		underusedResNames = append(underusedResNames, corev1.ResourceCPU)
+	// 	}
+	// 	if underusedRes.Memory >= apis.GetMinResource() {
+	// 		underusedResNames = append(underusedResNames, corev1.ResourceMemory)
+	// 	}
+	// 	for resName, resValue := range underusedRes.ScalarResources {
+	// 		if resValue > 0 {
+	// 			underusedResNames = append(underusedResNames, resName)
+	// 		}
+	// 	}
+	// 	klog.V(3).Infof("Queue <%v>: deserved <%v>, allocated <%v>, share <%v>, underUsedResName %v",
+	// 		queue.Name, attr.deserved, attr.allocated, attr.share, underusedResNames)
+	//
+	// 	return underusedResNames
+	// })
+	sess.AddAllocatableFn(pp.Name(), func(queue *apis.QueueInfo, candidate *apis.TaskInfo) bool {
 		attr := pp.queueOpts[queue.UID]
 
-		_, underusedRes := attr.allocated.Diff(attr.deserved, apis.Zero)
-		if underusedRes.MilliCPU >= apis.GetMinResource() {
-			underusedResNames = append(underusedResNames, corev1.ResourceCPU)
+		free, _ := attr.deserved.Diff(attr.allocated, apis.Zero)
+		allocatable := candidate.ResReq.LessEqual(free, apis.Zero)
+		if !allocatable {
+			klog.V(3).Infof("Queue <%v>: deserved <%v>, allocated <%v>; Candidate <%v>: resource request <%v>",
+				queue.Name, attr.deserved, attr.allocated, candidate.Name, candidate.ResReq)
 		}
-		if underusedRes.Memory >= apis.GetMinResource() {
-			underusedResNames = append(underusedResNames, corev1.ResourceMemory)
-		}
-		for resName, resValue := range underusedRes.ScalarResources {
-			if resValue > 0 {
-				underusedResNames = append(underusedResNames, resName)
-			}
-		}
-		klog.V(3).Infof("Queue <%v>: deserved <%v>, allocated <%v>, share <%v>, underUsedResName %v",
-			queue.Name, attr.deserved, attr.allocated, attr.share, underusedResNames)
 
-		return underusedResNames
+		return allocatable
 	})
 
 	sess.AddJobEnqueuableFn(pp.Name(), func(obj interface{}) int {
@@ -330,6 +361,12 @@ func (pp *proportionPlugin) OnSessionOpen(sess *framework.Session) {
 			attr.inqueue.Add(job.GetMinResources())
 			return utils.Permit
 		}
+		sess.RecordPodGroupEvent(
+			job.PodGroup,
+			corev1.EventTypeNormal,
+			string(scheduling.PodGroupUnschedulableType),
+			"queue resource quota insufficient",
+		)
 		return utils.Reject
 	})
 

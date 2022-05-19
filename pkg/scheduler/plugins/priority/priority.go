@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 hliangzhao.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,11 +26,13 @@ import (
 const PluginName = "priority"
 
 type priorityPlugin struct {
-	pluginArguments framework.Arguments
+	args framework.Arguments
 }
 
 func New(arguments framework.Arguments) framework.Plugin {
-	return &priorityPlugin{pluginArguments: arguments}
+	return &priorityPlugin{
+		args: arguments,
+	}
 }
 
 func (pp *priorityPlugin) Name() string {

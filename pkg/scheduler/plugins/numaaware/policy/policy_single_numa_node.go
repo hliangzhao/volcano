@@ -16,6 +16,8 @@ limitations under the License.
 
 package policy
 
+import `k8s.io/klog/v2`
+
 type policySingleNumaNode struct {
 	numaNodes []int
 }
@@ -26,12 +28,32 @@ func NewPolicySingleNumaNode(numaNodes []int) Policy {
 	}
 }
 
+func (p *policySingleNumaNode) canAdmitPodResult(hint *TopologyHint) bool {
+	return hint.Preferred
+}
+
 func filterSingleNumaHints(allResHints [][]TopologyHint) [][]TopologyHint {
-	// TODO
-	return nil
+	var filteredResourcesHints [][]TopologyHint
+	for _, oneResourceHints := range allResHints {
+		var filtered []TopologyHint
+		for _, hint := range oneResourceHints {
+			if hint.NumaNodeAffinity == nil && hint.Preferred {
+				filtered = append(filtered, hint)
+			}
+			if hint.NumaNodeAffinity != nil && hint.NumaNodeAffinity.Count() == 1 && hint.Preferred {
+				filtered = append(filtered, hint)
+			}
+		}
+		filteredResourcesHints = append(filteredResourcesHints, filtered)
+	}
+	return filteredResourcesHints
 }
 
 func (p *policySingleNumaNode) Predicate(providersHints []map[string][]TopologyHint) (TopologyHint, bool) {
-	// TODO
-	return TopologyHint{}, false
+	filteredHints := filterProvidersHints(providersHints)
+	singleNumaHints := filterSingleNumaHints(filteredHints)
+	bestHint := mergeFilteredHints(p.numaNodes, singleNumaHints)
+	klog.V(4).Infof("bestHint: %v\n", bestHint)
+	admit := p.canAdmitPodResult(&bestHint)
+	return bestHint, admit
 }

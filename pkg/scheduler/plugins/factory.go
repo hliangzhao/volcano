@@ -29,11 +29,13 @@ import (
 	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/predicates`
 	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/priority`
 	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/proportion`
+	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/rescheduling`
 	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/reservation`
+	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/resourcequota`
 	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/sla`
 	tasktopology `github.com/hliangzhao/volcano/pkg/scheduler/plugins/task-topology`
 	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/tdm`
-	`k8s.io/apiserver/pkg/admission/plugin/resourcequota`
+	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/usage`
 )
 
 func init() {

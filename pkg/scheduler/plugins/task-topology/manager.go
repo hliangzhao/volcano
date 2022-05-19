@@ -50,7 +50,7 @@ type JobManager struct {
 	buckets     []*Bucket
 	podInBucket map[types.UID]int
 	podInTask   map[types.UID]string
-	taskOverPod map[string]map[types.UID]struct{}
+	// taskOverPod map[string]map[types.UID]struct{}
 
 	taskAffinityPriority map[string]int // [taskName] -> priority
 	taskExistOrder       map[string]int
@@ -104,7 +104,7 @@ func NewJobManager(jobID apis.JobID) *JobManager {
 		buckets:     make([]*Bucket, 0),
 		podInBucket: make(map[types.UID]int), // pod-uid: bucket-index
 		podInTask:   make(map[types.UID]string),
-		taskOverPod: make(map[string]map[types.UID]struct{}),
+		// taskOverPod: make(map[string]map[types.UID]struct{}),
 
 		taskAffinityPriority: make(map[string]int), // task-name: priority
 		taskExistOrder:       make(map[string]int), // task-name: order
@@ -155,12 +155,12 @@ func (jm *JobManager) buildTaskInfo(tasks map[apis.TaskID]*apis.TaskInfo) []*api
 
 		// this task is interested, add it to taskWithoutBucket and waiting for add
 		jm.podInTask[pod.UID] = taskName
-		taskSet, ok := jm.taskOverPod[taskName]
-		if !ok {
-			taskSet = make(map[types.UID]struct{})
-			jm.taskOverPod[taskName] = taskSet
-		}
-		taskSet[pod.UID] = struct{}{}
+		// taskSet, ok := jm.taskOverPod[taskName]
+		// if !ok {
+		// 	taskSet = make(map[types.UID]struct{})
+		// 	jm.taskOverPod[taskName] = taskSet
+		// }
+		// taskSet[pod.UID] = struct{}{}
 		taskWithoutBucket = append(taskWithoutBucket, task)
 	}
 	return taskWithoutBucket

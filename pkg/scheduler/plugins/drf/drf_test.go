@@ -37,6 +37,7 @@ import (
 )
 
 // TODO: test not passed
+//  cmd/scheduler/app not implemented
 
 func makePods(num int, cpu, mem, podGroupName string) []*corev1.Pod {
 	var pods []*corev1.Pod
