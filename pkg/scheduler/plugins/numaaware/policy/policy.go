@@ -17,8 +17,8 @@ limitations under the License.
 package policy
 
 import (
-	`k8s.io/klog/v2`
-	`k8s.io/kubernetes/pkg/kubelet/cm/topologymanager/bitmask`
+	"k8s.io/klog/v2"
+	"k8s.io/kubernetes/pkg/kubelet/cm/topologymanager/bitmask"
 )
 
 func filterProvidersHints(providersHints []map[string][]TopologyHint) [][]TopologyHint {

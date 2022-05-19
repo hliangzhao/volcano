@@ -16,7 +16,7 @@ limitations under the License.
 
 package rescheduling
 
-import `time`
+import "time"
 
 var FnsLastExecTime map[string]time.Time
 

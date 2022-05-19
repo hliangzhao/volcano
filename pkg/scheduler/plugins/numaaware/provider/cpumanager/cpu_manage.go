@@ -17,14 +17,14 @@ limitations under the License.
 package cpumanager
 
 import (
-	`github.com/hliangzhao/volcano/pkg/scheduler/apis`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/numaaware/policy`
-	corev1 `k8s.io/api/core/v1`
-	`k8s.io/klog/v2`
-	`k8s.io/kubernetes/pkg/kubelet/cm/cpumanager/topology`
-	`k8s.io/kubernetes/pkg/kubelet/cm/cpuset`
-	`k8s.io/kubernetes/pkg/kubelet/cm/topologymanager/bitmask`
-	`math`
+	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/numaaware/policy"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
+	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager/topology"
+	"k8s.io/kubernetes/pkg/kubelet/cm/cpuset"
+	"k8s.io/kubernetes/pkg/kubelet/cm/topologymanager/bitmask"
+	"math"
 )
 
 type cpuManage struct {

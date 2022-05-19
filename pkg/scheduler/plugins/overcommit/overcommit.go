@@ -21,7 +21,7 @@ import (
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
 	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
 	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/utils"
-	corev1 `k8s.io/api/core/v1`
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 )
 

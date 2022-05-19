@@ -17,25 +17,25 @@ limitations under the License.
 package plugins
 
 import (
-	`github.com/hliangzhao/volcano/pkg/scheduler/framework`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/binpack`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/conformance`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/drf`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/extender`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/gang`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/nodeorder`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/numaaware`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/overcommit`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/predicates`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/priority`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/proportion`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/rescheduling`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/reservation`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/resourcequota`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/sla`
-	tasktopology `github.com/hliangzhao/volcano/pkg/scheduler/plugins/task-topology`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/tdm`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/usage`
+	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/binpack"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/conformance"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/drf"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/extender"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/gang"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/nodeorder"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/numaaware"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/overcommit"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/predicates"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/priority"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/proportion"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/rescheduling"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/reservation"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/resourcequota"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/sla"
+	tasktopology "github.com/hliangzhao/volcano/pkg/scheduler/plugins/task-topology"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/tdm"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/usage"
 )
 
 func init() {

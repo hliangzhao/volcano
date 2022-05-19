@@ -16,7 +16,7 @@ limitations under the License.
 
 package extender
 
-import `github.com/hliangzhao/volcano/pkg/scheduler/apis`
+import "github.com/hliangzhao/volcano/pkg/scheduler/apis"
 
 type OnSessionOpenRequest struct {
 	Jobs           map[apis.JobID]*apis.JobInfo

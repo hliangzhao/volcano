@@ -17,14 +17,14 @@ limitations under the License.
 package resourcequota
 
 import (
-	`fmt`
-	schedulingv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1`
-	`github.com/hliangzhao/volcano/pkg/scheduler/apis`
-	`github.com/hliangzhao/volcano/pkg/scheduler/framework`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/utils`
-	corev1 `k8s.io/api/core/v1`
-	quotav1 `k8s.io/apiserver/pkg/quota/v1`
-	`k8s.io/klog/v2`
+	"fmt"
+	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
+	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
+	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/utils"
+	corev1 "k8s.io/api/core/v1"
+	quotav1 "k8s.io/apiserver/pkg/quota/v1"
+	"k8s.io/klog/v2"
 )
 
 const PluginName = "resourcequota"

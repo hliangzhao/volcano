@@ -17,10 +17,10 @@ limitations under the License.
 package rescheduling
 
 import (
-	`github.com/hliangzhao/volcano/pkg/scheduler/apis`
-	`github.com/hliangzhao/volcano/pkg/scheduler/framework`
-	`k8s.io/klog/v2`
-	`time`
+	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
+	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
+	"k8s.io/klog/v2"
+	"time"
 )
 
 const (

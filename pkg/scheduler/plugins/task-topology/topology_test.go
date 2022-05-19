@@ -20,12 +20,12 @@ package tasktopology
 //  Passed.
 
 import (
-	`fmt`
-	`github.com/hliangzhao/volcano/pkg/apis/scheduling`
-	`github.com/hliangzhao/volcano/pkg/scheduler/apis`
-	metav1 `k8s.io/apimachinery/pkg/apis/meta/v1`
-	`reflect`
-	`testing`
+	"fmt"
+	"github.com/hliangzhao/volcano/pkg/apis/scheduling"
+	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"reflect"
+	"testing"
 )
 
 func Test_readTopologyFromPgAnnotations(t *testing.T) {

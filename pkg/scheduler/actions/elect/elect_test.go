@@ -20,15 +20,15 @@ package elect
 //  Passed.
 
 import (
-	`github.com/hliangzhao/volcano/pkg/scheduler/apis`
-	`github.com/hliangzhao/volcano/pkg/scheduler/cache`
-	`github.com/hliangzhao/volcano/pkg/scheduler/conf`
-	`github.com/hliangzhao/volcano/pkg/scheduler/framework`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/reservation`
-	`github.com/hliangzhao/volcano/pkg/scheduler/utils`
-	`reflect`
-	`testing`
-	`time`
+	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
+	"github.com/hliangzhao/volcano/pkg/scheduler/cache"
+	"github.com/hliangzhao/volcano/pkg/scheduler/conf"
+	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/reservation"
+	"github.com/hliangzhao/volcano/pkg/scheduler/utils"
+	"reflect"
+	"testing"
+	"time"
 )
 
 func TestElect(t *testing.T) {

@@ -17,26 +17,26 @@ limitations under the License.
 package predicates
 
 // TODO: test not passed
-//  ServerOpts not implemented
 
 import (
-	`github.com/agiledragon/gomonkey/v2`
-	schedulingv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1`
-	`github.com/hliangzhao/volcano/pkg/scheduler/actions/allocate`
-	api `github.com/hliangzhao/volcano/pkg/scheduler/apis`
-	`github.com/hliangzhao/volcano/pkg/scheduler/cache`
-	`github.com/hliangzhao/volcano/pkg/scheduler/conf`
-	`github.com/hliangzhao/volcano/pkg/scheduler/framework`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/gang`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/priority`
-	`github.com/hliangzhao/volcano/pkg/scheduler/utils`
-	corev1 `k8s.io/api/core/v1`
-	schedulingv1 `k8s.io/api/scheduling/v1`
-	`k8s.io/apimachinery/pkg/api/resource`
-	metav1 `k8s.io/apimachinery/pkg/apis/meta/v1`
-	`k8s.io/client-go/tools/record`
-	`reflect`
-	`testing`
+	"github.com/agiledragon/gomonkey/v2"
+	`github.com/hliangzhao/volcano/cmd/scheduler/app/options`
+	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
+	"github.com/hliangzhao/volcano/pkg/scheduler/actions/allocate"
+	api "github.com/hliangzhao/volcano/pkg/scheduler/apis"
+	"github.com/hliangzhao/volcano/pkg/scheduler/cache"
+	"github.com/hliangzhao/volcano/pkg/scheduler/conf"
+	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/gang"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/priority"
+	"github.com/hliangzhao/volcano/pkg/scheduler/utils"
+	corev1 "k8s.io/api/core/v1"
+	schedulingv1 "k8s.io/api/scheduling/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/record"
+	"reflect"
+	"testing"
 )
 
 func getWorkerAffinity() *corev1.Affinity {
@@ -71,8 +71,8 @@ func TestEventHandler(t *testing.T) {
 	framework.RegisterPluginBuilder(PluginName, New)
 	framework.RegisterPluginBuilder(gang.PluginName, gang.New)
 	framework.RegisterPluginBuilder(priority.PluginName, priority.New)
-	// TODO: ServerOpts not implemented
-	// options.ServerOpts = options.NewServerOption()
+
+	options.ServerOpts = options.NewServerOption()
 	defer framework.CleanupPluginBuilders()
 
 	// pending pods

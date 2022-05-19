@@ -20,15 +20,15 @@ package cpumanager
 //  Passed.
 
 import (
-	api `github.com/hliangzhao/volcano/pkg/scheduler/apis`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/numaaware/policy`
-	corev1 `k8s.io/api/core/v1`
-	`k8s.io/apimachinery/pkg/api/resource`
-	`k8s.io/kubernetes/pkg/kubelet/cm/cpumanager/topology`
-	`k8s.io/kubernetes/pkg/kubelet/cm/cpuset`
-	`k8s.io/kubernetes/pkg/kubelet/cm/topologymanager/bitmask`
-	`reflect`
-	`testing`
+	api "github.com/hliangzhao/volcano/pkg/scheduler/apis"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/numaaware/policy"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager/topology"
+	"k8s.io/kubernetes/pkg/kubelet/cm/cpuset"
+	"k8s.io/kubernetes/pkg/kubelet/cm/topologymanager/bitmask"
+	"reflect"
+	"testing"
 )
 
 var numaInfo = api.NumaTopoInfo{

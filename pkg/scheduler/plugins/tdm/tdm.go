@@ -17,16 +17,16 @@ limitations under the License.
 package tdm
 
 import (
-	`fmt`
-	`github.com/hliangzhao/volcano/pkg/scheduler/apis`
-	`github.com/hliangzhao/volcano/pkg/scheduler/framework`
-	plgutils `github.com/hliangzhao/volcano/pkg/scheduler/plugins/utils`
-	`github.com/hliangzhao/volcano/pkg/scheduler/utils`
-	`k8s.io/apimachinery/pkg/util/intstr`
-	`k8s.io/klog/v2`
-	k8sframework `k8s.io/kubernetes/pkg/scheduler/framework`
-	`strings`
-	`time`
+	"fmt"
+	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
+	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
+	plgutils "github.com/hliangzhao/volcano/pkg/scheduler/plugins/utils"
+	"github.com/hliangzhao/volcano/pkg/scheduler/utils"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/klog/v2"
+	k8sframework "k8s.io/kubernetes/pkg/scheduler/framework"
+	"strings"
+	"time"
 )
 
 const (

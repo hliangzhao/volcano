@@ -17,27 +17,27 @@ limitations under the License.
 package drf
 
 import (
-	`flag`
-	`fmt`
-	`github.com/agiledragon/gomonkey/v2`
-	schedulingv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1`
-	`github.com/hliangzhao/volcano/pkg/scheduler/actions/allocate`
-	api `github.com/hliangzhao/volcano/pkg/scheduler/apis`
-	`github.com/hliangzhao/volcano/pkg/scheduler/cache`
-	`github.com/hliangzhao/volcano/pkg/scheduler/conf`
-	`github.com/hliangzhao/volcano/pkg/scheduler/framework`
-	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/proportion`
-	`github.com/hliangzhao/volcano/pkg/scheduler/utils`
-	corev1 `k8s.io/api/core/v1`
-	metav1 `k8s.io/apimachinery/pkg/apis/meta/v1`
-	`k8s.io/client-go/tools/record`
-	`k8s.io/klog/v2`
-	`reflect`
-	`testing`
+	"flag"
+	"fmt"
+	"github.com/agiledragon/gomonkey/v2"
+	`github.com/hliangzhao/volcano/cmd/scheduler/app/options`
+	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
+	"github.com/hliangzhao/volcano/pkg/scheduler/actions/allocate"
+	api "github.com/hliangzhao/volcano/pkg/scheduler/apis"
+	"github.com/hliangzhao/volcano/pkg/scheduler/cache"
+	"github.com/hliangzhao/volcano/pkg/scheduler/conf"
+	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
+	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/proportion"
+	"github.com/hliangzhao/volcano/pkg/scheduler/utils"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/record"
+	"k8s.io/klog/v2"
+	"reflect"
+	"testing"
 )
 
 // TODO: test not passed
-//  cmd/scheduler/app not implemented
 
 func makePods(num int, cpu, mem, podGroupName string) []*corev1.Pod {
 	var pods []*corev1.Pod
@@ -75,11 +75,10 @@ func TestHDRF(t *testing.T) {
 	})
 	defer patches.Reset()
 
-	// TODO: cmd/scheduler/app not implemented
-	// s := options.NewServerOption()
-	// s.MinNodesToFind = 100
-	// s.PercentageOfNodesToFind = 100
-	// s.RegisterOptions()
+	s := options.NewServerOption()
+	s.MinNodesToFind = 100
+	s.PercentageOfNodesToFind = 100
+	s.RegisterOptions()
 
 	framework.RegisterPluginBuilder(PluginName, New)
 	framework.RegisterPluginBuilder("proportion", proportion.New)

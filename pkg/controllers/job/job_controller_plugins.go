@@ -20,6 +20,7 @@ import (
 	"fmt"
 	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/controllers/job/plugins"
+	pluginsinterface "github.com/hliangzhao/volcano/pkg/controllers/job/plugins/interface"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 )

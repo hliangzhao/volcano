@@ -17,12 +17,12 @@ limitations under the License.
 package policy
 
 import (
-	batchv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1`
-	nodeinfov1alpha1 `github.com/hliangzhao/volcano/pkg/apis/nodeinfo/v1alpha1`
-	`github.com/hliangzhao/volcano/pkg/scheduler/apis`
-	corev1 `k8s.io/api/core/v1`
-	`k8s.io/kubernetes/pkg/kubelet/cm/cpuset`
-	`k8s.io/kubernetes/pkg/kubelet/cm/topologymanager/bitmask`
+	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
+	nodeinfov1alpha1 "github.com/hliangzhao/volcano/pkg/apis/nodeinfo/v1alpha1"
+	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/kubernetes/pkg/kubelet/cm/cpuset"
+	"k8s.io/kubernetes/pkg/kubelet/cm/topologymanager/bitmask"
 )
 
 // TopologyHint is a struct containing the NUMANodeAffinity for a Container

@@ -20,10 +20,10 @@ package predicates
 //  Passed.
 
 import (
-	`github.com/hliangzhao/volcano/pkg/scheduler/apis`
-	`github.com/hliangzhao/volcano/pkg/scheduler/utils`
-	v1 `k8s.io/api/core/v1`
-	`testing`
+	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
+	"github.com/hliangzhao/volcano/pkg/scheduler/utils"
+	v1 "k8s.io/api/core/v1"
+	"testing"
 )
 
 func buildTask(name, cpu, memory, gpu string) *apis.TaskInfo {

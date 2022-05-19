@@ -17,11 +17,11 @@ limitations under the License.
 package cpumanager
 
 import (
-	`fmt`
-	`k8s.io/klog/v2`
-	`k8s.io/kubernetes/pkg/kubelet/cm/cpumanager/topology`
-	`k8s.io/kubernetes/pkg/kubelet/cm/cpuset`
-	`sort`
+	"fmt"
+	"k8s.io/klog/v2"
+	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager/topology"
+	"k8s.io/kubernetes/pkg/kubelet/cm/cpuset"
+	"sort"
 )
 
 type cpuAccumulator struct {

@@ -17,11 +17,11 @@ limitations under the License.
 package rescheduling
 
 import (
-	api `github.com/hliangzhao/volcano/pkg/scheduler/apis`
-	corev1 `k8s.io/api/core/v1`
-	`k8s.io/apimachinery/pkg/api/resource`
-	`k8s.io/klog/v2`
-	`reflect`
+	api "github.com/hliangzhao/volcano/pkg/scheduler/apis"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/klog/v2"
+	"reflect"
 )
 
 // DefaultLowNodeConf defines the default configuration for Low Node Utilization (LNU) strategy

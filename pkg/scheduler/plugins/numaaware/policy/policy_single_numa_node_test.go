@@ -20,9 +20,9 @@ package policy
 //  Passed.
 
 import (
-	`k8s.io/kubernetes/pkg/kubelet/cm/topologymanager/bitmask`
-	`reflect`
-	`testing`
+	"k8s.io/kubernetes/pkg/kubelet/cm/topologymanager/bitmask"
+	"reflect"
+	"testing"
 )
 
 func Test_single_numa_node_predicate(t *testing.T) {
