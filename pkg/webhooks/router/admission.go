@@ -18,6 +18,8 @@ package router
 
 import (
 	"fmt"
+	"github.com/hliangzhao/volcano/cmd/webhook-manager/app/options"
+	"strings"
 	"sync"
 )
 
@@ -36,12 +38,11 @@ func RegisterAdmission(service *AdmissionService) error {
 	return nil
 }
 
-// TODO: cmd/webhook-manager not implemented
-// func ForEachAdmission(config *options.Config, handler func(*AdmissionService)) {
-// 	admissions := strings.Split(strings.TrimSpace(config.EnabledAdmission), ",")
-// 	for _, admission := range admissions {
-// 		if service, found := admissionMap[admission]; found {
-// 			handler(service)
-// 		}
-// 	}
-// }
+func ForEachAdmission(config *options.Config, handler func(*AdmissionService)) {
+	admissions := strings.Split(strings.TrimSpace(config.EnabledAdmission), ",")
+	for _, admission := range admissions {
+		if service, found := admissionMap[admission]; found {
+			handler(service)
+		}
+	}
+}
