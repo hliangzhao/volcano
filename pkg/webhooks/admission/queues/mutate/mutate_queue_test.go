@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 hliangzhao.
+Copyright 2021-2022 The Volcano Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -131,12 +131,12 @@ func TestMutateQueues(t *testing.T) {
 				},
 				Request: &admissionv1.AdmissionRequest{
 					Kind: metav1.GroupVersionKind{
-						Group:   "scheduling.hliangzhao.io",
+						Group:   "scheduling.volcano.sh",
 						Version: "v1alpha1",
 						Kind:    "Queue",
 					},
 					Resource: metav1.GroupVersionResource{
-						Group:    "scheduling.hliangzhao.io",
+						Group:    "scheduling.volcano.sh",
 						Version:  "v1alpha1",
 						Resource: "queues",
 					},
@@ -162,12 +162,12 @@ func TestMutateQueues(t *testing.T) {
 				},
 				Request: &admissionv1.AdmissionRequest{
 					Kind: metav1.GroupVersionKind{
-						Group:   "scheduling.hliangzhao.io",
+						Group:   "scheduling.volcano.sh",
 						Version: "v1alpha1",
 						Kind:    "Queue",
 					},
 					Resource: metav1.GroupVersionResource{
-						Group:    "scheduling.hliangzhao.io",
+						Group:    "scheduling.volcano.sh",
 						Version:  "v1alpha1",
 						Resource: "queues",
 					},
@@ -190,12 +190,12 @@ func TestMutateQueues(t *testing.T) {
 				},
 				Request: &admissionv1.AdmissionRequest{
 					Kind: metav1.GroupVersionKind{
-						Group:   "scheduling.hliangzhao.io",
+						Group:   "scheduling.volcano.sh",
 						Version: "v1alpha1",
 						Kind:    "Queue",
 					},
 					Resource: metav1.GroupVersionResource{
-						Group:    "scheduling.hliangzhao.io",
+						Group:    "scheduling.volcano.sh",
 						Version:  "v1alpha1",
 						Resource: "queues",
 					},

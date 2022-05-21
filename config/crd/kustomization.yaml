@@ -2,11 +2,11 @@
 # since it depends on service name and namespace that are out of this kustomize package.
 # It should be run by config/default
 resources:
-- bases/bus.hliangzhao.io_commands.yaml
-- bases/batch.hliangzhao.io_jobs.yaml
-- bases/nodeinfo.hliangzhao.io_numatopologies.yaml
-- bases/scheduling.hliangzhao.io_podgroups.yaml
-- bases/scheduling.hliangzhao.io_queues.yaml
+- bases/bus.volcano.sh_commands.yaml
+- bases/batch.volcano.sh_jobs.yaml
+- bases/nodeinfo.volcano.sh_numatopologies.yaml
+- bases/scheduling.volcano.sh_podgroups.yaml
+- bases/scheduling.volcano.sh_queues.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:

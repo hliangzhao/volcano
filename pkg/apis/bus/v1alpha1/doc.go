@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 hliangzhao.
+Copyright 2021-2022 The Volcano Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,6 +18,6 @@ limitations under the License.
 // Package bus is a common module that can be used by the left apis. In this package, we define the api Command.
 // It describes a command that will act on these api objects.
 // +kubebuilder:object:generate=true
-// +groupName=bus.hliangzhao.io
+// +groupName=bus.volcano.sh
 // +k8s:deepcopy-gen=package
 package v1alpha1

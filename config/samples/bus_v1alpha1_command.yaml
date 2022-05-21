@@ -1,4 +1,4 @@
-apiVersion: bus.hliangzhao.io/v1alpha1
+apiVersion: bus.volcano.sh/v1alpha1
 kind: Command
 metadata:
   name: command-sample

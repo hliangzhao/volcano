@@ -6,9 +6,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.7.0
   creationTimestamp: null
-  name: numatopologies.nodeinfo.hliangzhao.io
+  name: numatopologies.nodeinfo.volcano.sh
 spec:
-  group: nodeinfo.hliangzhao.io
+  group: nodeinfo.volcano.sh
   names:
     kind: Numatopology
     listKind: NumatopologyList

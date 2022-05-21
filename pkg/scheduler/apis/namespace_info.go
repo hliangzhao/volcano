@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 hliangzhao.
+Copyright 2021-2022 The Volcano Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import (
 
 const (
 	// NamespaceWeightKey is the key in ResourceQuota.spec.hard indicating the weight of this namespace
-	NamespaceWeightKey = "hliangzhao.io/namespace.weight"
+	NamespaceWeightKey = "volcano.sh/namespace.weight"
 
 	// DefaultNamespaceWeight is the default weight of namespace
 	DefaultNamespaceWeight = 1

@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 hliangzhao.
+Copyright 2021-2022 The Volcano Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ var service = &router.AdmissionService{
 
 	ValidatingConfig: &admissionregistrationv1.ValidatingWebhookConfiguration{
 		Webhooks: []admissionregistrationv1.ValidatingWebhook{{
-			Name: "validatequeue.hliangzhao.io",
+			Name: "validatequeue.volcano.sh",
 			Rules: []admissionregistrationv1.RuleWithOperations{
 				{
 					Operations: []admissionregistrationv1.OperationType{admissionregistrationv1.Create, admissionregistrationv1.Update, admissionregistrationv1.Delete},

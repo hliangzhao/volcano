@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 hliangzhao.
+Copyright 2021-2022 The Volcano Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ func TestMutatePods(t *testing.T) {
 					},
 				},
 				Labels: map[string]string{
-					"hliangzhao.io/nodetype": "management",
+					"volcano.sh/nodetype": "management",
 				},
 			},
 			{
@@ -58,19 +58,19 @@ func TestMutatePods(t *testing.T) {
 				Object: webhooksconfig.Object{
 					Key: "annotation",
 					Value: []string{
-						"hliangzhao.io/resource-group: cpu",
+						"volcano.sh/resource-group: cpu",
 					},
 				},
 				SchedulerName: "volcano",
 				Labels: map[string]string{
-					"hliangzhao.io/nodetype": "cpu",
+					"volcano.sh/nodetype": "cpu",
 				},
 			},
 			{
 				ResourceGroup: "gpu",
 				SchedulerName: "volcano",
 				Labels: map[string]string{
-					"hliangzhao.io/nodetype": "gpu",
+					"volcano.sh/nodetype": "gpu",
 				},
 			},
 		},
@@ -103,7 +103,7 @@ func TestMutatePods(t *testing.T) {
 					Op:   "add",
 					Path: "/spec/nodeSelector",
 					Value: map[string]string{
-						"hliangzhao.io/nodetype": "management",
+						"volcano.sh/nodetype": "management",
 					},
 				},
 				{
@@ -134,7 +134,7 @@ func TestMutatePods(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "cpu-pod",
 					Annotations: map[string]string{
-						"hliangzhao.io/resource-group": "cpu",
+						"volcano.sh/resource-group": "cpu",
 					},
 				},
 			},
@@ -143,7 +143,7 @@ func TestMutatePods(t *testing.T) {
 					Op:   "add",
 					Path: "/spec/nodeSelector",
 					Value: map[string]string{
-						"hliangzhao.io/nodetype": "cpu",
+						"volcano.sh/nodetype": "cpu",
 					},
 				},
 				{
@@ -163,7 +163,7 @@ func TestMutatePods(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "gpu-pod",
 					Annotations: map[string]string{
-						"hliangzhao.io/resource-group": "gpu",
+						"volcano.sh/resource-group": "gpu",
 					},
 				},
 			},
@@ -172,7 +172,7 @@ func TestMutatePods(t *testing.T) {
 					Op:   "add",
 					Path: "/spec/nodeSelector",
 					Value: map[string]string{
-						"hliangzhao.io/nodetype": "gpu",
+						"volcano.sh/nodetype": "gpu",
 					},
 				},
 				{

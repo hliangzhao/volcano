@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 hliangzhao.
+Copyright 2021-2022 The Volcano Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -90,7 +90,7 @@ func TestAddPodGroup(t *testing.T) {
 			},
 			expectedPodGroup: &scheduling.PodGroup{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "scheduling.hliangzhao.io/v1beta1",
+					APIVersion: "scheduling.volcano.sh/v1beta1",
 					Kind:       "PodGroup",
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -127,7 +127,7 @@ func TestAddPodGroup(t *testing.T) {
 			},
 			expectedPodGroup: &scheduling.PodGroup{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "scheduling.hliangzhao.io/v1beta1",
+					APIVersion: "scheduling.volcano.sh/v1beta1",
 					Kind:       "PodGroup",
 				},
 				ObjectMeta: metav1.ObjectMeta{

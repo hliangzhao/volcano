@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 hliangzhao.
+Copyright 2021-2022 The Volcano Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -198,7 +198,7 @@ type TaskInfo struct {
 	Preemptable bool
 	BestEffort  bool
 
-	// RevocableZone supports setting hliangzhao.io/revocable-zone annotation or label for pod/podgroup.
+	// RevocableZone supports setting volcano.sh/revocable-zone annotation or label for pod/podgroup.
 	// We only support empty value or * value for this version, and we will support specify revocable zone name for future release.
 	// Empty value means workload can not use revocable node.
 	// "*" value means workload can use all the revocable nodes during node active revocable time.
@@ -276,7 +276,7 @@ func (ti *TaskInfo) Clone() *TaskInfo {
 	}
 }
 
-const TaskPriorityAnnotation = "hliangzhao.io/task-priority"
+const TaskPriorityAnnotation = "volcano.sh/task-priority"
 
 // GetTransactionContext gets transaction context of a task。
 func (ti *TaskInfo) GetTransactionContext() TransactionContext {

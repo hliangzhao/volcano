@@ -5,7 +5,7 @@ metadata:
   name: numatopology-viewer-role
 rules:
 - apiGroups:
-  - nodeinfo.hliangzhao.io
+  - nodeinfo.volcano.sh
   resources:
   - numatopologies
   verbs:
@@ -13,7 +13,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - nodeinfo.hliangzhao.io
+  - nodeinfo.volcano.sh
   resources:
   - numatopologies/status
   verbs:

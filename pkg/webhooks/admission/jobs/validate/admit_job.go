@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 hliangzhao.
+Copyright 2021-2022 The Volcano Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ var service = &router.AdmissionService{
 
 	ValidatingConfig: &admissionregistrationv1.ValidatingWebhookConfiguration{
 		Webhooks: []admissionregistrationv1.ValidatingWebhook{{
-			Name: "validatejob.hliangzhao.io",
+			Name: "validatejob.volcano.sh",
 			Rules: []admissionregistrationv1.RuleWithOperations{
 				{
 					Operations: []admissionregistrationv1.OperationType{
@@ -61,7 +61,7 @@ var service = &router.AdmissionService{
 						admissionregistrationv1.Update,
 					},
 					Rule: admissionregistrationv1.Rule{
-						APIGroups:   []string{"batch.hliangzhao.io"},
+						APIGroups:   []string{"batch.volcano.sh"},
 						APIVersions: []string{"v1alpha1"},
 						Resources:   []string{"jobs"},
 					},

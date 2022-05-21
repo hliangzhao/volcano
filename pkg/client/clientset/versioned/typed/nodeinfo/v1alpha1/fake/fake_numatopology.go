@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 hliangzhao.
+Copyright 2021-2022 The Volcano Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,9 +34,9 @@ type FakeNumatopologies struct {
 	Fake *FakeNodeinfoV1alpha1
 }
 
-var numatopologiesResource = schema.GroupVersionResource{Group: "nodeinfo.hliangzhao.io", Version: "v1alpha1", Resource: "numatopologies"}
+var numatopologiesResource = schema.GroupVersionResource{Group: "nodeinfo.volcano.sh", Version: "v1alpha1", Resource: "numatopologies"}
 
-var numatopologiesKind = schema.GroupVersionKind{Group: "nodeinfo.hliangzhao.io", Version: "v1alpha1", Kind: "Numatopology"}
+var numatopologiesKind = schema.GroupVersionKind{Group: "nodeinfo.volcano.sh", Version: "v1alpha1", Kind: "Numatopology"}
 
 // Get takes name of the numatopology, and returns the corresponding numatopology object, and an error if there is any.
 func (c *FakeNumatopologies) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Numatopology, err error) {

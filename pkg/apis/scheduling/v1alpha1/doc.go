@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 hliangzhao.
+Copyright 2021-2022 The Volcano Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@ limitations under the License.
 
 // Package v1alpha1 contains API Schema definitions for the scheduling v1beta1 API group
 // +kubebuilder:object:generate=true
-// +groupName=scheduling.hliangzhao.io
+// +groupName=scheduling.volcano.sh
 // +k8s:deepcopy-gen=package
 // +k8s:conversion-gen=github.com/hliangzhao/volcano/pkg/apis/scheduling
 package v1alpha1

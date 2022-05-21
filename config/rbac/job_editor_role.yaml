@@ -5,7 +5,7 @@ metadata:
   name: job-editor-role
 rules:
 - apiGroups:
-  - batch.hliangzhao.io
+  - batch.volcano.sh
   resources:
   - jobs
   verbs:
@@ -17,7 +17,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - batch.hliangzhao.io
+  - batch.volcano.sh
   resources:
   - jobs/status
   verbs:

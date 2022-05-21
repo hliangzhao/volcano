@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 hliangzhao.
+Copyright 2021-2022 The Volcano Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@ limitations under the License.
 
 package v1alpha1
 
-const GroupName = "hliangzhao.io"
+const GroupName = "volcano.sh"
 
 // JobWaitingTime is the key of sla plugin to set maximum waiting time
 // that a job could stay Pending in service level agreement

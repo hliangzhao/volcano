@@ -1,4 +1,4 @@
-apiVersion: nodeinfo.hliangzhao.io/v1alpha1
+apiVersion: nodeinfo.volcano.sh/v1alpha1
 kind: Numatopology
 metadata:
   name: numatopology-sample

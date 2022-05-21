@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 hliangzhao.
+Copyright 2021-2022 The Volcano Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,9 +35,9 @@ type FakeCommands struct {
 	ns   string
 }
 
-var commandsResource = schema.GroupVersionResource{Group: "bus.hliangzhao.io", Version: "v1alpha1", Resource: "commands"}
+var commandsResource = schema.GroupVersionResource{Group: "bus.volcano.sh", Version: "v1alpha1", Resource: "commands"}
 
-var commandsKind = schema.GroupVersionKind{Group: "bus.hliangzhao.io", Version: "v1alpha1", Kind: "Command"}
+var commandsKind = schema.GroupVersionKind{Group: "bus.volcano.sh", Version: "v1alpha1", Kind: "Command"}
 
 // Get takes name of the command, and returns the corresponding command object, and an error if there is any.
 func (c *FakeCommands) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Command, err error) {

@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 hliangzhao.
+Copyright 2021-2022 The Volcano Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -83,7 +83,7 @@ func GetPodResourceRequest(pod *corev1.Pod) *Resource {
 	return result
 }
 
-// GetPodPreemptable returns the value of annotation/label `hliangzhao.io/preemptable` of pod.
+// GetPodPreemptable returns the value of annotation/label `volcano.sh/preemptable` of pod.
 func GetPodPreemptable(pod *corev1.Pod) bool {
 	// check annotations
 	if len(pod.Annotations) > 0 {
@@ -112,7 +112,7 @@ func GetPodPreemptable(pod *corev1.Pod) bool {
 	return false
 }
 
-// GetPodRevocableZone return `hliangzhao.io/revocable-zone` value for pod/podgroup.
+// GetPodRevocableZone return `volcano.sh/revocable-zone` value for pod/podgroup.
 func GetPodRevocableZone(pod *corev1.Pod) string {
 	if len(pod.Annotations) > 0 {
 		if value, found := pod.Annotations[schedulingv1alpha1.RevocableZone]; found {
@@ -130,7 +130,7 @@ func GetPodRevocableZone(pod *corev1.Pod) string {
 	return ""
 }
 
-// GetPodTopologyInfo return `hliangzhao.io/numa-topology-policy` value for pod.
+// GetPodTopologyInfo return `volcano.sh/numa-topology-policy` value for pod.
 func GetPodTopologyInfo(pod *corev1.Pod) *TopologyInfo {
 	info := TopologyInfo{
 		ResMap: map[int]corev1.ResourceList{},

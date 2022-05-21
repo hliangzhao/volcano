@@ -5,7 +5,7 @@ metadata:
   name: command-editor-role
 rules:
 - apiGroups:
-  - bus.hliangzhao.io
+  - bus.volcano.sh
   resources:
   - commands
   verbs:
@@ -17,7 +17,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - bus.hliangzhao.io
+  - bus.volcano.sh
   resources:
   - commands/status
   verbs:

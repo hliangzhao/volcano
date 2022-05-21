@@ -6,9 +6,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.7.0
   creationTimestamp: null
-  name: commands.bus.hliangzhao.io
+  name: commands.bus.volcano.sh
 spec:
-  group: bus.hliangzhao.io
+  group: bus.volcano.sh
   names:
     kind: Command
     listKind: CommandList

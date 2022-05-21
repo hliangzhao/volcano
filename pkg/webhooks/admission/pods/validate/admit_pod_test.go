@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 hliangzhao.
+Copyright 2021-2022 The Volcano Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -82,7 +82,7 @@ func TestValidatePod(t *testing.T) {
 			},
 
 			reviewResponse: admissionv1.AdmissionResponse{Allowed: false},
-			ret:            `failed to get PodGroup for pod <test/volcano-pod-2>: podgroups.scheduling.hliangzhao.io "podgroup-p1" not found`,
+			ret:            `failed to get PodGroup for pod <test/volcano-pod-2>: podgroups.scheduling.volcano.sh "podgroup-p1" not found`,
 			ExpectErr:      true,
 			disabledPG:     true,
 		},

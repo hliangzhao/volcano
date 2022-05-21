@@ -1,4 +1,4 @@
-apiVersion: scheduling.hliangzhao.io/v1alpha1
+apiVersion: scheduling.volcano.sh/v1alpha1
 kind: PodGroup
 metadata:
   name: podgroup-sample

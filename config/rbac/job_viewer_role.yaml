@@ -5,7 +5,7 @@ metadata:
   name: job-viewer-role
 rules:
 - apiGroups:
-  - batch.hliangzhao.io
+  - batch.volcano.sh
   resources:
   - jobs
   verbs:
@@ -13,7 +13,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - batch.hliangzhao.io
+  - batch.volcano.sh
   resources:
   - jobs/status
   verbs:

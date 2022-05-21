@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 hliangzhao.
+Copyright 2021-2022 The Volcano Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,6 +16,6 @@ limitations under the License.
 
 // Package v1alpha1 contains API Schema definitions for the nodeinfo v1alpha1 API group
 // +kubebuilder:object:generate=true
-// +groupName=nodeinfo.hliangzhao.io
+// +groupName=nodeinfo.volcano.sh
 // +k8s:deepcopy-gen=package
 package v1alpha1

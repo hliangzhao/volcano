@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 hliangzhao.
+Copyright 2021-2022 The Volcano Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ type BatchV1alpha1Interface interface {
 	JobsGetter
 }
 
-// BatchV1alpha1Client is used to interact with features provided by the batch.hliangzhao.io group.
+// BatchV1alpha1Client is used to interact with features provided by the batch.volcano.sh group.
 type BatchV1alpha1Client struct {
 	restClient rest.Interface
 }

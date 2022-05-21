@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 hliangzhao.
+Copyright 2021-2022 The Volcano Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ limitations under the License.
 package apis
 
 const (
-	GroupName = "hliangzhao.io"
+	GroupName = "volcano.sh"
 
 	// VolcanoGPUResource extended gpu resource
 	VolcanoGPUResource = GroupName + "/gpu-memory"

@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 hliangzhao.
+Copyright 2021-2022 The Volcano Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,9 +35,9 @@ type FakeJobs struct {
 	ns   string
 }
 
-var jobsResource = schema.GroupVersionResource{Group: "batch.hliangzhao.io", Version: "v1alpha1", Resource: "jobs"}
+var jobsResource = schema.GroupVersionResource{Group: "batch.volcano.sh", Version: "v1alpha1", Resource: "jobs"}
 
-var jobsKind = schema.GroupVersionKind{Group: "batch.hliangzhao.io", Version: "v1alpha1", Kind: "Job"}
+var jobsKind = schema.GroupVersionKind{Group: "batch.volcano.sh", Version: "v1alpha1", Kind: "Job"}
 
 // Get takes name of the job, and returns the corresponding job object, and an error if there is any.
 func (c *FakeJobs) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Job, err error) {

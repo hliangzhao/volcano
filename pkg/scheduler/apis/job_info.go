@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 hliangzhao.
+Copyright 2021-2022 The Volcano Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -83,7 +83,7 @@ type JobInfo struct {
 
 	Preemptable bool
 
-	// RevocableZone support set hliangzhao.io/revocable-zone annotation or label for pod/podgroup.
+	// RevocableZone support set volcano.sh/revocable-zone annotation or label for pod/podgroup.
 	// We only support empty value or * value for this version, and we will support specify revocable zone name for future release.
 	// Empty value means workload can not use revocable node;
 	// "*" value means workload can use all the revocable node for during node active revocable time.
@@ -221,7 +221,7 @@ func (ji *JobInfo) extractWaitingTime(pg *PodGroup) (*time.Duration, error) {
 	return &waitingTime, nil
 }
 
-// extractPreemptable return hliangzhao.io/preemptable value for job.
+// extractPreemptable return volcano.sh/preemptable value for job.
 func (ji *JobInfo) extractPreemptable(pg *PodGroup) bool {
 	// check annotation and label in turn
 	if len(pg.Annotations) > 0 {
@@ -248,7 +248,7 @@ func (ji *JobInfo) extractPreemptable(pg *PodGroup) bool {
 	return false
 }
 
-// extractRevocableZone return hliangzhao.io/revocable-zone value for pod/podgroup.
+// extractRevocableZone return volcano.sh/revocable-zone value for pod/podgroup.
 func (ji *JobInfo) extractRevocableZone(pg *PodGroup) string {
 	if len(pg.Annotations) > 0 {
 		if value, found := pg.Annotations[schedulingv1alpha1.RevocableZone]; found {

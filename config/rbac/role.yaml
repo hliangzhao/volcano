@@ -7,7 +7,7 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - batch.hliangzhao.io
+  - batch.volcano.sh
   resources:
   - jobs
   verbs:
@@ -19,13 +19,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - batch.hliangzhao.io
+  - batch.volcano.sh
   resources:
   - jobs/finalizers
   verbs:
   - update
 - apiGroups:
-  - batch.hliangzhao.io
+  - batch.volcano.sh
   resources:
   - jobs/status
   verbs:
@@ -33,7 +33,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - bus.hliangzhao.io
+  - bus.volcano.sh
   resources:
   - commands
   verbs:
@@ -45,13 +45,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - bus.hliangzhao.io
+  - bus.volcano.sh
   resources:
   - commands/finalizers
   verbs:
   - update
 - apiGroups:
-  - bus.hliangzhao.io
+  - bus.volcano.sh
   resources:
   - commands/status
   verbs:
@@ -59,7 +59,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - nodeinfo.hliangzhao.io
+  - nodeinfo.volcano.sh
   resources:
   - numatopologies
   verbs:
@@ -71,13 +71,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - nodeinfo.hliangzhao.io
+  - nodeinfo.volcano.sh
   resources:
   - numatopologies/finalizers
   verbs:
   - update
 - apiGroups:
-  - nodeinfo.hliangzhao.io
+  - nodeinfo.volcano.sh
   resources:
   - numatopologies/status
   verbs:
@@ -85,7 +85,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - scheduling.hliangzhao.io
+  - scheduling.volcano.sh
   resources:
   - podgroups
   verbs:
@@ -97,13 +97,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - scheduling.hliangzhao.io
+  - scheduling.volcano.sh
   resources:
   - podgroups/finalizers
   verbs:
   - update
 - apiGroups:
-  - scheduling.hliangzhao.io
+  - scheduling.volcano.sh
   resources:
   - podgroups/status
   verbs:
@@ -111,7 +111,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - scheduling.hliangzhao.io
+  - scheduling.volcano.sh
   resources:
   - queues
   verbs:
@@ -123,13 +123,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - scheduling.hliangzhao.io
+  - scheduling.volcano.sh
   resources:
   - queues/finalizers
   verbs:
   - update
 - apiGroups:
-  - scheduling.hliangzhao.io
+  - scheduling.volcano.sh
   resources:
   - queues/status
   verbs:

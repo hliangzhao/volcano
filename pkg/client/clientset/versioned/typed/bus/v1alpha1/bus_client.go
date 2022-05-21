@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 hliangzhao.
+Copyright 2021-2022 The Volcano Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ type BusV1alpha1Interface interface {
 	CommandsGetter
 }
 
-// BusV1alpha1Client is used to interact with features provided by the bus.hliangzhao.io group.
+// BusV1alpha1Client is used to interact with features provided by the bus.volcano.sh group.
 type BusV1alpha1Client struct {
 	restClient rest.Interface
 }

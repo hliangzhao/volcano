@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 hliangzhao.
+Copyright 2021-2022 The Volcano Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -54,19 +54,19 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=batch.hliangzhao.io, Version=v1alpha1
+	// Group=batch.volcano.sh, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithResource("jobs"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Batch().V1alpha1().Jobs().Informer()}, nil
 
-		// Group=bus.hliangzhao.io, Version=v1alpha1
+		// Group=bus.volcano.sh, Version=v1alpha1
 	case busv1alpha1.SchemeGroupVersion.WithResource("commands"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Bus().V1alpha1().Commands().Informer()}, nil
 
-		// Group=nodeinfo.hliangzhao.io, Version=v1alpha1
+		// Group=nodeinfo.volcano.sh, Version=v1alpha1
 	case nodeinfov1alpha1.SchemeGroupVersion.WithResource("numatopologies"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Nodeinfo().V1alpha1().Numatopologies().Informer()}, nil
 
-		// Group=scheduling.hliangzhao.io, Version=v1alpha1
+		// Group=scheduling.volcano.sh, Version=v1alpha1
 	case schedulingv1alpha1.SchemeGroupVersion.WithResource("podgroups"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Scheduling().V1alpha1().PodGroups().Informer()}, nil
 	case schedulingv1alpha1.SchemeGroupVersion.WithResource("queues"):

@@ -1,5 +1,5 @@
 /*
-Copyright 2021 hliangzhao.
+Copyright 2021-2022 The Volcano Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -60,7 +60,7 @@ tiers:
 	  sla-waiting-time: 1h2m3s4ms5µs6ns
 
 Meanwhile, user can give individual job waiting time settings for one job via job annotations:
-apiVersion: batch.hliangzhao.io/v1alpha1
+apiVersion: batch.volcano.sh/v1alpha1
 kind: Job
 metadata:
   annotations:
