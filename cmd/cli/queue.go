@@ -17,8 +17,8 @@ limitations under the License.
 package main
 
 import (
-	`github.com/hliangzhao/volcano/pkg/cli/queue`
-	`github.com/spf13/cobra`
+	"github.com/hliangzhao/volcano/pkg/cli/queue"
+	"github.com/spf13/cobra"
 )
 
 func buildQueueCmd() *cobra.Command {

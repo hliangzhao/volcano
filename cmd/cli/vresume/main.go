@@ -17,15 +17,15 @@ limitations under the License.
 package main
 
 import (
-	`fmt`
-	`github.com/hliangzhao/volcano/cmd/cli/utils`
-	`github.com/hliangzhao/volcano/pkg/cli/vresume`
-	`github.com/spf13/cobra`
-	`github.com/spf13/pflag`
-	`k8s.io/apimachinery/pkg/util/wait`
-	`k8s.io/klog/v2`
-	`os`
-	`time`
+	"fmt"
+	"github.com/hliangzhao/volcano/cmd/cli/utils"
+	"github.com/hliangzhao/volcano/pkg/cli/vresume"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/klog/v2"
+	"os"
+	"time"
 )
 
 var logFlushFreq = pflag.Duration("log-flush-frequency", 5*time.Second, "Maximum number of seconds between log flushes")

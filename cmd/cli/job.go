@@ -17,8 +17,8 @@ limitations under the License.
 package main
 
 import (
-	`github.com/hliangzhao/volcano/pkg/cli/job`
-	`github.com/spf13/cobra`
+	"github.com/hliangzhao/volcano/pkg/cli/job"
+	"github.com/spf13/cobra"
 )
 
 func buildJobCmd() *cobra.Command {

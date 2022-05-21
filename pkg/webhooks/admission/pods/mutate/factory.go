@@ -14,23 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package utils
+package mutate
 
 import (
-	"fmt"
-	"github.com/spf13/cobra"
-	"os"
+	webhooksconfig "github.com/hliangzhao/volcano/pkg/webhooks/config"
+	corev1 "k8s.io/api/core/v1"
 )
 
-func CheckError(cmd *cobra.Command, err error) {
-	if err != nil {
-		msg := "Failed to"
+// ResGroup interface for resource group
+type ResGroup interface {
+	IsBelongResGroup(pod *corev1.Pod, resGroupConfig webhooksconfig.ResGroupConfig) bool
+}
 
-		for cur := cmd; cur.Parent() != nil; cur = cur.Parent() {
-			msg += fmt.Sprintf(" %s", cur.Name())
-		}
-
-		fmt.Printf("%s: %v\n", msg, err)
-		os.Exit(-1)
+// GetResGroup return the interface based on resourceGroup.Object.Key
+func GetResGroup(resourceGroup webhooksconfig.ResGroupConfig) ResGroup {
+	switch resourceGroup.Object.Key {
+	case "namespace":
+		return NewNamespaceResGroup()
+	case "annotation":
+		return NewAnnotationResGroup()
 	}
+	return NewAnnotationResGroup()
 }

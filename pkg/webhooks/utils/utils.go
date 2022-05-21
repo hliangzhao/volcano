@@ -17,20 +17,18 @@ limitations under the License.
 package utils
 
 import (
-	"fmt"
-	"github.com/spf13/cobra"
-	"os"
+	admissionv1 "k8s.io/api/admission/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog/v2"
 )
 
-func CheckError(cmd *cobra.Command, err error) {
-	if err != nil {
-		msg := "Failed to"
-
-		for cur := cmd; cur.Parent() != nil; cur = cur.Parent() {
-			msg += fmt.Sprintf(" %s", cur.Name())
-		}
-
-		fmt.Printf("%s: %v\n", msg, err)
-		os.Exit(-1)
+// ToAdmissionResponse updates the admission response with the input error.
+func ToAdmissionResponse(err error) *admissionv1.AdmissionResponse {
+	klog.Error(err)
+	return &admissionv1.AdmissionResponse{
+		Allowed: false,
+		Result: &metav1.Status{
+			Message: err.Error(),
+		},
 	}
 }

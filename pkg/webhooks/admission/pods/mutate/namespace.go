@@ -1,0 +1,44 @@
+/*
+Copyright 2021-2022 hliangzhao.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package mutate
+
+import (
+	webhooksconfig "github.com/hliangzhao/volcano/pkg/webhooks/config"
+	corev1 "k8s.io/api/core/v1"
+)
+
+type namespaceResGroup struct{}
+
+// NewNamespaceResGroup create a new structure
+func NewNamespaceResGroup() ResGroup {
+	return &namespaceResGroup{}
+}
+
+// IsBelongResGroup adjust whether pod is belong to the resource group
+func (resGroup *namespaceResGroup) IsBelongResGroup(pod *corev1.Pod, resGroupConfig webhooksconfig.ResGroupConfig) bool {
+	if resGroupConfig.Object.Key != "namespace" {
+		return false
+	}
+
+	for _, val := range resGroupConfig.Object.Value {
+		if pod.Namespace == val {
+			return true
+		}
+	}
+
+	return false
+}

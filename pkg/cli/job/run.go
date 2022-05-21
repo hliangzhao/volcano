@@ -62,7 +62,7 @@ func InitRunFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&launchJobFlags.FileName, "filename", "f", "", "the yaml file of job")
 }
 
-var jobName = "job.volcano.sh"
+var jobName = "job.hliangzhao.io"
 
 // RunJob creates the job.
 func RunJob() error {

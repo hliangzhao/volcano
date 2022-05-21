@@ -1,0 +1,136 @@
+/*
+Copyright 2021-2022 hliangzhao.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package validate
+
+// TODO: just copied.
+//  Passed.
+
+import (
+	"context"
+	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
+	fakevolcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned/fake"
+	admissionv1 "k8s.io/api/admission/v1"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"strings"
+	"testing"
+)
+
+func TestValidatePod(t *testing.T) {
+	namespace := "test"
+	pgName := "podgroup-p1"
+
+	testCases := []struct {
+		Name           string
+		Pod            v1.Pod
+		ExpectErr      bool
+		reviewResponse admissionv1.AdmissionResponse
+		ret            string
+		disabledPG     bool
+	}{
+		// validate normal pod with default-scheduler
+		{
+			Name: "validate default normal pod",
+			Pod: v1.Pod{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "v1",
+					Kind:       "Pod",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      "normal-pod-1",
+				},
+				Spec: v1.PodSpec{
+					SchedulerName: "default-scheduler",
+				},
+			},
+
+			reviewResponse: admissionv1.AdmissionResponse{Allowed: true},
+			ret:            "",
+			ExpectErr:      false,
+		},
+		// validate volcano pod with volcano scheduler when get pg failed
+		{
+			Name: "validate volcano volcano pod when get pg failed",
+			Pod: v1.Pod{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "v1",
+					Kind:       "Pod",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace:   namespace,
+					Name:        "volcano-pod-2",
+					Annotations: map[string]string{schedulingv1alpha1.KubeGroupNameAnnotationKey: pgName},
+				},
+				Spec: v1.PodSpec{
+					SchedulerName: "volcano",
+				},
+			},
+
+			reviewResponse: admissionv1.AdmissionResponse{Allowed: false},
+			ret:            `failed to get PodGroup for pod <test/volcano-pod-2>: podgroups.scheduling.hliangzhao.io "podgroup-p1" not found`,
+			ExpectErr:      true,
+			disabledPG:     true,
+		},
+	}
+
+	for _, testCase := range testCases {
+
+		pg := &schedulingv1alpha1.PodGroup{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: namespace,
+				Name:      "podgroup-p1",
+			},
+			Spec: schedulingv1alpha1.PodGroupSpec{
+				MinMember: 1,
+			},
+			Status: schedulingv1alpha1.PodGroupStatus{
+				Phase: schedulingv1alpha1.PodGroupPending,
+			},
+		}
+
+		// create fake volcano clientset
+		config.VolcanoClient = fakevolcanoclient.NewSimpleClientset()
+		config.SchedulerName = "volcano"
+
+		if !testCase.disabledPG {
+			_, err := config.VolcanoClient.SchedulingV1alpha1().PodGroups(namespace).Create(context.TODO(), pg, metav1.CreateOptions{})
+			if err != nil {
+				t.Error("PG Creation Failed")
+			}
+		}
+
+		ret := validatePod(&testCase.Pod, &testCase.reviewResponse)
+
+		if testCase.ExpectErr == true && ret == "" {
+			t.Errorf("%s: test case Expect error msg :%s, but got nil.", testCase.Name, testCase.ret)
+		}
+		if testCase.ExpectErr == true && testCase.reviewResponse.Allowed != false {
+			t.Errorf("%s: test case Expect Allowed as false but got true.", testCase.Name)
+		}
+		if testCase.ExpectErr == true && !strings.Contains(ret, testCase.ret) {
+			t.Errorf("%s: test case Expect error msg :%s, but got diff error %v", testCase.Name, testCase.ret, ret)
+		}
+
+		if testCase.ExpectErr == false && ret != "" {
+			t.Errorf("%s: test case Expect no error, but got error %v", testCase.Name, ret)
+		}
+		if testCase.ExpectErr == false && testCase.reviewResponse.Allowed != true {
+			t.Errorf("%s: test case Expect Allowed as true but got false. %v", testCase.Name, testCase.reviewResponse)
+		}
+	}
+}

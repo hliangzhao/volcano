@@ -116,7 +116,7 @@ func setDefaultArgs() {
 	}
 }
 
-var jobName = "job.volcano.sh"
+var jobName = "job.hliangzhao.io"
 
 // RunJob creates the job.
 func RunJob() error {
