@@ -16,6 +16,9 @@ limitations under the License.
 
 package options
 
+// TODO: just copied.
+//  Passed.
+
 import (
 	"github.com/hliangzhao/volcano/pkg/kube"
 	"github.com/spf13/pflag"
@@ -48,7 +51,7 @@ func TestAddFlags(t *testing.T) {
 		WorkerThreads:  defaultWorkers,
 		SchedulerNames: []string{"volcano", "volcano2"},
 		MaxRequeueNum:  defaultMaxRequeueNum,
-		// TODO: official code has an error here
+		// TODO: official code has an error on healthz port
 		HealthzBindAddress:             ":11251",
 		DetectionPeriodOfDependsOnTask: defaultDetectionPeriodOfDependsOnTask,
 	}
@@ -61,5 +64,4 @@ func TestAddFlags(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected nil but got %v\n", err)
 	}
-
 }

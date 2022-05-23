@@ -1,0 +1,14 @@
+# This file defines the variables that will be replaced when generating yaml files with helm
+basic:
+  image_tag_version: "latest"
+  controller_image_name: "hliangzhao97/vc-controller-manager"
+  scheduler_image_name: "hliangzhao97/vc-scheduler"
+  admission_image_name: "hliangzhao97/vc-webhook-manager"
+  admission_secret_name: "volcano-admission-secret"
+  admission_config_file: "config/volcano-admission.conf"
+  scheduler_config_file: "config/volcano-scheduler.conf"
+
+  image_pull_secret: ""
+  admission_port: 8443
+custom:
+  metrics_enable: "false"

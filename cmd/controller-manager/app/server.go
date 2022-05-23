@@ -46,6 +46,7 @@ const (
 	retryPeriod   = 5 * time.Second
 )
 
+// Run starts the controller-manager.
 func Run(opt *options.ServerOption) error {
 	config, err := kube.BuildConfig(opt.KubeClientOptions)
 	if err != nil {
@@ -66,6 +67,8 @@ func Run(opt *options.ServerOption) error {
 		return fmt.Errorf("finished without leader elect")
 	}
 
+	// multiple controller-managers are usually enabled for long-performance clusters
+	// we use "k8s.io/client-go/tools/leaderelection" to implement leader election of controllers
 	leaderElectionClient, err := kubernetes.NewForConfig(rest.AddUserAgent(config, "leader-election"))
 	if err != nil {
 		return err
@@ -97,6 +100,7 @@ func Run(opt *options.ServerOption) error {
 		return fmt.Errorf("couldn't create resource lock: %v", err)
 	}
 
+	// If this controller-manager instance acquires the lock, it will run as the leader
 	leaderelection.RunOrDie(context.TODO(), leaderelection.LeaderElectionConfig{
 		Lock:          rl,
 		LeaseDuration: leaseDuration,
@@ -124,6 +128,8 @@ func startControllers(config *rest.Config, opt *options.ServerOption) func(ctx c
 	controllerOpt.VolcanoClient = clientset.NewForConfigOrDie(config)
 	controllerOpt.SharedInformerFactory = informers.NewSharedInformerFactory(controllerOpt.KubeClient, 0)
 
+	// return a run function: initialize and start all controllers, each with a separate coroutine
+	// (gc controller, job controller, queue controller, podgroup controller)
 	return func(ctx context.Context) {
 		framework.ForeachController(func(c framework.Controller) {
 			if err := c.Initialize(controllerOpt); err != nil {

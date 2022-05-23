@@ -117,9 +117,6 @@ fi
 if [ "${GENS}" = "all" ] || grep -qw "openapi" <<<"${GENS}"; then
   echo "Generating OpenAPI definitions for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}/openapi"
   declare -a OPENAPI_EXTRA_PACKAGES
-  OPENAPI_EXTRA_PACKAGES[0]=Balancer
-  OPENAPI_EXTRA_PACKAGES[1]=BalancerSpec
-  OPENAPI_EXTRA_PACKAGES[2]=BalancerStatus
   "${gobin}/openapi-gen" \
            --input-dirs "$(codegen::join , "${EXT_FQ_APIS[@]}" "${OPENAPI_EXTRA_PACKAGES[@]}")" \
            --input-dirs "k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/apimachinery/pkg/runtime,k8s.io/apimachinery/pkg/version" \

@@ -90,7 +90,7 @@ func TestAddPodGroup(t *testing.T) {
 			},
 			expectedPodGroup: &scheduling.PodGroup{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "scheduling.volcano.sh/v1beta1",
+					APIVersion: "scheduling.volcano.sh/v1alpha1",
 					Kind:       "PodGroup",
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -127,7 +127,7 @@ func TestAddPodGroup(t *testing.T) {
 			},
 			expectedPodGroup: &scheduling.PodGroup{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "scheduling.volcano.sh/v1beta1",
+					APIVersion: "scheduling.volcano.sh/v1alpha1",
 					Kind:       "PodGroup",
 				},
 				ObjectMeta: metav1.ObjectMeta{

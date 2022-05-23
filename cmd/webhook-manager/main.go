@@ -43,14 +43,17 @@ func main() {
 	go wait.Until(klog.Flush, *logFlushFreq, wait.NeverStop)
 	defer klog.Flush()
 
+	// check webhook-controller-server's port
 	if err := config.CheckPortOrDie(); err != nil {
 		klog.Fatalf("Configured port is invalid: %v", err)
 	}
 
+	// parse CA files for https communication
 	if err := config.ParseCAFiles(nil); err != nil {
 		klog.Fatalf("Failed to parse CA file: %v", err)
 	}
 
+	// start the webhook-controller-server
 	if err := app.Run(config); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)

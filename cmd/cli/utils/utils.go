@@ -22,6 +22,7 @@ import (
 	"os"
 )
 
+// CheckError prints command error and exit.
 func CheckError(cmd *cobra.Command, err error) {
 	if err != nil {
 		msg := "Failed to"

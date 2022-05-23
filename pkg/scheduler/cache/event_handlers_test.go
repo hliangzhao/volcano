@@ -143,7 +143,7 @@ func TestSchedulerCache_UpdatePod(t *testing.T) {
 	}
 }
 
-func TestSchedulerCache_AddPodGroupV1beta1(t *testing.T) {
+func TestSchedulerCache_AddPodGroupV1alpha1(t *testing.T) {
 	namespace := "test"
 	owner := buildOwnerReference("j1")
 
@@ -230,7 +230,7 @@ func TestSchedulerCache_AddPodGroupV1beta1(t *testing.T) {
 	}
 }
 
-func TestSchedulerCache_UpdatePodGroupV1beta1(t *testing.T) {
+func TestSchedulerCache_UpdatePodGroupV1alpha1(t *testing.T) {
 	namespace := "test"
 	owner := buildOwnerReference("j1")
 
@@ -356,7 +356,7 @@ func TestSchedulerCache_UpdatePodGroupV1beta1(t *testing.T) {
 	}
 }
 
-func TestSchedulerCache_DeletePodGroupV1beta1(t *testing.T) {
+func TestSchedulerCache_DeletePodGroupV1alpha1(t *testing.T) {
 	namespace := "test"
 	owner := buildOwnerReference("j1")
 
@@ -452,7 +452,7 @@ func TestSchedulerCache_DeletePodGroupV1beta1(t *testing.T) {
 	}
 }
 
-func TestSchedulerCache_AddQueueV1beta1(t *testing.T) {
+func TestSchedulerCache_AddQueueV1alpha1(t *testing.T) {
 	namespace := "test"
 
 	tests := []struct {
@@ -503,7 +503,7 @@ func TestSchedulerCache_AddQueueV1beta1(t *testing.T) {
 	}
 }
 
-func TestSchedulerCache_UpdateQueueV1beta1(t *testing.T) {
+func TestSchedulerCache_UpdateQueueV1alpha1(t *testing.T) {
 	namespace := "test"
 
 	tests := []struct {
@@ -584,7 +584,7 @@ func TestSchedulerCache_UpdateQueueV1beta1(t *testing.T) {
 	}
 }
 
-func TestSchedulerCache_DeleteQueueV1beta1(t *testing.T) {
+func TestSchedulerCache_DeleteQueueV1alpha1(t *testing.T) {
 	namespace := "test"
 
 	tests := []struct {

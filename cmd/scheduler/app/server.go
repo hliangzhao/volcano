@@ -56,6 +56,7 @@ func Run(opt *options.ServerOption) error {
 		return err
 	}
 
+	// load custom plugins if possible
 	if opt.PluginsDir != "" {
 		err := framework.LoadCustomPlugins(opt.PluginsDir)
 		if err != nil {
@@ -64,8 +65,8 @@ func Run(opt *options.ServerOption) error {
 		}
 	}
 
-	sched, err := scheduler.NewScheduler(
-		config,
+	// create a scheduler instance
+	sched, err := scheduler.NewScheduler(config,
 		opt.SchedulerName,
 		opt.SchedulerConf,
 		opt.SchedulePeriod,
@@ -88,11 +89,13 @@ func Run(opt *options.ServerOption) error {
 		<-ctx.Done()
 	}
 
+	// run the scheduler instance directly if leader election is not enabled
 	if !opt.EnableLeaderElection {
 		run(ctx)
 		return fmt.Errorf("finished without leader elect")
 	}
 
+	// the following leader election has the same procedure with controller-manager
 	leaderElectionClient, err := kubernetes.NewForConfig(rest.AddUserAgent(config, "leader-election"))
 	if err != nil {
 		return err

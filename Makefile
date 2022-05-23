@@ -1,8 +1,26 @@
+# Copyright 2019 The Volcano Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# Image URL to use all building/pushing image targets
-IMG ?= controller:latest
-# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.22
+# Set global variables
+BIN_DIR=_output/bin
+RELEASE_DIR=_output/release
+REPO_PATH=github.com/hliangzhao.com/volcano
+IMAGE_PREFIX=hliangzhao97/vc
+CRD_OPTIONS ?= "crd:crdVersions=v1,generateEmbeddedObjectMeta=true"
+CC ?= "gcc"
+SUPPORT_PLUGINS ?= "no"
+CRD_VERSION ?= v1
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -11,120 +29,180 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
-# Setting SHELL to bash allows bash commands to be executed by recipes.
-# This is a requirement for 'setup-envtest.sh' in the test target.
-# Options are set to exit when a recipe line exits non-zero or a piped command fails.
-SHELL = /usr/bin/env bash -o pipefail
-.SHELLFLAGS = -ec
-
-.PHONY: all
-all: build
-
-##@ General
-
-# The help target prints out all targets with their descriptions organized
-# beneath their categories. The categories are represented by '##@' and the
-# target descriptions by '##'. The awk commands is responsible for reading the
-# entire set of makefiles included in this invocation, looking for lines of the
-# file as xyz: ## something, and then pretty-format the target and help. Then,
-# if there's a line with ##@ something, that gets pretty-printed as a category.
-# More info on the usage of ANSI control characters for terminal formatting:
-# https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_parameters
-# More info on the awk command:
-# http://linuxcommand.org/lc3_adv_awk.php
-
-.PHONY: help
-help: ## Display this help.
-	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
-
-##@ Development
-
-.PHONY: manifests
-manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-
-.PHONY: generate
-generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
-
-.PHONY: fmt
-fmt: ## Run go fmt against code.
-	go fmt ./...
-
-.PHONY: vet
-vet: ## Run go vet against code.
-	go vet ./...
-
-.PHONY: test
-test: manifests generate fmt vet envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
-
-##@ Build
-
-.PHONY: build
-build: generate fmt vet ## Build manager binary.
-	go build -o bin/manager main.go
-
-.PHONY: run
-run: manifests generate fmt vet ## Run a controller from your host.
-	go run ./main.go
-
-.PHONY: docker-build
-docker-build: test ## Build docker image with the manager.
-	docker build -t ${IMG} .
-
-.PHONY: docker-push
-docker-push: ## Push docker image with the manager.
-	docker push ${IMG}
-
-##@ Deployment
-
-ifndef ignore-not-found
-  ignore-not-found = false
+# Get OS architecture
+OSARCH=$(shell uname -m)
+ifeq ($(OSARCH),x86_64)
+REL_OSARCH=linux/amd64
+else ifeq ($(OSARCH),x64)
+REL_OSARCH=linux/amd64
+else ifeq ($(OSARCH),aarch64)
+REL_OSARCH=linux/arm64
+else ifeq ($(OSARCH),aarch64_be)
+REL_OSARCH=linux/arm64
+else ifeq ($(OSARCH),armv8b)
+REL_OSARCH=linux/arm64
+else ifeq ($(OSARCH),armv8l)
+REL_OSARCH=linux/arm64
+else ifeq ($(OSARCH),i386)
+REL_OSARCH=linux/x86
+else ifeq ($(OSARCH),i686)
+REL_OSARCH=linux/x86
+else ifeq ($(OSARCH),arm)
+REL_OSARCH=linux/arm
+else
+REL_OSARCH=linux/$(OSARCH)
 endif
 
-.PHONY: install
-install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/crd | kubectl apply -f -
+include Makefile.def
 
-.PHONY: uninstall
-uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+.EXPORT_ALL_VARIABLES:
 
-.PHONY: deploy
-deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build config/default | kubectl apply -f -
+all: vc-scheduler vc-controller-manager vc-webhook-manager vcctl command-lines
 
-.PHONY: undeploy
-undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+init:
+	mkdir -p ${BIN_DIR}
+	mkdir -p ${RELEASE_DIR}
 
-CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
-.PHONY: controller-gen
-controller-gen: ## Download controller-gen locally if necessary.
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.7.0)
+vc-scheduler: init
+	go build -ldflags ${LD_FLAGS} -o=${BIN_DIR}/vc-scheduler ./cmd/scheduler
 
-KUSTOMIZE = $(shell pwd)/bin/kustomize
-.PHONY: kustomize
-kustomize: ## Download kustomize locally if necessary.
-	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v3.8.7)
+vc-controller-manager: init
+	go build -ldflags ${LD_FLAGS} -o=${BIN_DIR}/vc-controller-manager ./cmd/controller-manager
 
-ENVTEST = $(shell pwd)/bin/setup-envtest
-.PHONY: envtest
-envtest: ## Download envtest-setup locally if necessary.
-	$(call go-get-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
+vc-webhook-manager: init
+	go build -ldflags ${LD_FLAGS} -o=${BIN_DIR}/vc-webhook-manager ./cmd/webhook-manager
 
-# go-get-tool will 'go get' any package $2 and install it to $1.
-PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
-define go-get-tool
-@[ -f $(1) ] || { \
-set -e ;\
-TMP_DIR=$$(mktemp -d) ;\
-cd $$TMP_DIR ;\
-go mod init tmp ;\
-echo "Downloading $(2)" ;\
-GOBIN=$(PROJECT_DIR)/bin go get $(2) ;\
-rm -rf $$TMP_DIR ;\
-}
-endef
+vcctl: init
+	go build -ldflags ${LD_FLAGS} -o=${BIN_DIR}/vcctl ./cmd/cli
+
+command-lines:
+	go build -ldflags ${LD_FLAGS} -o=${BIN_DIR}/vcancel ./cmd/cli/vcancel
+	go build -ldflags ${LD_FLAGS} -o=${BIN_DIR}/vresume ./cmd/cli/vresume
+	go build -ldflags ${LD_FLAGS} -o=${BIN_DIR}/vsuspend ./cmd/cli/vsuspend
+	go build -ldflags ${LD_FLAGS} -o=${BIN_DIR}/vjobs ./cmd/cli/vjobs
+	go build -ldflags ${LD_FLAGS} -o=${BIN_DIR}/vqueues ./cmd/cli/vqueues
+	go build -ldflags ${LD_FLAGS} -o=${BIN_DIR}/vsub ./cmd/cli/vsub
+
+# build bins for the specific platform (linux/arm64 for macOS) with the Cross-Compile Tool gox
+image_bins: init
+	GO111MODULE=off go get github.com/mitchellh/gox
+	CC=${CC} CGO_ENABLED=0 $(GOBIN)/gox -osarch=${REL_OSARCH} -ldflags ${LD_FLAGS} -output ${BIN_DIR}/${REL_OSARCH}/vcctl ./cmd/cli
+	for name in controller-manager webhook-manager; do\
+		CC=${CC} CGO_ENABLED=0 $(GOBIN)/gox -osarch=${REL_OSARCH} -ldflags ${LD_FLAGS} -output ${BIN_DIR}/${REL_OSARCH}/vc-$$name ./cmd/$$name; \
+	done
+
+	if [ ${SUPPORT_PLUGINS} = "yes" ];then\
+		CC=${CC} CGO_ENABLED=1 $(GOBIN)/gox -osarch=${REL_OSARCH} -ldflags ${LD_FLAGS} -output ${BIN_DIR}/${REL_OSARCH}/vc-scheduler ./cmd/scheduler;\
+	else\
+	 	CC=${CC} CGO_ENABLED=0 $(GOBIN)/gox -osarch=${REL_OSARCH} -ldflags ${LD_FLAGS} -output ${BIN_DIR}/${REL_OSARCH}/vc-scheduler ./cmd/scheduler;\
+  	fi;
+
+images: image_bins
+	for name in controller-manager scheduler webhook-manager; do\
+		cp ${BIN_DIR}/${REL_OSARCH}/vc-$$name ./installer/dockerfile/$$name/;\
+		if [ ${REL_OSARCH} = linux/amd64 ];then\
+			docker build --no-cache -t $(IMAGE_PREFIX)-$$name:$(TAG) ./installer/dockerfile/$$name;\
+		elif [ ${REL_OSARCH} = linux/arm64 ];then\
+			docker build --no-cache -t $(IMAGE_PREFIX)-$$name-arm64:$(TAG) -f ./installer/dockerfile/$$name/Dockerfile.arm64 ./installer/dockerfile/$$name;\
+		else\
+			echo "only support x86_64 and arm64. Please build image according to your architecture";\
+		fi;\
+		rm installer/dockerfile/$$name/vc-$$name;\
+	done
+
+# webhook-manager-base-image is used as the basis of building webhook-manager image
+webhook-manager-base-image:
+	if [ ${REL_OSARCH} = linux/amd64 ];then\
+		docker build --no-cache -t $(IMAGE_PREFIX)-webhook-manager-base:$(TAG) ./installer/dockerfile/webhook-manager/ -f ./installer/dockerfile/webhook-manager/Dockerfile.base;\
+	elif [ ${REL_OSARCH} = linux/arm64 ];then\
+		docker build --no-cache -t $(IMAGE_PREFIX)-webhook-manager-base-arm64:$(TAG) ./installer/dockerfile/webhook-manager/ -f ./installer/dockerfile/webhook-manager/Dockerfile.base.arm64;\
+	else\
+		echo "only support x86_64 and arm64. Please build webhook-manager-base-image according to your architecture";\
+	fi
+
+# generate deepcopy and client code
+generate-code:
+	./hack/update-codegen.sh
+
+# find or download controller-gen
+# download controller-gen if necessary
+controller-gen:
+ifeq (, $(shell which controller-gen))
+	@{ \
+	set -e ;\
+	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
+	cd $$CONTROLLER_GEN_TMP_DIR ;\
+	go mod init tmp ;\
+	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.7.0 ;\
+	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
+	}
+CONTROLLER_GEN=$(GOBIN)/controller-gen
+else
+CONTROLLER_GEN=$(shell which controller-gen)
+endif
+
+# Generate manifests e.g. CRD, RBAC etc.
+manifests: controller-gen
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./pkg/apis/scheduling/v1alpha1;./pkg/apis/batch/v1alpha1;./pkg/apis/bus/v1alpha1;./pkg/apis/nodeinfo/v1alpha1" output:crd:artifacts:config=config/crd/bases
+	#$(CONTROLLER_GEN) "crd:crdVersions=v1beta1" paths="./pkg/apis/scheduling/v1alpha1;./pkg/apis/batch/v1alpha1;./pkg/apis/bus/v1alpha1;./pkg/apis/nodeinfo/v1alpha1" output:crd:artifacts:config=config/crd/v1beta1
+
+# TODO: not all _test passed
+unit-test:
+	go clean -testcache
+	go test -p 8 -race $$(find pkg -type f -name '*_test.go' | sed -E 's|/[^/]+$$||' | sort | uniq | sed "s|^|github.com/hliangzhao/volcano/|")
+
+# TODO: all the e2e tests not executed
+e2e:
+	./hack/run-e2e-kind.sh
+
+e2e-test-schedulingbase:
+	E2E_TYPE=SCHEDULINGBASE ./hack/run-e2e-kind.sh
+
+e2e-test-schedulingaction:
+	E2E_TYPE=SCHEDULINGACTION ./hack/run-e2e-kind.sh
+
+e2e-test-jobp:
+	E2E_TYPE=JOBP ./hack/run-e2e-kind.sh
+
+e2e-test-jobseq:
+	E2E_TYPE=JOBSEQ ./hack/run-e2e-kind.sh
+
+e2e-test-vcctl:
+	E2E_TYPE=VCCTL ./hack/run-e2e-kind.sh
+
+e2e-test-stress:
+	E2E_TYPE=STRESS ./hack/run-e2e-kind.sh
+
+generate-yaml: init manifests
+	./hack/generate-yaml.sh TAG=${RELEASE_VER} CRD_VERSION=${CRD_VERSION}
+
+release-env:
+	./hack/build-env.sh release
+
+dev-env:
+	./hack/build-env.sh dev
+
+release: images generate-yaml
+	./hack/publish.sh
+
+clean:
+	rm -rf _output/
+	rm -f *.log
+
+verify:
+	hack/verify-gofmt.sh
+	hack/verify-codegen.sh
+	hack/verify-vendor.sh
+	hack/verify-vendor-licenses.sh
+
+lint: ## Lint the files
+	hack/verify-golangci-lint.sh
+
+verify-generated-yaml:
+	./hack/check-generated-yaml.sh
+
+update-development-yaml:
+	make generate-yaml TAG=latest RELEASE_DIR=installer
+	cp installer/volcano-latest.yaml installer/volcano-development-arm64.yaml
+	sed -r -i 's#(.*)image:([^:]*):(.*)#\1image:\2-arm64:\3#'  installer/volcano-development-arm64.yaml
+	mv installer/volcano-latest.yaml installer/volcano-development.yaml

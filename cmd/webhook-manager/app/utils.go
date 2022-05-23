@@ -23,7 +23,7 @@ import (
 	"github.com/hliangzhao/volcano/cmd/webhook-manager/app/options"
 	volcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
 	"github.com/hliangzhao/volcano/pkg/webhooks/router"
-	v1 "k8s.io/api/admissionregistration/v1"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -34,9 +34,9 @@ import (
 )
 
 func registerWebhookConfig(kubeClient *kubernetes.Clientset, config *options.Config, service *router.AdmissionService, caBundle []byte) {
-	sideEffect := v1.SideEffectClassNoneOnDryRun
+	sideEffect := admissionregistrationv1.SideEffectClassNoneOnDryRun
 	reviewVersions := []string{"v1"}
-	clientConfig := v1.WebhookClientConfig{
+	clientConfig := admissionregistrationv1.WebhookClientConfig{
 		CABundle: caBundle,
 	}
 	if config.WebhookURL != "" {
@@ -45,7 +45,7 @@ func registerWebhookConfig(kubeClient *kubernetes.Clientset, config *options.Con
 		klog.Infof("The URL of webhook manager is <%s>.", url)
 	}
 	if config.WebhookName != "" && config.WebhookNamespace != "" {
-		clientConfig.Service = &v1.ServiceReference{
+		clientConfig.Service = &admissionregistrationv1.ServiceReference{
 			Name:      config.WebhookName,
 			Namespace: config.WebhookNamespace,
 			Path:      &service.Path,
@@ -105,7 +105,7 @@ func getVolcanoClient(restConfig *rest.Config) *volcanoclient.Clientset {
 	return clientset
 }
 
-// configTLS is a helper function that generate tls certificates from directly defined tls config or kubeconfig
+// configTLS is a helper function that generate tls certificates from directly defined tls config or kubeconfig.
 // These are passed in as command line for cluster certification. If tls config is passed in, we use the directly
 // defined tls config, else use that defined in kubeconfig.
 func configTLS(config *options.Config, restConfig *rest.Config) *tls.Config {
@@ -146,7 +146,7 @@ func configTLS(config *options.Config, restConfig *rest.Config) *tls.Config {
 	return &tls.Config{}
 }
 
-func registerMutateWebhook(clientset *kubernetes.Clientset, hook *v1.MutatingWebhookConfiguration) error {
+func registerMutateWebhook(clientset *kubernetes.Clientset, hook *admissionregistrationv1.MutatingWebhookConfiguration) error {
 	client := clientset.AdmissionregistrationV1().MutatingWebhookConfigurations()
 	existing, err := client.Get(context.TODO(), hook.Name, metav1.GetOptions{})
 	if err != nil && !apierrors.IsNotFound(err) {
@@ -168,7 +168,7 @@ func registerMutateWebhook(clientset *kubernetes.Clientset, hook *v1.MutatingWeb
 	return nil
 }
 
-func registerValidateWebhook(clientset *kubernetes.Clientset, hook *v1.ValidatingWebhookConfiguration) error {
+func registerValidateWebhook(clientset *kubernetes.Clientset, hook *admissionregistrationv1.ValidatingWebhookConfiguration) error {
 	client := clientset.AdmissionregistrationV1().ValidatingWebhookConfigurations()
 
 	existing, err := client.Get(context.TODO(), hook.Name, metav1.GetOptions{})

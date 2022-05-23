@@ -1,0 +1,10 @@
+
+# If tag not explicitly set in users default to the git sha.
+TAG=latest
+GitSHA=83dbe6c59d9f6b0f0d872fbcdca1338affea8d80
+Date=`date "+%Y-%m-%d %H:%M:%S"`
+RELEASE_VER=v0.4
+LD_FLAGS=" \
+    -X '${REPO_PATH}/pkg/version.GitSHA=${GitSHA}' \
+    -X '${REPO_PATH}/pkg/version.Built=${Date}'   \
+    -X '${REPO_PATH}/pkg/version.Version=${RELEASE_VER}'"

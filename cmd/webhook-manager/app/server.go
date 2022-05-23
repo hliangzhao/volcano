@@ -43,7 +43,7 @@ func Run(config *options.Config) error {
 	}
 
 	if config.WebhookURL == "" && config.WebhookNamespace == "" && config.WebhookName == "" {
-		return fmt.Errorf("failed to start webhooks as both 'url' and 'namespace/name' of webhook are empty")
+		return fmt.Errorf("failed to start webhooks with both 'url' and 'namespace/name' of webhook being empty")
 	}
 
 	restConfig, err := kube.BuildConfig(config.KubeClientOptions)
@@ -53,9 +53,9 @@ func Run(config *options.Config) error {
 
 	admissionConf := webhooksconfig.LoadAdmissionConf(config.ConfigPath)
 	if admissionConf == nil {
-		klog.Errorf("loadAdmissionConf failed.")
+		klog.Errorf("load Admission Config failed.")
 	} else {
-		klog.V(2).Infof("loadAdmissionConf:%v", admissionConf.ResGroupsConfig)
+		klog.V(2).Infof("load Admission Config: %v", admissionConf.ResGroupsConfig)
 	}
 
 	vClient := getVolcanoClient(restConfig)
@@ -64,6 +64,8 @@ func Run(config *options.Config) error {
 	broadcaster := record.NewBroadcaster()
 	broadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 	recorder := broadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: config.SchedulerName})
+
+	// register each webhook to the admission-controller-server is similar to register an url function handler to the web server
 	router.ForEachAdmission(config, func(service *router.AdmissionService) {
 		if service.Config != nil {
 			service.Config.VolcanoClient = vClient
@@ -81,13 +83,14 @@ func Run(config *options.Config) error {
 	})
 
 	webhookServeError := make(chan struct{})
-	stopChannel := make(chan os.Signal, 1)
+	stopChannel := make(chan os.Signal, 2)
 	signal.Notify(stopChannel, syscall.SIGTERM, syscall.SIGINT)
 
 	server := &http.Server{
 		Addr:      config.ListenAddress + ":" + strconv.Itoa(config.Port),
 		TLSConfig: configTLS(config, restConfig),
 	}
+	// start webhook server as a coroutine
 	go func() {
 		err = server.ListenAndServeTLS("", "")
 		if err != nil && err != http.ErrServerClosed {
@@ -97,11 +100,12 @@ func Run(config *options.Config) error {
 
 		klog.Info("Volcano Webhook manager started.")
 	}()
-
+	// watch the config changes of webhook
 	if config.ConfigPath != "" {
 		go webhooksconfig.WatchAdmissionConf(config.ConfigPath, stopChannel)
 	}
 
+	// any received stop signal will stop the webhook server
 	select {
 	case <-stopChannel:
 		if err := server.Close(); err != nil {

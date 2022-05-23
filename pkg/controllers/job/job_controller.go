@@ -411,6 +411,7 @@ func (jc *jobController) reSyncTask(task *corev1.Pod) {
 
 var detectionPeriodOfDependsOnTask time.Duration
 
+// SetDetectionPeriodOfDependsOnTask sets the check period length of tasks who has dependency relations.
 func SetDetectionPeriodOfDependsOnTask(period time.Duration) {
 	detectionPeriodOfDependsOnTask = period
 }
