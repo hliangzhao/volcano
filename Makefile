@@ -144,7 +144,7 @@ endif
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./pkg/apis/scheduling/v1alpha1;./pkg/apis/batch/v1alpha1;./pkg/apis/bus/v1alpha1;./pkg/apis/nodeinfo/v1alpha1" output:crd:artifacts:config=config/crd/bases
-	#$(CONTROLLER_GEN) "crd:crdVersions=v1beta1" paths="./pkg/apis/scheduling/v1alpha1;./pkg/apis/batch/v1alpha1;./pkg/apis/bus/v1alpha1;./pkg/apis/nodeinfo/v1alpha1" output:crd:artifacts:config=config/crd/v1beta1
+	# $(CONTROLLER_GEN) "crd:crdVersions=v1beta1" paths="./pkg/apis/scheduling/v1alpha1;./pkg/apis/batch/v1alpha1;./pkg/apis/bus/v1alpha1;./pkg/apis/nodeinfo/v1alpha1" output:crd:artifacts:config=config/crd/v1beta1
 
 # TODO: not all _test passed
 unit-test:

@@ -16,6 +16,8 @@ limitations under the License.
 
 package app
 
+// fully checked and understood
+
 import (
 	"context"
 	"fmt"
@@ -129,7 +131,7 @@ func startControllers(config *rest.Config, opt *options.ServerOption) func(ctx c
 	controllerOpt.SharedInformerFactory = informers.NewSharedInformerFactory(controllerOpt.KubeClient, 0)
 
 	// return a run function: initialize and start all controllers, each with a separate coroutine
-	// (gc controller, job controller, queue controller, podgroup controller)
+	// (the controller-manager will start 4 controllers: gc controller, job controller, queue controller, podgroup controller)
 	return func(ctx context.Context) {
 		framework.ForeachController(func(c framework.Controller) {
 			if err := c.Initialize(controllerOpt); err != nil {

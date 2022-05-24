@@ -16,6 +16,8 @@ limitations under the License.
 
 package queue
 
+// fully checked and understood
+
 import (
 	"context"
 	"fmt"
@@ -70,7 +72,6 @@ func OperateQueue() error {
 	}
 
 	var action busv1alpha1.Action
-
 	switch operateQueueFlags.Action {
 	case ActionOpen:
 		action = busv1alpha1.OpenQueueAction
@@ -81,19 +82,20 @@ func OperateQueue() error {
 			return fmt.Errorf("when %s queue %s, weight must be specified, "+
 				"the value must be greater than 0", ActionUpdate, operateQueueFlags.Name)
 		}
-
 		queueClient := volcanoclient.NewForConfigOrDie(config)
 		patchBytes := []byte(fmt.Sprintf(`{"spec":{"weight":%d}}`, operateQueueFlags.Weight))
+		// use Patch to update the specific segments of the queue resource
 		_, err := queueClient.SchedulingV1alpha1().Queues().Patch(context.TODO(),
 			operateQueueFlags.Name, types.MergePatchType, patchBytes, metav1.PatchOptions{})
-
 		return err
 	case "":
-		return fmt.Errorf("action can not be null")
+		return fmt.Errorf("action cannot be null")
 	default:
 		return fmt.Errorf("action %s invalid, valid actions are %s, %s and %s",
 			operateQueueFlags.Action, ActionOpen, ActionClose, ActionUpdate)
 	}
 
+	// open/close queue are implemented through the `Command` CRD
+	// Correspondingly, update queue can be simply implemented with the clientset
 	return createQueueCommand(config, action)
 }

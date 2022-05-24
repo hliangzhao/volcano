@@ -16,6 +16,8 @@ limitations under the License.
 
 package job
 
+// fully checked and understood
+
 import (
 	"context"
 	"fmt"
@@ -32,6 +34,8 @@ import (
 
 type runFlags struct {
 	commonFlags
+
+	// explanations of these flags can be found at the InitRunFlags() function
 
 	Name      string
 	Namespace string
@@ -66,41 +70,45 @@ var jobName = "job.volcano.sh"
 
 // RunJob creates the job.
 func RunJob() error {
+	// create the kubeconfig
 	config, err := utils.BuildConfig(launchJobFlags.Master, launchJobFlags.Kubeconfig)
 	if err != nil {
 		return err
 	}
 
+	// check legal or not
 	if launchJobFlags.Name == "" && launchJobFlags.FileName == "" {
 		err = fmt.Errorf("job name cannot be left blank")
 		return err
 	}
 
-	req, err := populateResourceListV1(launchJobFlags.Requests)
+	// transform req and limit flags into ResourceList
+	req, err := utils.PopulateResourceListV1(launchJobFlags.Requests)
+	if err != nil {
+		return err
+	}
+	limit, err := utils.PopulateResourceListV1(launchJobFlags.Limits)
 	if err != nil {
 		return err
 	}
 
-	limit, err := populateResourceListV1(launchJobFlags.Limits)
-	if err != nil {
-		return err
-	}
-
+	// create volcano job instance from yaml file or command flags
 	job, err := readFile(launchJobFlags.FileName)
 	if err != nil {
 		return err
 	}
-
 	if job == nil {
 		job = constructLaunchJobFlagsJob(launchJobFlags, req, limit)
 	}
 
+	// create the volcano job resource in cluster with the volcano job instance
 	jobClient := volcanoclient.NewForConfigOrDie(config)
 	newJob, err := jobClient.BatchV1alpha1().Jobs(launchJobFlags.Namespace).Create(context.TODO(), job, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
 
+	// set the queue that this job belongs to
 	if newJob.Spec.Queue == "" {
 		newJob.Spec.Queue = "default"
 	}
@@ -110,6 +118,7 @@ func RunJob() error {
 	return nil
 }
 
+// readFile reads yaml file and unmarshal it to a volcano job.
 func readFile(filename string) (*batchv1alpha1.Job, error) {
 	if filename == "" {
 		return nil, nil
@@ -132,6 +141,7 @@ func readFile(filename string) (*batchv1alpha1.Job, error) {
 	return &job, nil
 }
 
+// constructLaunchJobFlagsJob constructs a volcano job with the input flags.
 func constructLaunchJobFlagsJob(launchJobFlags *runFlags, req, limit corev1.ResourceList) *batchv1alpha1.Job {
 	return &batchv1alpha1.Job{
 		ObjectMeta: metav1.ObjectMeta{

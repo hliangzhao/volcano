@@ -16,6 +16,8 @@ limitations under the License.
 
 package version
 
+// fully checked and understood
+
 import (
 	"fmt"
 	"os"

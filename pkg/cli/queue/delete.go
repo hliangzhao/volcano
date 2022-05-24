@@ -16,6 +16,8 @@ limitations under the License.
 
 package queue
 
+// fully checked and understood
+
 import (
 	"context"
 	"fmt"
@@ -50,6 +52,7 @@ func DeleteQueue() error {
 		return fmt.Errorf("queue name must be specified")
 	}
 
+	// delete the queue resource from the cluster by calling the clientset directly
 	queueClient := volcanoclient.NewForConfigOrDie(config)
 	return queueClient.SchedulingV1alpha1().Queues().Delete(context.TODO(), deleteQueueFlags.Name, metav1.DeleteOptions{})
 }

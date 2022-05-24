@@ -14,6 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+################ Explanations ################
+# This script is used to build dev and release environments.
+# Specifically, it sets  different values of GitSHA and RELEASE_VER.
+##############################################
+
 ENV=$1
 
 GitSHA=$(git rev-parse HEAD)

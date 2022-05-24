@@ -16,6 +16,8 @@ limitations under the License.
 
 package options
 
+// fully checked and understood
+
 import (
 	"fmt"
 	"github.com/hliangzhao/volcano/pkg/kube"
@@ -40,7 +42,7 @@ const (
 	defaultPercentageOfNodesToFind    = 100
 )
 
-// ServerOption is the main context object for the controller manager.
+// ServerOption is the main context object for the volcano scheduler.
 type ServerOption struct {
 	KubeClientOptions    kube.ClientOptions
 	SchedulerName        string
@@ -69,6 +71,7 @@ type ServerOption struct {
 }
 
 // ServerOpts server options.
+// TODO: this global var is not used. It should be removed.
 var ServerOpts *ServerOption
 
 // NewServerOption creates a new CMServer with a default config.

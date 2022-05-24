@@ -16,6 +16,8 @@ limitations under the License.
 
 package main
 
+// fully checked and understood
+
 import (
 	"github.com/hliangzhao/volcano/pkg/cli/queue"
 	"github.com/spf13/cobra"
@@ -27,6 +29,7 @@ func buildQueueCmd() *cobra.Command {
 		Short: "Queue Operations",
 	}
 
+	// vcctl queue create
 	queueCreateCmd := &cobra.Command{
 		Use:   "create",
 		Short: "creates queue",
@@ -37,6 +40,7 @@ func buildQueueCmd() *cobra.Command {
 	queue.InitCreateFlags(queueCreateCmd)
 	queueCmd.AddCommand(queueCreateCmd)
 
+	// vcctl queue delete
 	queueDeleteCmd := &cobra.Command{
 		Use:   "delete",
 		Short: "delete queue",
@@ -47,6 +51,7 @@ func buildQueueCmd() *cobra.Command {
 	queue.InitDeleteFlags(queueDeleteCmd)
 	queueCmd.AddCommand(queueDeleteCmd)
 
+	// vcctl queue operate
 	queueOperateCmd := &cobra.Command{
 		Use:   "operate queue",
 		Short: "operate queue",
@@ -57,6 +62,7 @@ func buildQueueCmd() *cobra.Command {
 	queue.InitOperateFlags(queueOperateCmd)
 	queueCmd.AddCommand(queueOperateCmd)
 
+	// vcctl queue list
 	queueListCmd := &cobra.Command{
 		Use:   "list",
 		Short: "lists all the queue",
@@ -67,6 +73,7 @@ func buildQueueCmd() *cobra.Command {
 	queue.InitListFlags(queueListCmd)
 	queueCmd.AddCommand(queueListCmd)
 
+	// vcctl queue get
 	queueGetCmd := &cobra.Command{
 		Use:   "get",
 		Short: "get a queue",

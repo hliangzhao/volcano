@@ -16,6 +16,8 @@ limitations under the License.
 
 package main
 
+// fully checked and understood
+
 import (
 	"fmt"
 	"github.com/hliangzhao/volcano/cmd/cli/utils"
@@ -29,6 +31,8 @@ import (
 )
 
 var logFlushFreq = pflag.Duration("log-flush-frequency", 5*time.Second, "Maximum number of seconds between log flushes")
+
+// `vjobs` is same to `vcctl job view`, which is abstracted as an independent command
 
 func main() {
 	klog.InitFlags(nil)

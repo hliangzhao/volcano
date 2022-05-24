@@ -16,6 +16,8 @@ limitations under the License.
 
 package queue
 
+// fully checked and understood
+
 import (
 	"context"
 	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
@@ -52,6 +54,7 @@ func CreateQueue() error {
 		return err
 	}
 
+	// create the queue instance
 	queue := &schedulingv1alpha1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: createQueueFlags.Name,
@@ -64,6 +67,7 @@ func CreateQueue() error {
 		},
 	}
 
+	// create the queue resource in cluster with the queue instance
 	queueClient := volcanoclient.NewForConfigOrDie(config)
 	if _, err := queueClient.SchedulingV1alpha1().Queues().Create(context.TODO(), queue, metav1.CreateOptions{}); err != nil {
 		return err

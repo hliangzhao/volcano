@@ -16,6 +16,8 @@ limitations under the License.
 
 package options
 
+// fully checked and understood
+
 import (
 	"fmt"
 	"github.com/hliangzhao/volcano/pkg/kube"
@@ -55,10 +57,9 @@ type ServerOption struct {
 	// HealthzBindAddress is the IP address and port for the health check server to serve on,
 	// defaulting to 0.0.0.0:11251
 	HealthzBindAddress string
+	EnableHealthz      bool
 
-	EnableHealthz bool
-
-	// For dependent tasks, there is a detection cycle inside volcano
+	// For dependent tasks, there is a detection cycle inside volcano.
 	// It indicates how often to detect the status of dependent tasks
 	DetectionPeriodOfDependsOnTask time.Duration
 }
@@ -75,8 +76,8 @@ func (s *ServerOption) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&s.EnableLeaderElection, "leader-elect", s.EnableLeaderElection, "Start a leader election client and gain leadership before "+
 		"executing the main loop. Enable this when running replicated vc-controller-manager for high availability.")
 	fs.StringVar(&s.LockObjectNamespace, "lock-object-namespace", s.LockObjectNamespace, "Define the namespace of the lock object.")
-	fs.Float32Var(&s.KubeClientOptions.QPS, "kube-api-qps", defaultQPS, "QPS to use while talking with kubernetes api server")
-	fs.IntVar(&s.KubeClientOptions.Burst, "kube-api-burst", defaultBurst, "Burst to use while talking with kubernetes api server")
+	fs.Float32Var(&s.KubeClientOptions.QPS, "kube-api-qps", defaultQPS, "QPS to use while talking with kubernetes apiserver")
+	fs.IntVar(&s.KubeClientOptions.Burst, "kube-api-burst", defaultBurst, "Burst to use while talking with kubernetes apiserver")
 	fs.BoolVar(&s.PrintVersion, "version", false, "Show version and quit")
 	fs.Uint32Var(&s.WorkerThreads, "worker-threads", defaultWorkers, "The number of threads syncing job operations concurrently. "+
 		"Larger number = faster job updating, but more CPU load")

@@ -1,6 +1,0 @@
-apiVersion: bus.volcano.sh/v1alpha1
-kind: Command
-metadata:
-  name: command-sample
-spec:
-  # TODO(user): Add fields here

@@ -1,6 +1,0 @@
-apiVersion: nodeinfo.volcano.sh/v1alpha1
-kind: Numatopology
-metadata:
-  name: numatopology-sample
-spec:
-  # TODO(user): Add fields here

@@ -1,7 +1,7 @@
-# this config file contains all config fields with comments
+# this config file is used to build a kind cluster
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
-# 1 control plane node and 4 workers
+# 1 control plane node and 4 worker nodes
 nodes:
   # the control plane node config
   - role: control-plane

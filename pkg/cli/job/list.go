@@ -16,10 +16,12 @@ limitations under the License.
 
 package job
 
+// fully checked and understood
+
 import (
 	"context"
 	"fmt"
-	"github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
+	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/cli/utils"
 	volcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
 	"github.com/spf13/cobra"
@@ -38,6 +40,7 @@ type listFlags struct {
 	selector      string
 }
 
+// TODO: there are two segments not printed
 const (
 	Name        string = "Name"
 	Creation    string = "Creation"
@@ -53,7 +56,7 @@ const (
 	Failed      string = "Failed"
 	Unknown     string = "Unknown"
 	RetryCount  string = "RetryCount"
-	JobType     string = "JobType"
+	Type        string = "JobType"
 	Namespace   string = "Namespace"
 )
 
@@ -94,7 +97,7 @@ func ListJobs() error {
 }
 
 // PrintJobs prints all jobs details.
-func PrintJobs(jobs *v1alpha1.JobList, writer io.Writer) {
+func PrintJobs(jobs *batchv1alpha1.JobList, writer io.Writer) {
 	maxLenInfo := getMaxLen(jobs)
 
 	titleFormat := "%%-%ds%%-15s%%-12s%%-12s%%-12s%%-6s%%-10s%%-10s%%-12s%%-10s%%-12s%%-10s\n"
@@ -103,16 +106,17 @@ func PrintJobs(jobs *v1alpha1.JobList, writer io.Writer) {
 	var err error
 	if listJobFlags.allNamespace {
 		_, err = fmt.Fprintf(writer, fmt.Sprintf("%%-%ds"+titleFormat, maxLenInfo[1], maxLenInfo[0]),
-			Namespace, Name, Creation, Phase, JobType, Replicas, Min, Pending, Running, Succeeded, Failed, Unknown, RetryCount)
+			Namespace, Name, Creation, Phase, Type, Replicas, Min, Pending, Running, Succeeded, Failed, Unknown, RetryCount)
 	} else {
 		_, err = fmt.Fprintf(writer, fmt.Sprintf(titleFormat, maxLenInfo[0]),
-			Name, Creation, Phase, JobType, Replicas, Min, Pending, Running, Succeeded, Failed, Unknown, RetryCount)
+			Name, Creation, Phase, Type, Replicas, Min, Pending, Running, Succeeded, Failed, Unknown, RetryCount)
 	}
 	if err != nil {
 		fmt.Printf("Failed to print list command result: %s.\n", err)
 	}
 
 	for _, job := range jobs.Items {
+		// if not the target job to print, skip it
 		if listJobFlags.SchedulerName != "" && listJobFlags.SchedulerName != job.Spec.SchedulerName {
 			continue
 		}
@@ -123,7 +127,7 @@ func PrintJobs(jobs *v1alpha1.JobList, writer io.Writer) {
 		for _, ts := range job.Spec.Tasks {
 			replicas += ts.Replicas
 		}
-		jobType := job.ObjectMeta.Labels[v1alpha1.JobTypeKey]
+		jobType := job.ObjectMeta.Labels[batchv1alpha1.JobTypeKey]
 		if jobType == "" {
 			jobType = "Batch"
 		}
@@ -143,7 +147,8 @@ func PrintJobs(jobs *v1alpha1.JobList, writer io.Writer) {
 	}
 }
 
-func getMaxLen(jobs *v1alpha1.JobList) []int {
+// getMaxLen is used for pretty print.
+func getMaxLen(jobs *batchv1alpha1.JobList) []int {
 	maxNameLen := len(Name)
 	maxNamespaceLen := len(Namespace)
 	for _, job := range jobs.Items {

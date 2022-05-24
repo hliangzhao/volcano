@@ -16,6 +16,8 @@ limitations under the License.
 
 package job
 
+// fully checked and understood
+
 import (
 	"fmt"
 	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
@@ -41,6 +43,8 @@ func InitSuspendFlags(cmd *cobra.Command) {
 }
 
 // SuspendJob suspends the job.
+// Other than `run`, `list`, and `view`, `suspend` cannot be implemented with simple CRUD through the clientset.
+// It is implemented by the `Command` CRD.
 func SuspendJob() error {
 	config, err := utils.BuildConfig(suspendJobFlags.Master, suspendJobFlags.Kubeconfig)
 	if err != nil {
@@ -52,7 +56,5 @@ func SuspendJob() error {
 		return err
 	}
 
-	return createJobCommand(config,
-		suspendJobFlags.Namespace, suspendJobFlags.JobName,
-		busv1alpha1.AbortJobAction)
+	return utils.CreateJobCommand(config, suspendJobFlags.Namespace, suspendJobFlags.JobName, busv1alpha1.AbortJobAction)
 }

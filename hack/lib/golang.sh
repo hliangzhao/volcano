@@ -14,10 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-########## Commented by hliangzhao ##########
-# This script is used to verify that the right version of golang is installed.
-#############################################
-
 # Compare version numbers
 kube::golang::version_gt() {
     return "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1";

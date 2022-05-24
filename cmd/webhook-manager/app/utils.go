@@ -16,6 +16,8 @@ limitations under the License.
 
 package app
 
+// fully checked and understood
+
 import (
 	"context"
 	"crypto/tls"
@@ -33,17 +35,20 @@ import (
 	"strings"
 )
 
+// registerWebhookConfig registers mutating and validating webhooks in cluster.
 func registerWebhookConfig(kubeClient *kubernetes.Clientset, config *options.Config, service *router.AdmissionService, caBundle []byte) {
 	sideEffect := admissionregistrationv1.SideEffectClassNoneOnDryRun
 	reviewVersions := []string{"v1"}
 	clientConfig := admissionregistrationv1.WebhookClientConfig{
 		CABundle: caBundle,
 	}
+
 	if config.WebhookURL != "" {
 		url := config.WebhookURL + service.Path
 		clientConfig.URL = &url
 		klog.Infof("The URL of webhook manager is <%s>.", url)
 	}
+
 	if config.WebhookName != "" && config.WebhookNamespace != "" {
 		clientConfig.Service = &admissionregistrationv1.ServiceReference{
 			Name:      config.WebhookName,
@@ -53,6 +58,7 @@ func registerWebhookConfig(kubeClient *kubernetes.Clientset, config *options.Con
 		klog.Infof("The service of webhook manager is <%s/%s/%s>.",
 			config.WebhookName, config.WebhookNamespace, service.Path)
 	}
+
 	if service.MutatingConfig != nil {
 		for i := range service.MutatingConfig.Webhooks {
 			service.MutatingConfig.Webhooks[i].SideEffects = &sideEffect
@@ -63,12 +69,12 @@ func registerWebhookConfig(kubeClient *kubernetes.Clientset, config *options.Con
 		service.MutatingConfig.ObjectMeta.Name = webhookConfigName(config.WebhookName, service.Path)
 
 		if err := registerMutateWebhook(kubeClient, service.MutatingConfig); err != nil {
-			klog.Errorf("Failed to register mutating admission webhook (%s): %v",
-				service.Path, err)
+			klog.Errorf("Failed to register mutating admission webhook (%s): %v", service.Path, err)
 		} else {
 			klog.V(3).Infof("Registered mutating webhook for path <%s>.", service.Path)
 		}
 	}
+
 	if service.ValidatingConfig != nil {
 		for i := range service.ValidatingConfig.Webhooks {
 			service.ValidatingConfig.Webhooks[i].SideEffects = &sideEffect
@@ -87,7 +93,7 @@ func registerWebhookConfig(kubeClient *kubernetes.Clientset, config *options.Con
 	}
 }
 
-// getKubeClient Get a clientset with restConfig.
+// getKubeClient gets a clientset with restConfig.
 func getKubeClient(restConfig *rest.Config) *kubernetes.Clientset {
 	clientset, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
@@ -96,7 +102,7 @@ func getKubeClient(restConfig *rest.Config) *kubernetes.Clientset {
 	return clientset
 }
 
-// GetVolcanoClient get a clientset for volcano.
+// GetVolcanoClient gets a clientset for volcano.
 func getVolcanoClient(restConfig *rest.Config) *volcanoclient.Clientset {
 	clientset, err := volcanoclient.NewForConfig(restConfig)
 	if err != nil {
@@ -146,6 +152,7 @@ func configTLS(config *options.Config, restConfig *rest.Config) *tls.Config {
 	return &tls.Config{}
 }
 
+// registerMutateWebhook updates or creates the mutating webhook in cluster with the input hook.
 func registerMutateWebhook(clientset *kubernetes.Clientset, hook *admissionregistrationv1.MutatingWebhookConfiguration) error {
 	client := clientset.AdmissionregistrationV1().MutatingWebhookConfigurations()
 	existing, err := client.Get(context.TODO(), hook.Name, metav1.GetOptions{})
@@ -164,13 +171,12 @@ func registerMutateWebhook(clientset *kubernetes.Clientset, hook *admissionregis
 			return err
 		}
 	}
-
 	return nil
 }
 
+// registerValidateWebhook updates or creates the validating webhook in cluster with the input hook.
 func registerValidateWebhook(clientset *kubernetes.Clientset, hook *admissionregistrationv1.ValidatingWebhookConfiguration) error {
 	client := clientset.AdmissionregistrationV1().ValidatingWebhookConfigurations()
-
 	existing, err := client.Get(context.TODO(), hook.Name, metav1.GetOptions{})
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err
@@ -187,15 +193,14 @@ func registerValidateWebhook(clientset *kubernetes.Clientset, hook *admissionreg
 			return err
 		}
 	}
-
 	return nil
 }
 
+// webhookConfigName creates the webhook config name with the given webhook name.
 func webhookConfigName(name, path string) string {
 	if name == "" {
 		name = "webhook"
 	}
-
 	re := regexp.MustCompile(`-+`)
 	raw := strings.Join([]string{name, strings.ReplaceAll(path, "/", "-")}, "-")
 	return re.ReplaceAllString(raw, "-")

@@ -16,6 +16,8 @@ limitations under the License.
 
 package job
 
+// fully checked and understood
+
 import (
 	"fmt"
 	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
@@ -41,6 +43,8 @@ func InitResumeFlags(cmd *cobra.Command) {
 }
 
 // ResumeJob resumes the job.
+// Other than `run`, `list`, and `view`, `resume` cannot be implemented with simple CRUD through the clientset.
+// It is implemented by the `Command` CRD.
 func ResumeJob() error {
 	config, err := utils.BuildConfig(resumeJobFlags.Master, resumeJobFlags.Kubeconfig)
 	if err != nil {
@@ -51,7 +55,5 @@ func ResumeJob() error {
 		return err
 	}
 
-	return createJobCommand(config,
-		resumeJobFlags.Namespace, resumeJobFlags.JobName,
-		busv1alpha1.ResumeJobAction)
+	return utils.CreateJobCommand(config, resumeJobFlags.Namespace, resumeJobFlags.JobName, busv1alpha1.ResumeJobAction)
 }

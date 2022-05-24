@@ -16,6 +16,8 @@ limitations under the License.
 
 package utils
 
+// fully checked and understood
+
 import (
 	"context"
 	"fmt"
@@ -23,7 +25,7 @@ import (
 	"github.com/hliangzhao/volcano/pkg/apis/helpers"
 	volcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
 	"github.com/spf13/cobra"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
@@ -67,20 +69,20 @@ func BuildConfig(master, kubeconfig string) (*rest.Config, error) {
 }
 
 // PopulateResourceListV1 takes strings of form <resourceName1>=<value1>,<resourceName1>=<value2> and returns ResourceList.
-func PopulateResourceListV1(spec string) (v1.ResourceList, error) {
+func PopulateResourceListV1(spec string) (corev1.ResourceList, error) {
 	// empty input gets a nil response to preserve generator test expected behaviors
 	if spec == "" {
 		return nil, nil
 	}
 
-	result := v1.ResourceList{}
+	result := corev1.ResourceList{}
 	resourceStatements := strings.Split(spec, ",")
 	for _, resourceStatement := range resourceStatements {
 		parts := strings.Split(resourceStatement, "=")
 		if len(parts) != 2 {
 			return nil, fmt.Errorf("invalid argument syntax %v, expected <resource>=<value>", resourceStatement)
 		}
-		resourceName := v1.ResourceName(parts[0])
+		resourceName := corev1.ResourceName(parts[0])
 		resourceQuantity, err := resource.ParseQuantity(parts[1])
 		if err != nil {
 			return nil, err
@@ -90,13 +92,14 @@ func PopulateResourceListV1(spec string) (v1.ResourceList, error) {
 	return result, nil
 }
 
-// CreateQueueCommand executes a command such as open/close
+// CreateQueueCommand executes a command such as open/close a queue.
 func CreateQueueCommand(vcClient *volcanoclient.Clientset, ns, name string, action busv1alpha1.Action) error {
 	queue, err := vcClient.SchedulingV1alpha1().Queues().Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 	ctrlRef := metav1.NewControllerRef(queue, helpers.QueueKind)
+	// the created cmd instance is controlled by the queue instance
 	cmd := &busv1alpha1.Command{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-%s-", queue.Name, strings.ToLower(string(action))),
@@ -109,6 +112,7 @@ func CreateQueueCommand(vcClient *volcanoclient.Clientset, ns, name string, acti
 		Action:       string(action),
 	}
 
+	// create the cmd resource in cluster with the cmd instance
 	if _, err := vcClient.BusV1alpha1().Commands(ns).Create(context.TODO(), cmd, metav1.CreateOptions{}); err != nil {
 		return err
 	}
@@ -116,14 +120,14 @@ func CreateQueueCommand(vcClient *volcanoclient.Clientset, ns, name string, acti
 	return nil
 }
 
-// CreateJobCommand executes a command such as resume/suspend.
+// CreateJobCommand executes a command such as resume/suspend a job.
 func CreateJobCommand(config *rest.Config, ns, name string, action busv1alpha1.Action) error {
 	jobClient := volcanoclient.NewForConfigOrDie(config)
 	job, err := jobClient.BatchV1alpha1().Jobs(ns).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
-
+	// the created cmd instance is controlled by the job instance
 	ctrlRef := metav1.NewControllerRef(job, helpers.JobKind)
 	cmd := &busv1alpha1.Command{
 		ObjectMeta: metav1.ObjectMeta{
@@ -137,14 +141,13 @@ func CreateJobCommand(config *rest.Config, ns, name string, action busv1alpha1.A
 		Action:       string(action),
 	}
 
+	// create the cmd resource in cluster with the cmd instance
 	if _, err := jobClient.BusV1alpha1().Commands(ns).Create(context.TODO(), cmd, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 
 	return nil
 }
-
-// TODO: repeated codes
 
 func TranslateTimestampSince(timestamp metav1.Time) string {
 	if timestamp.IsZero() {

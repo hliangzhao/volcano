@@ -16,7 +16,10 @@ limitations under the License.
 
 package job
 
+// fully checked and understood
+
 import (
+	`github.com/hliangzhao/volcano/pkg/cli/utils`
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
@@ -27,12 +30,13 @@ type commonFlags struct {
 	Kubeconfig string
 }
 
+// initFlags initializes common flags.
 func initFlags(cmd *cobra.Command, cf *commonFlags) {
-	cmd.Flags().StringVarP(&cf.Master, "master", "s", "", "the address of api server")
+	cmd.Flags().StringVarP(&cf.Master, "master", "s", "", "the address of apiserver")
 
 	kubeConfFile := os.Getenv("KUBECONFIG")
 	if kubeConfFile == "" {
-		if home := homeDir(); home != "" {
+		if home := utils.HomeDir(); home != "" {
 			kubeConfFile = filepath.Join(home, ".kube", "config")
 		}
 	}

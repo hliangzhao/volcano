@@ -16,6 +16,8 @@ limitations under the License.
 
 package main
 
+// fully checked and understood
+
 import (
 	"github.com/hliangzhao/volcano/pkg/cli/job"
 	"github.com/spf13/cobra"
@@ -27,6 +29,7 @@ func buildJobCmd() *cobra.Command {
 		Short: "vcctl is the command line tool to operate job",
 	}
 
+	// vcctl job run
 	jobRunCmd := &cobra.Command{
 		Use:   "run",
 		Short: "run job by parameters from the command line",
@@ -37,6 +40,7 @@ func buildJobCmd() *cobra.Command {
 	job.InitRunFlags(jobRunCmd)
 	jobCmd.AddCommand(jobRunCmd)
 
+	// vcctl job list
 	jobListCmd := &cobra.Command{
 		Use:   "list",
 		Short: "list job information",
@@ -47,6 +51,7 @@ func buildJobCmd() *cobra.Command {
 	job.InitListFlags(jobListCmd)
 	jobCmd.AddCommand(jobListCmd)
 
+	// vcctl job view
 	jobViewCmd := &cobra.Command{
 		Use:   "view",
 		Short: "show job information",
@@ -57,6 +62,7 @@ func buildJobCmd() *cobra.Command {
 	job.InitViewFlags(jobViewCmd)
 	jobCmd.AddCommand(jobViewCmd)
 
+	// vcctl job suspend
 	jobSuspendCmd := &cobra.Command{
 		Use:   "suspend",
 		Short: "abort a job",
@@ -67,6 +73,7 @@ func buildJobCmd() *cobra.Command {
 	job.InitSuspendFlags(jobSuspendCmd)
 	jobCmd.AddCommand(jobSuspendCmd)
 
+	// vcctl job resume
 	jobResumeCmd := &cobra.Command{
 		Use:   "resume",
 		Short: "resume a job",
@@ -77,6 +84,7 @@ func buildJobCmd() *cobra.Command {
 	job.InitResumeFlags(jobResumeCmd)
 	jobCmd.AddCommand(jobResumeCmd)
 
+	// vcctl job delete
 	jobDelCmd := &cobra.Command{
 		Use:   "delete",
 		Short: "delete a job",

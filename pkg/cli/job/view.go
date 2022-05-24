@@ -16,6 +16,8 @@ limitations under the License.
 
 package job
 
+// fully checked and understood
+
 import (
 	"context"
 	"encoding/json"
@@ -216,9 +218,9 @@ func PrintEvents(events []corev1.Event, writer io.Writer) {
 		for _, e := range events {
 			var interval string
 			if e.Count > 1 {
-				interval = fmt.Sprintf("%s (x%d over %s)", translateTimestampSince(e.LastTimestamp), e.Count, translateTimestampSince(e.FirstTimestamp))
+				interval = fmt.Sprintf("%s (x%d over %s)", utils.TranslateTimestampSince(e.LastTimestamp), e.Count, utils.TranslateTimestampSince(e.FirstTimestamp))
 			} else {
-				interval = translateTimestampSince(e.FirstTimestamp)
+				interval = utils.TranslateTimestampSince(e.FirstTimestamp)
 			}
 			EventSourceString := []string{e.Source.Component}
 			if len(e.Source.Host) > 0 {

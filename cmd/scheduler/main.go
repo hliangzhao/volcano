@@ -16,6 +16,8 @@ limitations under the License.
 
 package main
 
+// fully checked and understood
+
 import (
 	"fmt"
 	"github.com/hliangzhao/volcano/cmd/scheduler/app"

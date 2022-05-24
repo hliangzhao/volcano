@@ -14,26 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package utils
+package main
 
 // fully checked and understood
 
 import (
-	"fmt"
-	"github.com/spf13/cobra"
-	"os"
+	`github.com/hliangzhao/volcano/pkg/version`
+	`github.com/spf13/cobra`
 )
 
-// CheckError prints command error and exit.
-func CheckError(cmd *cobra.Command, err error) {
-	if err != nil {
-		msg := "Failed to"
-
-		for cur := cmd; cur.Parent() != nil; cur = cur.Parent() {
-			msg += fmt.Sprintf(" %s", cur.Name())
-		}
-
-		fmt.Printf("%s: %v\n", msg, err)
-		os.Exit(-1)
+func versionCommand() *cobra.Command {
+	var command = &cobra.Command{
+		Use:     "version",
+		Short:   "Print the version information",
+		Long:    "Print the version information",
+		Example: "vcctl version",
+		Run: func(cmd *cobra.Command, args []string) {
+			version.PrintVersionAndExit()
+		},
 	}
+	return command
 }

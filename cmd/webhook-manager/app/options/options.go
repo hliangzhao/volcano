@@ -16,6 +16,8 @@ limitations under the License.
 
 package options
 
+// fully checked and understood
+
 import (
 	"fmt"
 	"github.com/hliangzhao/volcano/pkg/kube"
@@ -30,7 +32,6 @@ const (
 	defaultEnabledAdmission = "/jobs/mutate,/jobs/validate,/podgroups/mutate,/pods/validate,/pods/mutate,/queues/mutate,/queues/validate"
 )
 
-// Config admission-controller server config.
 type Config struct {
 	KubeClientOptions kube.ClientOptions
 	CertFile          string
@@ -54,21 +55,20 @@ type DecryptFunc func(c *Config) error
 
 // NewConfig create new config.
 func NewConfig() *Config {
-	c := Config{}
-	return &c
+	return &Config{}
 }
 
 // AddFlags add flags.
 func (c *Config) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&c.KubeClientOptions.Master, "master", c.KubeClientOptions.Master, "The address of the Kubernetes API server (overrides any value in kubeconfig)")
+	fs.StringVar(&c.KubeClientOptions.Master, "master", c.KubeClientOptions.Master, "The address of the Kubernetes apiserver (overrides any value in kubeconfig)")
 	fs.StringVar(&c.KubeClientOptions.KubeConfig, "kubeconfig", c.KubeClientOptions.KubeConfig, "Path to kubeconfig file with authorization and master location information.")
 	fs.StringVar(&c.CertFile, "tls-cert-file", c.CertFile, "File containing the default x509 Certificate for HTTPS. (CA cert, if any, concatenated after server cert).")
 	fs.StringVar(&c.KeyFile, "tls-private-key-file", c.KeyFile, "File containing the default x509 private key matching --tls-cert-file.")
 	fs.StringVar(&c.ListenAddress, "listen-address", "", "The address to listen on for the admission-controller-server.")
 	fs.IntVar(&c.Port, "port", 8443, "the port used by admission-controller-server.")
 	fs.BoolVar(&c.PrintVersion, "version", false, "Show version and quit")
-	fs.Float32Var(&c.KubeClientOptions.QPS, "kube-api-qps", defaultQPS, "QPS to use while talking with kubernetes api server")
-	fs.IntVar(&c.KubeClientOptions.Burst, "kube-api-burst", defaultBurst, "Burst to use while talking with kubernetes api server")
+	fs.Float32Var(&c.KubeClientOptions.QPS, "kube-api-qps", defaultQPS, "QPS to use while talking with kubernetes apiserver")
+	fs.IntVar(&c.KubeClientOptions.Burst, "kube-api-burst", defaultBurst, "Burst to use while talking with kubernetes apiserver")
 
 	fs.StringVar(&c.CaCertFile, "ca-cert-file", c.CaCertFile, "File containing the x509 Certificate for HTTPS.")
 	fs.StringVar(&c.WebhookNamespace, "webhook-namespace", "", "The namespace of this webhook")
@@ -89,7 +89,7 @@ func (c *Config) CheckPortOrDie() error {
 	return nil
 }
 
-// readCAFiles read data from ca file path
+// readCAFiles read data from ca file path.
 func (c *Config) readCAFiles() error {
 	var err error
 	c.CaCertData, err = ioutil.ReadFile(c.CaCertFile)

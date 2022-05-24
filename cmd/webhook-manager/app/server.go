@@ -16,6 +16,8 @@ limitations under the License.
 
 package app
 
+// fully checked and understood
+
 import (
 	"fmt"
 	"github.com/hliangzhao/volcano/cmd/webhook-manager/app/options"
@@ -35,7 +37,7 @@ import (
 	"syscall"
 )
 
-// Run start the service of admission controller.
+// Run start the webhook admission-controller-server.
 func Run(config *options.Config) error {
 	if config.PrintVersion {
 		version.PrintVersionAndExit()
@@ -86,18 +88,18 @@ func Run(config *options.Config) error {
 	stopChannel := make(chan os.Signal, 2)
 	signal.Notify(stopChannel, syscall.SIGTERM, syscall.SIGINT)
 
+	// start webhook server (essentially it is a http server) as a coroutine
 	server := &http.Server{
 		Addr:      config.ListenAddress + ":" + strconv.Itoa(config.Port),
 		TLSConfig: configTLS(config, restConfig),
 	}
-	// start webhook server as a coroutine
+
 	go func() {
 		err = server.ListenAndServeTLS("", "")
 		if err != nil && err != http.ErrServerClosed {
 			klog.Fatalf("ListenAndServeTLS for admission webhook failed: %v", err)
 			close(webhookServeError)
 		}
-
 		klog.Info("Volcano Webhook manager started.")
 	}()
 	// watch the config changes of webhook

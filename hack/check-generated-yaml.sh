@@ -14,6 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+################ Explanations ################
+# This script is used to check whether
+# installer/volcano-development.yaml file is up-to-date.
+##############################################
+
 set -o errexit
 set -o nounset
 set -o pipefail

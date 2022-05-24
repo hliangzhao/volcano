@@ -16,9 +16,10 @@ limitations under the License.
 
 package main
 
+// fully checked and understood
+
 import (
 	"fmt"
-	"github.com/hliangzhao/volcano/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -36,6 +37,7 @@ func main() {
 	go wait.Until(klog.Flush, *logFlushFreq, wait.NeverStop)
 	defer klog.Flush()
 
+	// create the root command `vcctl`
 	rootCmd := cobra.Command{
 		Use: "vcctl",
 	}
@@ -43,10 +45,15 @@ func main() {
 	// tell Cobra not to provide the default completion command
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 
+	// add three sub-commands
+	// vcctl job ...
+	// vcctl queue ...
+	// vcctl version
 	rootCmd.AddCommand(buildJobCmd())
 	rootCmd.AddCommand(buildQueueCmd())
 	rootCmd.AddCommand(versionCommand())
 
+	// execute
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Printf("Failed to execute command: %v\n", err)
 		os.Exit(2)
@@ -65,19 +72,4 @@ func checkError(cmd *cobra.Command, err error) {
 		fmt.Printf("%s: %v\n", msg, err)
 		os.Exit(2)
 	}
-}
-
-var versionExample = `vcctl version`
-
-func versionCommand() *cobra.Command {
-	var command = &cobra.Command{
-		Use:     "version",
-		Short:   "Print the version information",
-		Long:    "Print the version information",
-		Example: versionExample,
-		Run: func(cmd *cobra.Command, args []string) {
-			version.PrintVersionAndExit()
-		},
-	}
-	return command
 }

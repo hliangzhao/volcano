@@ -16,13 +16,13 @@ limitations under the License.
 
 package utils
 
+import (
+	`testing`
+	`time`
+)
+
 // TODO: just copied.
 //  Passed.
-
-import (
-	"testing"
-	"time"
-)
 
 func TestJobUtil(t *testing.T) {
 	testCases := []struct {

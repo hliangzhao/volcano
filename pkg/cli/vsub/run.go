@@ -134,7 +134,6 @@ func RunJob() error {
 	if err != nil {
 		return err
 	}
-
 	limit, err := utils.PopulateResourceListV1(launchJobFlags.Limits)
 	if err != nil {
 		return err

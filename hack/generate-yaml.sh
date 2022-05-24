@@ -16,6 +16,11 @@
 # limitations under the License.
 #
 
+################ Explanations ################
+# This script is used to generate yaml files
+# for the volcano helm chart.
+##############################################
+
 set -o errexit
 set -o nounset
 set -o pipefail
