@@ -16,7 +16,7 @@
 
 ################ Explanations ################
 # This script is used to check whether
-# installer/volcano-development.yaml file is up-to-date.
+# installer/volcano-development.yaml is up-to-date.
 ##############################################
 
 set -o errexit

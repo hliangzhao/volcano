@@ -16,9 +16,10 @@
 # limitations under the License.
 #
 
-########## Commented by hliangzhao ##########
-# This script is used to run the e2e test.
-#############################################
+############### Explanations ###############
+# This script is used to run the e2e test in the kind cluster.
+# The volcano CRDs are installed through helm.
+############################################
 
 export VK_ROOT=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/..
 export VC_BIN=${VK_ROOT}/${BIN_DIR}/${BIN_OSARCH}

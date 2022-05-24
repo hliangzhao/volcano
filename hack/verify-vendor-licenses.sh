@@ -25,6 +25,9 @@
 # - File derived from kubernetes v1.19.0-beta.2
 # - Changed KUBE_ROOT value to use absolute path
 
+################ Explanations ################
+# Verify vendor licenses and update them if possible.
+##############################################
 
 set -o errexit
 set -o nounset

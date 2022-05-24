@@ -16,6 +16,10 @@
 
 # GoFmt apparently is changing @ head...
 
+################ Explanations ################
+# Run gofmt on the src code.
+##############################################
+
 set -o errexit
 set -o nounset
 set -o pipefail

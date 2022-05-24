@@ -18,8 +18,10 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+################ Explanations ################
 # generate-groups generates everything for a project with external types only, e.g. a project based
 # on CustomResourceDefinitions.
+##############################################
 
 if [ "$#" -lt 4 ] || [ "${1}" == "--help" ]; then
   cat <<EOF

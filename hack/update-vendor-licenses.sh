@@ -32,6 +32,9 @@
 # - File derived from kubernetes v1.19.0-beta.2
 # - Changed KUBE_ROOT value to use absolute path
 
+################ Explanations ################
+# Run `./hack/update-vendor-licenses.sh --create-missing LICENSES` at thr root directory to update licenses.
+##############################################
 
 set -o errexit
 set -o nounset

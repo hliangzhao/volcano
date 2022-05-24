@@ -14,6 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+################ Explanations ################
+# Different from local-up-cluster.sh, this script will start a kind cluster and
+# install the volcano CRDs and system in it.
+##############################################
+
 VK_ROOT=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/..
 CLUSTER_NAME=${CLUSTER_NAME:-volcano}
 CLUSTER_CONTEXT="--name ${CLUSTER_NAME}"

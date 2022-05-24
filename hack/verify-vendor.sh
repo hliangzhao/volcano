@@ -16,6 +16,10 @@
 #limitations under the License.
 ###
 
+################ Explanations ################
+# Verify vendors and update them if possible..
+##############################################
+
 set -o errexit
 set -o nounset
 set -o pipefail

@@ -16,7 +16,7 @@
 
 ################ Explanations ################
 # This script is used to build dev and release environments.
-# Specifically, it sets  different values of GitSHA and RELEASE_VER.
+# Specifically, it sets different values of GitSHA and RELEASE_VER.
 ##############################################
 
 ENV=$1

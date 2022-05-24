@@ -14,20 +14,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -o errexit
-set -o nounset
-set -o pipefail
-
-
-
+################ Explanations ################
 # The process of preparing volcano release.
 #   1. cp binaries into release folder
 #   2. cp README document into release folder
 #   3. cp default queue into release folder
 #   4. cp helm charts template into release folder and update default image tag
 #   5. cp license file into release folder
-#   6. upload docker images to volcano.sh
+#   6. push docker images to registry
 #   7. generate zip file
+##############################################
+
+set -o errexit
+set -o nounset
+set -o pipefail
 
 VK_ROOT=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/..
 BINARY_FOLDER=${VK_ROOT}/${BIN_DIR}/${REL_OSARCH}

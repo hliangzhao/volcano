@@ -14,6 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+################ Explanations ################
+# This script is used to sync code from
+# github.com/volcano-sh/volcano to local.
+##############################################
+
 set -e
 
 # set USE_HTTPS to false if you are using git@github.com/xxx/xx.git as remote
@@ -25,7 +30,7 @@ CHECK_GIT_REMOTE=${CHECK_GIT_REMOTE:-true}
 # Useful Defaults
 ## Target github organization name
 TARGET_ORG=${TARGET_ORG:-"volcano-sh"}
-## main repo uptream configs
+## main repo upstream configs
 UPSTREAM=${UPSTREAM:-"upstream"}
 UPSTREAM_HEAD=${UPSTREAM_HEAD:-"master"}
 UPSTREAM_REPO_NAME=${UPSTREAM_REPO_NAME:-"volcano"}
@@ -40,10 +45,10 @@ WORKING_BRANCH_NAME=${WORKING_BRANCH_NAME:-"sync-scheduler-code"}
 
 
 PROTO_HEAD="git@"
-SPLITER=":"
+SPLITTER=":"
 if [[ ${USE_HTTPS} ]]; then
   PROTO_HEAD="https://"
-  SPLITER="/"
+  SPLITTER="/"
 fi
 
 function check-and-add-upstream() {
@@ -57,8 +62,8 @@ function check-and-add-upstream() {
 }
 
 if [[ ${CHECK_GIT_REMOTE} ]]; then
-  UPSTREAM_URL="${PROTO_HEAD}github.com${SPLITER}${TARGET_ORG}/${UPSTREAM_REPO_NAME}.git"
-  OOT_UPSTREAM_URL="${PROTO_HEAD}github.com${SPLITER}${TARGET_ORG}/${OOT_UPSTREAM_REPO_NAME}.git"
+  UPSTREAM_URL="${PROTO_HEAD}github.com${SPLITTER}${TARGET_ORG}/${UPSTREAM_REPO_NAME}.git"
+  OOT_UPSTREAM_URL="${PROTO_HEAD}github.com${SPLITTER}${TARGET_ORG}/${OOT_UPSTREAM_REPO_NAME}.git"
   check-and-add-upstream ${UPSTREAM} ${UPSTREAM_URL}
   check-and-add-upstream ${OOT_UPSTREAM} ${OOT_UPSTREAM_URL}
 fi
