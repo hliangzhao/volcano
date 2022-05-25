@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+# copty the binary and start it
 FROM alpine:latest
 
 ADD vc-scheduler /vc-scheduler

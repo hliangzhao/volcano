@@ -16,13 +16,15 @@ limitations under the License.
 
 package cache
 
+// fully checked and understood
+
 import (
 	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
 	controllerapis "github.com/hliangzhao/volcano/pkg/controllers/apis"
 	corev1 "k8s.io/api/core/v1"
 )
 
-// Cache is a local store for controllers.
+// Cache is a local store (of volcano jobs, tasks, and pods) for controllers.
 type Cache interface {
 	Run(stopCh <-chan struct{})
 

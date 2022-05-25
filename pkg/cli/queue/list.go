@@ -22,6 +22,7 @@ import (
 	"context"
 	"fmt"
 	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
+	`github.com/hliangzhao/volcano/pkg/cli/utils`
 	volcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
 	"github.com/spf13/cobra"
 	"io"
@@ -65,7 +66,7 @@ func InitListFlags(cmd *cobra.Command) {
 
 // ListQueue lists all the queue.
 func ListQueue() error {
-	config, err := buildConfig(listQueueFlags.Master, listQueueFlags.Kubeconfig)
+	config, err := utils.BuildConfig(listQueueFlags.Master, listQueueFlags.Kubeconfig)
 	if err != nil {
 		return err
 	}

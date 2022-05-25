@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+# copy the binary and start it
 FROM alpine:latest
 
 ADD vc-controller-manager /vc-controller-manager

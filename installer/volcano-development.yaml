@@ -9,6 +9,7 @@ metadata:
   name: volcano-monitoring 
 ---
 # Source: volcano/templates/admission.yaml
+# the sa for admission
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -16,6 +17,7 @@ metadata:
   namespace: volcano-system
 ---
 # Source: volcano/templates/admission.yaml
+# the admission configmap
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -50,6 +52,7 @@ data:
     #    volcano.sh/nodetype: gpu
 ---
 # Source: volcano/templates/admission.yaml
+# the ClusterRole for admission
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -82,6 +85,7 @@ rules:
     verbs: ["get", "list", "watch"]
 ---
 # Source: volcano/templates/admission.yaml
+# the ClusterRoleBinding that binds the sa volcano-admission to ClusterRole volcano-admission
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -96,6 +100,7 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 ---
 # Source: volcano/templates/admission.yaml
+# create service for the vc-webhook-manager
 apiVersion: v1
 kind: Service
 metadata:
@@ -113,6 +118,7 @@ spec:
   sessionAffinity: None
 ---
 # Source: volcano/templates/admission.yaml
+# the deployment of the vc-webhook-manager
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -163,6 +169,7 @@ spec:
             name: volcano-admission-configmap
 ---
 # Source: volcano/templates/admission.yaml
+# the initial job that generate admission secret for vc-webhook-manager
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -8408,6 +8415,7 @@ status:
   storedVersions: []
 ---
 # Source: volcano/templates/controllers.yaml
+# the sa for vc-controller-manager
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -8415,6 +8423,7 @@ metadata:
   namespace: volcano-system
 ---
 # Source: volcano/templates/controllers.yaml
+# the ClusterRole for vc-controller-manager
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -8464,6 +8473,7 @@ rules:
     verbs: ["get", "create", "delete"]
 ---
 # Source: volcano/templates/controllers.yaml
+# the ClusterRoleBinding for vc-controller-manager
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -8478,6 +8488,7 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 ---
 # Source: volcano/templates/controllers.yaml
+# the deployment of vc-controller-manager
 kind: Deployment
 apiVersion: apps/v1
 metadata:

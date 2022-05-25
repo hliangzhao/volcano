@@ -133,6 +133,7 @@ func startControllers(config *rest.Config, opt *options.ServerOption) func(ctx c
 	// return a run function: initialize and start all controllers, each with a separate coroutine
 	// (the controller-manager will start 4 controllers: gc controller, job controller, queue controller, podgroup controller)
 	return func(ctx context.Context) {
+		// for each controller, initialize it and run it
 		framework.ForeachController(func(c framework.Controller) {
 			if err := c.Initialize(controllerOpt); err != nil {
 				klog.Errorf("Failed to initialize controller <%s>: %v", c.Name(), err)

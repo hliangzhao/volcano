@@ -16,22 +16,30 @@ limitations under the License.
 
 package state
 
+// fully checked and understood
+
 import (
 	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
 	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
 )
 
 type State interface {
+	// Execute uses an internal status variable to update the status of the queue we care about
 	Execute(action busv1alpha1.Action) error
 }
 
+// UpdateQueueStatusFn is a function that updates the variable `status`.
 type UpdateQueueStatusFn func(status *schedulingv1alpha1.QueueStatus, pgList []string)
 
+// QueueActionFn is a function that updates queue by executing the UpdateQueueStatusFn fn.
 type QueueActionFn func(queue *schedulingv1alpha1.Queue, fn UpdateQueueStatusFn) error
 
 var (
-	SyncQueue  QueueActionFn
-	OpenQueue  QueueActionFn
+	// SyncQueue is a function that sync queue
+	SyncQueue QueueActionFn
+	// OpenQueue is a function that open queue
+	OpenQueue QueueActionFn
+	// CloseQueue is a function that close queue
 	CloseQueue QueueActionFn
 )
 

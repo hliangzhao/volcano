@@ -44,7 +44,6 @@ type PodGroup struct {
 }
 
 // PodGroupSpec represents the template of a pod group.
-// TODO: what will happen if multiple vcjobs are put into a podgroup?
 type PodGroupSpec struct {
 	// MinMember defines the minimal number of members/tasks to run the pod group;
 	// if there's not enough resources to start all tasks, the scheduler

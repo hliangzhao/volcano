@@ -16,6 +16,8 @@ limitations under the License.
 
 package vjobs
 
+// fully checked and understood
+
 import (
 	"context"
 	"encoding/json"
@@ -273,7 +275,7 @@ func WriteLine(writer io.Writer, spaces int, content string, params ...interface
 	for i := 0; i < spaces; i++ {
 		prefix += "  "
 	}
-	fmt.Fprintf(writer, prefix+content, params...)
+	_, _ = fmt.Fprintf(writer, prefix+content, params...)
 }
 
 // ListJobs lists all jobs details.

@@ -214,8 +214,6 @@ type QueueSpec struct {
 	Weight     int32
 	Capability corev1.ResourceList
 
-	// TODO: check delete `State QueueState` is legal or not
-
 	// Reclaimable indicate whether the resources allocated to this queue can be reclaimed by other queue
 	Reclaimable *bool
 

@@ -15,7 +15,7 @@
 
 # The base image is created via `Dockerfile.base`, the base image is cached
 # since the required packages change very rarely.
-FROM hliangzhao97/vc-webhook-manager-base:83dbe6c59d9f6b0f0d872fbcdca1338affea8d80
+FROM hliangzhao97/vc-webhook-manager-base:latest
 
 ADD vc-webhook-manager /vc-webhook-manager
 ADD gen-admission-secret.sh /gen-admission-secret.sh

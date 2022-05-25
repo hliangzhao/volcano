@@ -16,6 +16,8 @@ limitations under the License.
 
 package queue
 
+// fully checked and understood
+
 import (
 	"context"
 	"fmt"
@@ -62,7 +64,7 @@ type queueController struct {
 	cmdLister   buslisterv1alpha1.CommandLister
 	cmdSynced   cache.InformerSynced
 
-	// NOTE that the following are work queues, not the CRD we created
+	// NOTE that the following are work-queues, not the CRD we created
 	queue    workqueue.RateLimitingInterface // used for enqueue queue req
 	cmdQueue workqueue.RateLimitingInterface // used for enqueue cmd req
 
@@ -129,6 +131,7 @@ func (qc *queueController) Initialize(opt *framework.ControllerOption) error {
 		DeleteFunc: qc.deletePodgroup,
 	})
 	qc.cmdInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		// only care about the cmd that owned by queue
 		FilterFunc: func(obj interface{}) bool {
 			switch v := obj.(type) {
 			case *busv1alpha1.Command:
@@ -153,6 +156,7 @@ func (qc *queueController) Initialize(opt *framework.ControllerOption) error {
 	return nil
 }
 
+// Run starts the workers and informers in separate coroutines.
 func (qc *queueController) Run(stopCh <-chan struct{}) {
 	defer runtime.HandleCrash()
 	defer qc.queue.ShutDown()
@@ -185,6 +189,7 @@ func (qc *queueController) worker() {
 	}
 }
 
+// processNextReq acquires a queue request from the work-queue and handle it.
 func (qc *queueController) processNextReq() bool {
 	obj, shutdown := qc.queue.Get()
 	if shutdown {
@@ -195,16 +200,17 @@ func (qc *queueController) processNextReq() bool {
 	req, ok := obj.(*controllerapis.Request)
 	if !ok {
 		klog.Errorf("%v is not a valid queue struct.", obj)
-		// TODO: return true? Its seems wrong!
+		// processNextReq always return true because we need the for-loop runs forever
 		return true
 	}
 
-	// sync event and handle it
+	// call handleQueue() to handle the req
 	err := qc.syncHandler(req)
 	qc.handleQueueErr(err, obj)
 	return true
 }
 
+// handleQueue handles req. Specifically, it creates a new state according to the request and calls the Execute function to update the queue's status.
 func (qc *queueController) handleQueue(req *controllerapis.Request) error {
 	startTime := time.Now()
 	defer func() {
@@ -231,6 +237,7 @@ func (qc *queueController) handleQueue(req *controllerapis.Request) error {
 	return nil
 }
 
+// handleQueueErr will re-enqueue the request if the specific queue still has chance.
 func (qc *queueController) handleQueueErr(err error, obj interface{}) {
 	// no error happened
 	if err == nil {
@@ -261,6 +268,7 @@ func (qc *queueController) cmdWorker() {
 	}
 }
 
+// cmdProcessNextReq acquires a command request from the work-queue and handle it.
 func (qc *queueController) cmdProcessNextReq() bool {
 	obj, shutdown := qc.cmdQueue.Get()
 	if shutdown {
@@ -271,11 +279,10 @@ func (qc *queueController) cmdProcessNextReq() bool {
 	cmd, ok := obj.(*busv1alpha1.Command)
 	if !ok {
 		klog.Errorf("%^v is not a valid Command struct.", obj)
-		// TODO: return true? Its seems wrong!
 		return true
 	}
 
-	// sync event and handle it
+	// call handleCmd() to handle it
 	err := qc.syncCmdHandler(cmd)
 	qc.handleCmdErr(err, obj)
 	return true
@@ -287,6 +294,8 @@ func (qc *queueController) handleCmd(cmd *busv1alpha1.Command) error {
 		klog.V(4).Infof("Finished syncing command %s/%s (%v).", cmd.Namespace, cmd.Name, time.Since(startTime))
 	}()
 
+	// Parse the queue request from the cmd and enqueue the request to the work-queue.
+	// After enqueued, just delete the cmd resource from the cluster.
 	err := qc.volcanoClient.BusV1alpha1().Commands(cmd.Namespace).Delete(context.TODO(), cmd.Name, metav1.DeleteOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -294,17 +303,17 @@ func (qc *queueController) handleCmd(cmd *busv1alpha1.Command) error {
 		}
 		return fmt.Errorf("failed to delete command <%s/%s> for %v", cmd.Namespace, cmd.Name, err)
 	}
-
 	req := &controllerapis.Request{
 		QueueName: cmd.TargetObject.Name,
 		Event:     busv1alpha1.CommandIssuedEvent,
 		Action:    busv1alpha1.Action(cmd.Action),
 	}
-
 	qc.enqueueQueue(req)
+
 	return nil
 }
 
+// handleCmdErr will re-enqueue the request if the specific cmd still has chance.
 func (qc *queueController) handleCmdErr(err error, obj interface{}) {
 	if err == nil {
 		qc.cmdQueue.Forget(obj)

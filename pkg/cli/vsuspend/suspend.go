@@ -16,6 +16,8 @@ limitations under the License.
 
 package vsuspend
 
+// fully checked and understood
+
 import (
 	"fmt"
 	"github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"

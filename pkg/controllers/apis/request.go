@@ -16,11 +16,14 @@ limitations under the License.
 
 package apis
 
+// fully checked and understood
+
 import (
 	"fmt"
 	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
 )
 
+// Request is used to construct request to apiserver, which will be put into the work-queue.
 type Request struct {
 	Namespace  string
 	JobName    string

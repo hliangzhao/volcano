@@ -16,6 +16,8 @@ limitations under the License.
 
 package apis
 
+// fully checked and understood
+
 import (
 	"fmt"
 	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
@@ -23,7 +25,7 @@ import (
 )
 
 // JobInfo is a wrapper of job, which contains more structure information of job.
-// JobInfo is used to construct job cache stored in the volcano-scheduler.
+// JobInfo is used to construct JobCache stored in the volcano-scheduler.
 type JobInfo struct {
 	Namespace string
 	Name      string
@@ -99,6 +101,7 @@ func (ji *JobInfo) UpdatePod(pod *corev1.Pod) error {
 	return nil
 }
 
+// DeletePod deletes pod from ji.
 func (ji *JobInfo) DeletePod(pod *corev1.Pod) error {
 	taskName, err := getTaskOfPod(pod)
 	if err != nil {
@@ -115,6 +118,7 @@ func (ji *JobInfo) DeletePod(pod *corev1.Pod) error {
 	return nil
 }
 
+// getTaskOfPod get the task name of the given pod from ji.
 func getTaskOfPod(pod *corev1.Pod) (string, error) {
 	taskName, found := pod.Annotations[batchv1alpha1.TaskSpecKey]
 	if !found {

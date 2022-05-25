@@ -16,11 +16,14 @@ limitations under the License.
 
 package state
 
+// fully checked and understood
+
 import (
 	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
 	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
 )
 
+// unknownState implements the State interface.
 type unknownState struct {
 	queue *schedulingv1alpha1.Queue
 }
@@ -28,26 +31,37 @@ type unknownState struct {
 func (us *unknownState) Execute(action busv1alpha1.Action) error {
 	switch action {
 	case busv1alpha1.OpenQueueAction:
-		return OpenQueue(us.queue, func(status *schedulingv1alpha1.QueueStatus, podGroupList []string) {
+		var fn UpdateQueueStatusFn
+		// fn updates `status` to `QueueStateOpen`
+		fn = func(status *schedulingv1alpha1.QueueStatus, pgList []string) {
 			status.State = schedulingv1alpha1.QueueStateOpen
-		})
+		}
+		// update us.queue's status with fn (os.queue.Status <- status)
+		return OpenQueue(us.queue, fn)
+
 	case busv1alpha1.CloseQueueAction:
-		return CloseQueue(us.queue, func(status *schedulingv1alpha1.QueueStatus, podGroupList []string) {
-			if len(podGroupList) == 0 {
+		var fn UpdateQueueStatusFn
+		// fn updates `status` to `QueueStateClosed` or `QueueStateClosing` according to pgList
+		fn = func(status *schedulingv1alpha1.QueueStatus, pgList []string) {
+			if len(pgList) == 0 {
 				status.State = schedulingv1alpha1.QueueStateClosed
 				return
 			}
 			status.State = schedulingv1alpha1.QueueStateClosing
-		})
+		}
+		// update us.queue's status with fn (os.queue.Status <- status)
+		return CloseQueue(us.queue, fn)
+
 	default:
-		return SyncQueue(us.queue, func(status *schedulingv1alpha1.QueueStatus, podGroupList []string) {
-			specState := us.queue.Status.State
-			if specState == schedulingv1alpha1.QueueStateOpen {
+		var fn UpdateQueueStatusFn
+		// fn sync `status` with `us.queue.Status`
+		fn = func(status *schedulingv1alpha1.QueueStatus, pgList []string) {
+			if us.queue.Status.State == schedulingv1alpha1.QueueStateOpen {
 				status.State = schedulingv1alpha1.QueueStateOpen
 				return
 			}
-			if specState == schedulingv1alpha1.QueueStateClosed {
-				if len(podGroupList) == 0 {
+			if us.queue.Status.State == schedulingv1alpha1.QueueStateClosed {
+				if len(pgList) == 0 {
 					status.State = schedulingv1alpha1.QueueStateClosed
 					return
 				}
@@ -56,6 +70,8 @@ func (us *unknownState) Execute(action busv1alpha1.Action) error {
 				return
 			}
 			status.State = schedulingv1alpha1.QueueStateUnknown
-		})
+		}
+		// update us.queue's status with fn (os.queue.Status <- status)
+		return SyncQueue(us.queue, fn)
 	}
 }

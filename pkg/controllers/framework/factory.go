@@ -16,6 +16,8 @@ limitations under the License.
 
 package framework
 
+// fully checked and understood
+
 import (
 	"fmt"
 	"k8s.io/klog/v2"
@@ -30,7 +32,7 @@ func ForeachController(fn func(controller Controller)) {
 	}
 }
 
-// RegisterController add controller to controllers.
+// RegisterController add controller to the global variable controllers.
 func RegisterController(controller Controller) error {
 	if controller == nil {
 		return fmt.Errorf("controller is nil")

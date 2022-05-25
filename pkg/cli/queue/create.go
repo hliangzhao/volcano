@@ -21,6 +21,7 @@ package queue
 import (
 	"context"
 	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
+	`github.com/hliangzhao/volcano/pkg/cli/utils`
 	volcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,7 +50,7 @@ func InitCreateFlags(cmd *cobra.Command) {
 
 // CreateQueue create queue.
 func CreateQueue() error {
-	config, err := buildConfig(createQueueFlags.Master, createQueueFlags.Kubeconfig)
+	config, err := utils.BuildConfig(createQueueFlags.Master, createQueueFlags.Kubeconfig)
 	if err != nil {
 		return err
 	}

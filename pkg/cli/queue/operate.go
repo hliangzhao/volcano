@@ -16,12 +16,13 @@ limitations under the License.
 
 package queue
 
-// fully checked and understood
+// TODO: question exists
 
 import (
 	"context"
 	"fmt"
 	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
+	`github.com/hliangzhao/volcano/pkg/cli/utils`
 	volcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -60,9 +61,10 @@ func InitOperateFlags(cmd *cobra.Command) {
 		"operate action to queue, valid actions are open, close, update")
 }
 
-// OperateQueue operates queue
+// OperateQueue operates queue.
+// TODO: why not need to specify the namespace of the queue resource?
 func OperateQueue() error {
-	config, err := buildConfig(operateQueueFlags.Master, operateQueueFlags.Kubeconfig)
+	config, err := utils.BuildConfig(operateQueueFlags.Master, operateQueueFlags.Kubeconfig)
 	if err != nil {
 		return err
 	}
@@ -89,7 +91,7 @@ func OperateQueue() error {
 			operateQueueFlags.Name, types.MergePatchType, patchBytes, metav1.PatchOptions{})
 		return err
 	case "":
-		return fmt.Errorf("action cannot be null")
+		return fmt.Errorf("action can not be null")
 	default:
 		return fmt.Errorf("action %s invalid, valid actions are %s, %s and %s",
 			operateQueueFlags.Action, ActionOpen, ActionClose, ActionUpdate)

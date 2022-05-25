@@ -16,6 +16,8 @@ limitations under the License.
 
 package cache
 
+// fully checked and understood
+
 import (
 	"fmt"
 	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
@@ -29,10 +31,8 @@ import (
 	"time"
 )
 
-/*
-JobInfo is reconstructed in cache to JobCache.
-The Scheduling actions are made for jobs in JobCache.
-*/
+/* JobInfo is reconstructed in cache to JobCache, the local store of volcano jobs.
+The scheduling actions are made for jobs in JobCache. */
 
 type jobCache struct {
 	sync.Mutex
@@ -69,17 +69,16 @@ func jobKeyOfPod(pod *corev1.Pod) (string, error) {
 }
 
 func NewCache() Cache {
-	queue := workqueue.NewMaxOfRateLimiter(
-		workqueue.NewItemExponentialFailureRateLimiter(5*time.Microsecond, 180*time.Second),
-		&workqueue.BucketRateLimiter{Limiter: rate.NewLimiter(rate.Limit(10), 100)},
-	)
 	return &jobCache{
-		jobInfos:    map[string]*controllerapis.JobInfo{},
-		deletedJobs: workqueue.NewRateLimitingQueue(queue),
+		jobInfos: map[string]*controllerapis.JobInfo{},
+		deletedJobs: workqueue.NewRateLimitingQueue(workqueue.NewMaxOfRateLimiter(
+			workqueue.NewItemExponentialFailureRateLimiter(5*time.Microsecond, 180*time.Second),
+			&workqueue.BucketRateLimiter{Limiter: rate.NewLimiter(rate.Limit(10), 100)},
+		)),
 	}
 }
 
-// Get returns the jobInfo stored in the cache by job key.
+// Get returns the copy of the jobInfo from the cache by job key.
 func (jc *jobCache) Get(key string) (*controllerapis.JobInfo, error) {
 	jc.Lock()
 	defer jc.Unlock()
@@ -149,6 +148,7 @@ func (jc *jobCache) Update(job *batchv1alpha1.Job) error {
 	return nil
 }
 
+// deleteJob deletes a job from cache. We only need to add the job to the `deletedJobs` work-queue.
 func (jc *jobCache) deleteJob(ji *controllerapis.JobInfo) {
 	klog.V(3).Infof("Try to delete Job <%v/%v>", ji.Namespace, ji.Name)
 	jc.deletedJobs.AddRateLimited(ji)
@@ -315,6 +315,7 @@ func (jc *jobCache) TaskFailed(jobKey, taskName string) bool {
 	return retried > maxRetry
 }
 
+// processCleanupJob safely delete the terminated jobs (or add the to-be-delete job to the `deletedJobs` work-queue.
 func (jc *jobCache) processCleanupJob() bool {
 	obj, shutdown := jc.deletedJobs.Get()
 	if shutdown {
@@ -345,10 +346,12 @@ func (jc *jobCache) processCleanupJob() bool {
 }
 
 func (jc *jobCache) worker() {
+	// the for-loop is the easiest way to run processCleanupJob() continuously
 	for jc.processCleanupJob() {
 	}
 }
 
+// Run clean up deleted jobs in cache until the stop signal is captured.
 func (jc *jobCache) Run(stopCh <-chan struct{}) {
 	wait.Until(jc.worker, 0, stopCh)
 }

@@ -12,6 +12,7 @@ subjects:
 - kind: ServiceAccount
   name: kube-state-metrics
   namespace: {{ .Release.Namespace }} 
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -122,6 +123,7 @@ rules:
   verbs:
   - list
   - watch
+
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -130,6 +132,7 @@ metadata:
     app.kubernetes.io/name: kube-state-metrics
   name: kube-state-metrics
   namespace: {{ .Release.Namespace }}
+
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -173,6 +176,7 @@ spec:
         node.kubernetes.io/instance-type: controlpanel
       {{ end }}
       serviceAccountName: kube-state-metrics
+
 ---
 apiVersion: v1
 kind: Service

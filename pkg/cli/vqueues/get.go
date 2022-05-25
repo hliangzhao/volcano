@@ -16,6 +16,8 @@ limitations under the License.
 
 package vqueues
 
+// fully checked and understood
+
 import (
 	"context"
 	"fmt"

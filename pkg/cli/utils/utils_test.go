@@ -17,8 +17,8 @@ limitations under the License.
 package utils
 
 import (
-	`testing`
-	`time`
+	"testing"
+	"time"
 )
 
 // TODO: just copied.

@@ -62,14 +62,16 @@ fi
 # TODO: NOTE that "" is only required for macOS! Remove it when uploading the code to linux.
 sed -i "" "s/latest/${VOLCANO_IMAGE_TAG}/g" ${RELEASE_FOLDER}/helm/chart/volcano/values.yaml
 
-if [[ "${DOCKER_USERNAME}xxx" == "xxx" ]];then
-  if [[ "${DOCKER_PASSWORD}xxx" == "xxx" ]];then
-    echo "docker username or password not found, quit uploading images"
-    exit 0
-  fi
-fi
-
-echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
+# TODO: already login, don't need to provide
+#  Edit this when upload it to the cluster
+#if [[ "${DOCKER_USERNAME}xxx" == "xxx" ]];then
+#  if [[ "${DOCKER_PASSWORD}xxx" == "xxx" ]];then
+#    echo "docker username or password not found, quit uploading images"
+#    exit 0
+#  fi
+#fi
+#
+#echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
 echo "pushing ${IMAGE_PREFIX}-controller-manager:${VOLCANO_IMAGE_TAG}"
 docker tag ${IMAGE_PREFIX}-controller-manager:${VOLCANO_IMAGE_TAG} ${IMAGE_PREFIX}-controllers:${VOLCANO_IMAGE_TAG}
 docker push ${IMAGE_PREFIX}-controllers:${VOLCANO_IMAGE_TAG}

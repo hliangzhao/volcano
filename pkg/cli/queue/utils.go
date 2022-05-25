@@ -16,6 +16,8 @@ limitations under the License.
 
 package queue
 
+// TODO: question exists
+
 import (
 	"context"
 	"fmt"
@@ -24,25 +26,13 @@ import (
 	volcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
-	"os"
 	"strings"
 
 	// Initialize client auth plugin.
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
-func homeDir() string {
-	if h := os.Getenv("HOME"); h != "" {
-		return h
-	}
-	return os.Getenv("USERPROFILE") // windows
-}
-
-func buildConfig(master, kubeconfig string) (*rest.Config, error) {
-	return clientcmd.BuildConfigFromFlags(master, kubeconfig)
-}
-
+// createQueueCommand executes a command such as open/close a queue.
 func createQueueCommand(config *rest.Config, action busv1alpha1.Action) error {
 	queueClient := volcanoclient.NewForConfigOrDie(config)
 	queue, err := queueClient.SchedulingV1alpha1().Queues().Get(context.TODO(), operateQueueFlags.Name, metav1.GetOptions{})
@@ -63,6 +53,7 @@ func createQueueCommand(config *rest.Config, action busv1alpha1.Action) error {
 		Action:       string(action),
 	}
 
+	// TODO: why always the `default` namespace?
 	if _, err := queueClient.BusV1alpha1().Commands("default").Create(context.TODO(), cmd, metav1.CreateOptions{}); err != nil {
 		return err
 	}

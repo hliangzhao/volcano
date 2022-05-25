@@ -97,6 +97,7 @@ image_bins: init
 	 	CC=${CC} CGO_ENABLED=0 $(GOBIN)/gox -osarch=${REL_OSARCH} -ldflags ${LD_FLAGS} -output ${BIN_DIR}/${REL_OSARCH}/vc-scheduler ./cmd/scheduler;\
   	fi;
 
+# build docker images for controller-manager, scheduler, and webhook-manager
 images: image_bins
 	for name in controller-manager scheduler webhook-manager; do\
 		cp ${BIN_DIR}/${REL_OSARCH}/vc-$$name ./installer/dockerfile/$$name/;\
@@ -146,12 +147,12 @@ manifests: controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./pkg/apis/scheduling/v1alpha1;./pkg/apis/batch/v1alpha1;./pkg/apis/bus/v1alpha1;./pkg/apis/nodeinfo/v1alpha1" output:crd:artifacts:config=config/crd/bases
 	# $(CONTROLLER_GEN) "crd:crdVersions=v1beta1" paths="./pkg/apis/scheduling/v1alpha1;./pkg/apis/batch/v1alpha1;./pkg/apis/bus/v1alpha1;./pkg/apis/nodeinfo/v1alpha1" output:crd:artifacts:config=config/crd/v1beta1
 
-# TODO: not all _test passed
+# TODO: not all *_test.go passed
 unit-test:
 	go clean -testcache
 	go test -p 8 -race $$(find pkg -type f -name '*_test.go' | sed -E 's|/[^/]+$$||' | sort | uniq | sed "s|^|github.com/hliangzhao/volcano/|")
 
-# TODO: all the e2e tests not executed
+# TODO: e2e tests not copied and executed
 e2e:
 	./hack/run-e2e-kind.sh
 
@@ -204,5 +205,7 @@ verify-generated-yaml:
 update-development-yaml:
 	make generate-yaml TAG=latest RELEASE_DIR=installer
 	cp installer/volcano-latest.yaml installer/volcano-development-arm64.yaml
+	# the following command use `sed` to update the images used in installer/volcano-development-arm64.yaml
+	# from `xxx:latest` to `xxx-arm64:latest`
 	sed -r -i 's#(.*)image:([^:]*):(.*)#\1image:\2-arm64:\3#'  installer/volcano-development-arm64.yaml
 	mv installer/volcano-latest.yaml installer/volcano-development.yaml

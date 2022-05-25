@@ -16,6 +16,8 @@ limitations under the License.
 
 package queue
 
+// fully checked and understood
+
 import (
 	"context"
 	"fmt"
@@ -30,25 +32,26 @@ import (
 	"reflect"
 )
 
+// syncQueue will update the queue resource's status (re-calculate the number of podgroups in different phases) in cluster.
 func (qc *queueController) syncQueue(queue *schedulingv1alpha1.Queue, updateStateFn state.UpdateQueueStatusFn) error {
 	klog.V(4).Infof("Begin to sync queue %s.", queue.Name)
 	defer klog.V(4).Infof("End sync queue %s.", queue.Name)
 
+	// get the podgroups that were put into this queue
 	podgroups := qc.getPodgroups(queue.Name)
 	queueStatus := schedulingv1alpha1.QueueStatus{}
 	for _, pgKey := range podgroups {
 		ns, name, _ := cache.SplitMetaNamespaceKey(pgKey)
 
-		// TODO: check NotFound error and sync local cache.
+		// TODO: check NotFound error and sync local cache
 		pg, err := qc.pgLister.PodGroups(ns).Get(name)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
-				// TODO: sync local cache
 			}
 			return err
 		}
 
-		// update according to current phase
+		// update queueStatus according to the podgroup's phase
 		switch pg.Status.Phase {
 		case schedulingv1alpha1.PodGroupPending:
 			queueStatus.Pending++
@@ -60,17 +63,20 @@ func (qc *queueController) syncQueue(queue *schedulingv1alpha1.Queue, updateStat
 			queueStatus.Inqueue++
 		}
 	}
+	// update the variable `queueStatus`
 	if updateStateFn != nil {
 		updateStateFn(&queueStatus, podgroups)
 	} else {
 		queueStatus.State = queue.Status.State
 	}
 
+	// `queueStatus` is the newest status of queue. If `queueStatus` is not different from queue.Status,
+	// no sync is required
 	if reflect.DeepEqual(queueStatus, queue.Status) {
 		return nil
 	}
 
-	// now update
+	// update the queue resource in cluster (the actually updated is its status)
 	newQueue := queue.DeepCopy()
 	newQueue.Status = queueStatus
 	if _, err := qc.volcanoClient.SchedulingV1alpha1().Queues().UpdateStatus(context.TODO(),
@@ -81,12 +87,15 @@ func (qc *queueController) syncQueue(queue *schedulingv1alpha1.Queue, updateStat
 	return nil
 }
 
+// openQueue will set the status of queue to Open and then update the status according to updateStateFn.
 func (qc *queueController) openQueue(queue *schedulingv1alpha1.Queue, updateStateFn state.UpdateQueueStatusFn) error {
 	klog.V(4).Infof("Begin to open queue %s.", queue.Name)
+	defer klog.V(4).Infof("End open queue %s.", queue.Name)
 
 	newQueue := queue.DeepCopy()
 	newQueue.Status.State = schedulingv1alpha1.QueueStateOpen
 
+	// set the queue resource's status to Open in the cluster
 	if queue.Status.State != newQueue.Status.State {
 		if _, err := qc.volcanoClient.SchedulingV1alpha1().Queues().Update(context.TODO(),
 			newQueue, metav1.UpdateOptions{}); err != nil {
@@ -138,8 +147,10 @@ func (qc *queueController) openQueue(queue *schedulingv1alpha1.Queue, updateStat
 	return nil
 }
 
+// closeQueue will set the status of queue to Closed and then update the status according to updateStateFn.
 func (qc *queueController) closeQueue(queue *schedulingv1alpha1.Queue, updateStateFn state.UpdateQueueStatusFn) error {
 	klog.V(4).Infof("Begin to close queue %s.", queue.Name)
+	defer klog.V(4).Infof("End close queue %s.", queue.Name)
 
 	newQueue := queue.DeepCopy()
 	newQueue.Status.State = schedulingv1alpha1.QueueStateClosed

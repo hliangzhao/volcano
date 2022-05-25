@@ -19,6 +19,7 @@ package cache
 import (
 	"context"
 	"fmt"
+	`github.com/hliangzhao/volcano/cmd/scheduler/app/options`
 	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/apis/scheduling"
 	schedulingscheme "github.com/hliangzhao/volcano/pkg/apis/scheduling/scheme"
@@ -43,7 +44,7 @@ import (
 	coreinformersv1 "k8s.io/client-go/informers/core/v1"
 	schedulinginformersv1 "k8s.io/client-go/informers/scheduling/v1"
 	storageinformersv1 "k8s.io/client-go/informers/storage/v1"
-	"k8s.io/client-go/informers/storage/v1alpha1"
+	storagev1beta1 "k8s.io/client-go/informers/storage/v1beta1"
 	"k8s.io/client-go/kubernetes"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
@@ -336,7 +337,7 @@ type SchedulerCache struct {
 	quotaInformer     coreinformersv1.ResourceQuotaInformer
 	csiNodeInformer   storageinformersv1.CSINodeInformer
 	csiDriverInformer storageinformersv1.CSIDriverInformer
-	csiSCInformer     v1alpha1.CSIStorageCapacityInformer
+	csiSCInformer     storagev1beta1.CSIStorageCapacityInformer
 	cpuInformer       nodeinfoinformersv1alpha1.NumatopologyInformer
 
 	// cache interfaces
@@ -531,20 +532,17 @@ func newSchedulerCache(config *rest.Config, schedulerName string, defaultQueue s
 	sc.scInformer = informerFactory.Storage().V1().StorageClasses()
 	sc.csiNodeInformer = informerFactory.Storage().V1().CSINodes()
 	sc.csiDriverInformer = informerFactory.Storage().V1().CSIDrivers()
-	sc.csiSCInformer = informerFactory.Storage().V1alpha1().CSIStorageCapacities()
+	sc.csiSCInformer = informerFactory.Storage().V1beta1().CSIStorageCapacities()
 
 	var capacityCheck *volumebinding.CapacityCheck
-	// TODO: the following will be un-comment after `cmd/scheduler` is finished
-	// if options.ServerOpts.EnableCSIStorage {
-	// 	capacityCheck = &volumebinding.CapacityCheck{
-	// 		CSIDriverInformer:          sc.csiDriverInformer,
-	// 		CSIStorageCapacityInformer: sc.csiSCInformer,
-	// 	}
-	// } else {
-	// 	capacityCheck = nil
-	// }
-	// TODO: temporarily replacement
-	capacityCheck = nil
+	if options.ServerOpts.EnableCSIStorage {
+		capacityCheck = &volumebinding.CapacityCheck{
+			CSIDriverInformer:          sc.csiDriverInformer,
+			CSIStorageCapacityInformer: sc.csiSCInformer,
+		}
+	} else {
+		capacityCheck = nil
+	}
 
 	sc.VolumeBinder = &defaultVolumeBinder{
 		volumeBinder: volumebinding.NewVolumeBinder(
@@ -587,22 +585,14 @@ func newSchedulerCache(config *rest.Config, schedulerName string, defaultQueue s
 		})
 
 	// create volcano informer factory
-	// TODO: the following will be un-comment after `cmd/scheduler` is finished
-	// if options.ServerOpts.EnablePriorityClass {
-	// 	sc.pcInformer = informerFactory.Scheduling().V1().PriorityClasses()
-	// 	sc.pcInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-	// 		AddFunc:    sc.AddPriorityClass,
-	// 		UpdateFunc: sc.UpdatePriorityClass,
-	// 		DeleteFunc: sc.DeletePriorityClass,
-	// 	})
-	// }
-	// TODO: temporarily replacement
-	sc.pcInformer = informerFactory.Scheduling().V1().PriorityClasses()
-	sc.pcInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    sc.AddPriorityClass,
-		UpdateFunc: sc.UpdatePriorityClass,
-		DeleteFunc: sc.DeletePriorityClass,
-	})
+	if options.ServerOpts.EnablePriorityClass {
+		sc.pcInformer = informerFactory.Scheduling().V1().PriorityClasses()
+		sc.pcInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    sc.AddPriorityClass,
+			UpdateFunc: sc.UpdatePriorityClass,
+			DeleteFunc: sc.DeletePriorityClass,
+		})
+	}
 
 	sc.quotaInformer = informerFactory.Core().V1().ResourceQuotas()
 	sc.quotaInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{

@@ -93,32 +93,32 @@ func PopulateResourceListV1(spec string) (corev1.ResourceList, error) {
 }
 
 // CreateQueueCommand executes a command such as open/close a queue.
-func CreateQueueCommand(vcClient *volcanoclient.Clientset, ns, name string, action busv1alpha1.Action) error {
-	queue, err := vcClient.SchedulingV1alpha1().Queues().Get(context.TODO(), name, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-	ctrlRef := metav1.NewControllerRef(queue, helpers.QueueKind)
-	// the created cmd instance is controlled by the queue instance
-	cmd := &busv1alpha1.Command{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: fmt.Sprintf("%s-%s-", queue.Name, strings.ToLower(string(action))),
-			Namespace:    queue.Namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				*ctrlRef,
-			},
-		},
-		TargetObject: ctrlRef,
-		Action:       string(action),
-	}
-
-	// create the cmd resource in cluster with the cmd instance
-	if _, err := vcClient.BusV1alpha1().Commands(ns).Create(context.TODO(), cmd, metav1.CreateOptions{}); err != nil {
-		return err
-	}
-
-	return nil
-}
+// func CreateQueueCommand(vcClient *volcanoclient.Clientset, ns, name string, action busv1alpha1.Action) error {
+// 	queue, err := vcClient.SchedulingV1alpha1().Queues().Get(context.TODO(), name, metav1.GetOptions{})
+// 	if err != nil {
+// 		return err
+// 	}
+// 	ctrlRef := metav1.NewControllerRef(queue, helpers.QueueKind)
+// 	// the created cmd instance is controlled by the queue instance
+// 	cmd := &busv1alpha1.Command{
+// 		ObjectMeta: metav1.ObjectMeta{
+// 			GenerateName: fmt.Sprintf("%s-%s-", queue.Name, strings.ToLower(string(action))),
+// 			Namespace:    queue.Namespace,
+// 			OwnerReferences: []metav1.OwnerReference{
+// 				*ctrlRef,
+// 			},
+// 		},
+// 		TargetObject: ctrlRef,
+// 		Action:       string(action),
+// 	}
+//
+// 	// create the cmd resource in cluster with the cmd instance
+// 	if _, err := vcClient.BusV1alpha1().Commands(ns).Create(context.TODO(), cmd, metav1.CreateOptions{}); err != nil {
+// 		return err
+// 	}
+//
+// 	return nil
+// }
 
 // CreateJobCommand executes a command such as resume/suspend a job.
 func CreateJobCommand(config *rest.Config, ns, name string, action busv1alpha1.Action) error {

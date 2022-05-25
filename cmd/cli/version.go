@@ -19,8 +19,8 @@ package main
 // fully checked and understood
 
 import (
-	`github.com/hliangzhao/volcano/pkg/version`
-	`github.com/spf13/cobra`
+	"github.com/hliangzhao/volcano/pkg/version"
+	"github.com/spf13/cobra"
 )
 
 func versionCommand() *cobra.Command {

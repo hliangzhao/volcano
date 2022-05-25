@@ -1,3 +1,4 @@
+# the admission configmap
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -5,13 +6,16 @@ metadata:
   namespace: {{ .Release.Namespace }}
 data:
   {{- (.Files.Glob .Values.basic.admission_config_file).AsConfig | nindent 2}}
+
 ---
+# the sa for admission
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: {{ .Release.Name }}-admission
   namespace: {{ .Release.Namespace }}
 ---
+# the ClusterRole for admission
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -44,6 +48,7 @@ rules:
     verbs: ["get", "list", "watch"]
 
 ---
+# the ClusterRoleBinding that binds the sa {{ .Release.Name }}-admission to ClusterRole {{ .Release.Name }}-admission
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -58,6 +63,7 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 
 ---
+# the deployment of the vc-webhook-manager
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -112,6 +118,7 @@ spec:
             name: {{ .Release.Name }}-admission-configmap
 
 ---
+# create service for the vc-webhook-manager
 apiVersion: v1
 kind: Service
 metadata:
@@ -129,6 +136,7 @@ spec:
   sessionAffinity: None
 
 ---
+# the initial job that generate admission secret for vc-webhook-manager
 apiVersion: batch/v1
 kind: Job
 metadata:

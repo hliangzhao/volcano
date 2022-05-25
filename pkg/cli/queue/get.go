@@ -22,6 +22,7 @@ import (
 	"context"
 	"fmt"
 	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
+	`github.com/hliangzhao/volcano/pkg/cli/utils`
 	volcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
 	"github.com/spf13/cobra"
 	"io"
@@ -46,7 +47,7 @@ func InitGetFlags(cmd *cobra.Command) {
 
 // GetQueue gets a queue.
 func GetQueue() error {
-	config, err := buildConfig(getQueueFlags.Master, getQueueFlags.Kubeconfig)
+	config, err := utils.BuildConfig(getQueueFlags.Master, getQueueFlags.Kubeconfig)
 	if err != nil {
 		return err
 	}

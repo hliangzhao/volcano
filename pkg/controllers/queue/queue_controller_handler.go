@@ -16,6 +16,8 @@ limitations under the License.
 
 package queue
 
+// fully checked and understood
+
 import (
 	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
 	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
@@ -24,11 +26,12 @@ import (
 	"k8s.io/klog/v2"
 )
 
-// enqueue pushes an request into the work queue of the queueController.
+// enqueue pushes an request into the work-queue of the queueController.
 func (qc *queueController) enqueue(req *controllerapis.Request) {
 	qc.queue.Add(req)
 }
 
+// addQueue adds an obj (a queue actually) to the work-queue of the queueController.
 func (qc *queueController) addQueue(obj interface{}) {
 	queue := obj.(*schedulingv1alpha1.Queue)
 	req := &controllerapis.Request{
@@ -39,6 +42,7 @@ func (qc *queueController) addQueue(obj interface{}) {
 	qc.enqueue(req)
 }
 
+// deleteQueue deletes an obj (a queue actually) from qc.podgroups.
 func (qc *queueController) deleteQueue(obj interface{}) {
 	// obj is a queue
 	queue, ok := obj.(*schedulingv1alpha1.Queue)
@@ -62,11 +66,10 @@ func (qc *queueController) deleteQueue(obj interface{}) {
 }
 
 func (qc *queueController) updateQueue(_, _ interface{}) {
-	// TODO: maybe I can do sth.
-	// currently do not care about queue update
+	// TODO: currently do not care about queue update
 }
 
-// getPodgroups returns the podgroups for the given queue with name key.
+// getPodgroups returns the podgroups's keys for the given queue with name key.
 func (qc *queueController) getPodgroups(key string) []string {
 	qc.pgMutex.Lock()
 	defer qc.pgMutex.Unlock()
@@ -81,6 +84,7 @@ func (qc *queueController) getPodgroups(key string) []string {
 	return podgroups
 }
 
+// addPodgroup adds an obj (a podgroup) into qc.podgroups and enqueue the request to the work-queue of qc.
 func (qc *queueController) addPodgroup(obj interface{}) {
 	pg := obj.(*schedulingv1alpha1.PodGroup)
 	key, _ := cache.MetaNamespaceKeyFunc(obj)
@@ -103,6 +107,7 @@ func (qc *queueController) addPodgroup(obj interface{}) {
 	qc.enqueue(req)
 }
 
+// updatePodgroup updates the specific podgroup in qc.podgroups.
 func (qc *queueController) updatePodgroup(old, new interface{}) {
 	oldPg := old.(*schedulingv1alpha1.PodGroup)
 	newPg := new.(*schedulingv1alpha1.PodGroup)
@@ -114,6 +119,7 @@ func (qc *queueController) updatePodgroup(old, new interface{}) {
 	}
 }
 
+// deletePodgroup deletes the obj (a podgroup actually) from qc.podgroups and enqueue the request to the work-queue of qc.
 func (qc *queueController) deletePodgroup(obj interface{}) {
 	pg, ok := obj.(*schedulingv1alpha1.PodGroup)
 	if !ok {
@@ -142,6 +148,7 @@ func (qc *queueController) deletePodgroup(obj interface{}) {
 	qc.enqueue(req)
 }
 
+// addCmd adds the obj (actually a command) to qc.cmdQueue.
 func (qc *queueController) addCmd(obj interface{}) {
 	cmd, ok := obj.(*busv1alpha1.Command)
 	if !ok {
@@ -151,6 +158,7 @@ func (qc *queueController) addCmd(obj interface{}) {
 	qc.cmdQueue.Add(cmd)
 }
 
+// recordEventsForQueue records an event with the given parameters.
 func (qc *queueController) recordEventsForQueue(name, eventType, reason, msg string) {
 	queue, err := qc.queueLister.Get(name)
 	if err != nil {

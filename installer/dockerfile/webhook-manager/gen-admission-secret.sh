@@ -1,5 +1,5 @@
 #!/bin/sh
-#TODO: this file is used for release, should not place it here
+# TODO: this file is used for release, should not place it here
 set -e
 
 usage() {

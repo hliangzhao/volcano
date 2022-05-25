@@ -32,6 +32,7 @@ subjects:
 - kind: ServiceAccount
   name: default
   namespace: {{ .Release.Namespace }}
+
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -185,6 +186,7 @@ data:
         - source_labels: [__meta_kubernetes_service_name]
           action: replace
           target_label: kubernetes_name
+
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -224,6 +226,7 @@ spec:
   
         - name: prometheus-storage-volume
           emptyDir: {}
+
 ---
 apiVersion: v1
 kind: Service

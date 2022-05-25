@@ -21,6 +21,7 @@ package queue
 import (
 	"context"
 	"fmt"
+	`github.com/hliangzhao/volcano/pkg/cli/utils`
 	volcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,7 +44,7 @@ func InitDeleteFlags(cmd *cobra.Command) {
 
 // DeleteQueue delete queue.
 func DeleteQueue() error {
-	config, err := buildConfig(deleteQueueFlags.Master, deleteQueueFlags.Kubeconfig)
+	config, err := utils.BuildConfig(deleteQueueFlags.Master, deleteQueueFlags.Kubeconfig)
 	if err != nil {
 		return err
 	}

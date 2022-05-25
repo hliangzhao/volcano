@@ -16,6 +16,8 @@ limitations under the License.
 
 package framework
 
+// fully checked and understood
+
 import (
 	volcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
 	"k8s.io/client-go/informers"

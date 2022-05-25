@@ -16,6 +16,8 @@ limitations under the License.
 
 package garbagecollector
 
+// fully checked and understood
+
 import (
 	"context"
 	"fmt"
@@ -37,6 +39,8 @@ import (
 func init() {
 	_ = framework.RegisterController(&gcController{})
 }
+
+// TODO: Add more resource types that could be processed by gc-controller.
 
 // gcController runs reflectors to watch for changes of managed API
 // objects. Currently, it only watches Jobs. Triggered by Job creation
@@ -78,6 +82,7 @@ func (gc *gcController) Initialize(opt *framework.ControllerOption) error {
 	return nil
 }
 
+// addJob adds obj (a job) to gc.queue if it needs clean up.
 func (gc *gcController) addJob(obj interface{}) {
 	job := obj.(*batchv1alpha1.Job)
 	klog.V(4).Infof("Adding job %s/%s", job.Namespace, job.Name)
@@ -86,16 +91,19 @@ func (gc *gcController) addJob(obj interface{}) {
 	}
 }
 
+// needsCleanup checks whether job is finished and job.Spec.TTLSecondsAfterFinished is set.
 func needsCleanup(job *batchv1alpha1.Job) bool {
 	return job.Spec.TTLSecondsAfterFinished != nil && isJobFinished(job)
 }
 
+// isJobFinished checks whether job is finished (completed, failed, or terminated).
 func isJobFinished(job *batchv1alpha1.Job) bool {
 	return job.Status.State.Phase == batchv1alpha1.Completed ||
 		job.Status.State.Phase == batchv1alpha1.Failed ||
 		job.Status.State.Phase == batchv1alpha1.Terminated
 }
 
+// enqueue will enqueue a job to gc.queue (only the key of job is needed to insert to gc.queue).
 func (gc *gcController) enqueue(job *batchv1alpha1.Job) {
 	klog.V(4).Infof("Add job %s/%s to cleanup", job.Namespace, job.Name)
 
@@ -107,6 +115,7 @@ func (gc *gcController) enqueue(job *batchv1alpha1.Job) {
 	gc.queue.Add(key)
 }
 
+// updateJob updates obj (a job) to gc.queue if it needs clean up.
 func (gc *gcController) updateJob(oldObj, newObj interface{}) {
 	job := newObj.(*batchv1alpha1.Job)
 	klog.V(4).Infof("Updating job %s/%s", job.Namespace, job.Name)
@@ -115,6 +124,7 @@ func (gc *gcController) updateJob(oldObj, newObj interface{}) {
 	}
 }
 
+// Run starts the gcController until the stop channel is closed.
 func (gc *gcController) Run(stopCh <-chan struct{}) {
 	defer gc.queue.ShutDown()
 
@@ -130,11 +140,13 @@ func (gc *gcController) Run(stopCh <-chan struct{}) {
 	<-stopCh
 }
 
+// worker always in processing the next item in gc.queue.
 func (gc *gcController) worker() {
 	for gc.processNextWorkItem() {
 	}
 }
 
+// processNextWorkItem gets an item from gc.queue and processes it.
 func (gc *gcController) processNextWorkItem() bool {
 	key, shutdown := gc.queue.Get()
 	if shutdown {
@@ -152,6 +164,7 @@ func (gc *gcController) processNextWorkItem() bool {
 // its TTL hasn't expired, it will be added to the queue after the TTL is expected
 // to expire.
 // This function is not meant to be invoked concurrently with the same key.
+// NOTE: THIS FUNCTION IS WHERE THE TRUE CODE LOGIC OF GC-CONTROLLER LOCATED.
 func (gc *gcController) processJob(key string) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
@@ -178,7 +191,7 @@ func (gc *gcController) processJob(key string) error {
 	// Before deleting the Job, do a final sanity check.
 	// If TTL is modified before we do this check, we cannot be sure if the TTL truly expires.
 	// The latest Job may have a different UID, but it's fine because the checks will be run again.
-	fresh, err := gc.volcanoClient.BatchV1alpha1().Jobs(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	freshJob, err := gc.volcanoClient.BatchV1alpha1().Jobs(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		return nil
 	}
@@ -186,7 +199,7 @@ func (gc *gcController) processJob(key string) error {
 		return err
 	}
 	// Use the latest Job TTL to see if the TTL truly expires.
-	if expired, err := gc.processTTL(fresh); err != nil {
+	if expired, err := gc.processTTL(freshJob); err != nil {
 		return err
 	} else if !expired {
 		return nil
@@ -195,12 +208,13 @@ func (gc *gcController) processJob(key string) error {
 	policy := metav1.DeletePropagationForeground
 	options := metav1.DeleteOptions{
 		PropagationPolicy: &policy,
-		Preconditions:     &metav1.Preconditions{UID: &fresh.UID},
+		Preconditions:     &metav1.Preconditions{UID: &freshJob.UID},
 	}
 	klog.V(4).Infof("Cleaning up Job %s/%s", namespace, name)
-	return gc.volcanoClient.BatchV1alpha1().Jobs(fresh.Namespace).Delete(context.TODO(), fresh.Name, options)
+	return gc.volcanoClient.BatchV1alpha1().Jobs(freshJob.Namespace).Delete(context.TODO(), freshJob.Name, options)
 }
 
+// handleErr will re-enqueue the job (key) if error happened during its clean up.
 func (gc *gcController) handleErr(err error, key interface{}) {
 	if err == nil {
 		// finally processed
@@ -224,14 +238,17 @@ func (gc *gcController) processTTL(job *batchv1alpha1.Job) (expired bool, err er
 		return false, err
 	}
 
+	// already expired
 	if *remaining <= 0 {
 		return true, nil
 	}
 
+	// will expire later
 	gc.enqueueAfter(job, *remaining)
 	return false, nil
 }
 
+// timeLeft gets the time duration of `expire - since`.
 func timeLeft(job *batchv1alpha1.Job, since *time.Time) (*time.Duration, error) {
 	finishAt, expireAt, err := getFinishAndExpireTime(job)
 	if err != nil {
@@ -247,6 +264,7 @@ func timeLeft(job *batchv1alpha1.Job, since *time.Time) (*time.Duration, error) 
 	return &remainingTime, nil
 }
 
+// getFinishAndExpireTime returns the finish timestamp and expire timestamp of the given job.
 func getFinishAndExpireTime(job *batchv1alpha1.Job) (*time.Time, *time.Time, error) {
 	if !needsCleanup(job) {
 		return nil, nil, fmt.Errorf("job %s/%s should not be cleaned up", job.Namespace, job.Name)
@@ -268,6 +286,7 @@ func jobFinishTime(finishedJob *batchv1alpha1.Job) (metav1.Time, error) {
 	return finishedJob.Status.State.LastTransitionTime, nil
 }
 
+// enqueueAfter will enqueue job to gc.queue after the specific time duration.
 func (gc *gcController) enqueueAfter(job *batchv1alpha1.Job, after time.Duration) {
 	key, err := cache.MetaNamespaceKeyFunc(job)
 	if err != nil {

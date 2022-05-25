@@ -16,11 +16,14 @@ limitations under the License.
 
 package state
 
+// fully checked and understood
+
 import (
 	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
 	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
 )
 
+// closingState implements the State interface.
 type closingState struct {
 	queue *schedulingv1alpha1.Queue
 }
@@ -28,27 +31,37 @@ type closingState struct {
 func (cs *closingState) Execute(action busv1alpha1.Action) error {
 	switch action {
 	case busv1alpha1.OpenQueueAction:
-		return OpenQueue(cs.queue, func(status *schedulingv1alpha1.QueueStatus, pgList []string) {
+		var fn UpdateQueueStatusFn
+		// fn updates `status` to `QueueStateOpen`
+		fn = func(status *schedulingv1alpha1.QueueStatus, pgList []string) {
 			status.State = schedulingv1alpha1.QueueStateOpen
-		})
+		}
+		// update cs.queue's status with fn (os.queue.Status <- status)
+		return OpenQueue(cs.queue, fn)
+
 	case busv1alpha1.CloseQueueAction:
-		return SyncQueue(cs.queue, func(status *schedulingv1alpha1.QueueStatus, pgList []string) {
+		var fn UpdateQueueStatusFn
+		// fn updates `status` to `QueueStateClosed` or `QueueStateClosing` according to pgList
+		fn = func(status *schedulingv1alpha1.QueueStatus, pgList []string) {
 			// queue closed until every podgroup which uses it finishes
 			if len(pgList) == 0 {
 				status.State = schedulingv1alpha1.QueueStateClosed
 				return
 			}
 			status.State = schedulingv1alpha1.QueueStateClosing
-		})
+		}
+		// update cs.queue's status with fn (os.queue.Status <- status)
+		return SyncQueue(cs.queue, fn) // TODO: why SyncQueue(), other than CloseQueue()?
+
 	default:
-		// sync Status of `cs.queue` into `status`
-		return SyncQueue(cs.queue, func(status *schedulingv1alpha1.QueueStatus, pgList []string) {
-			specState := cs.queue.Status.State
-			if specState == schedulingv1alpha1.QueueStateOpen {
+		var fn UpdateQueueStatusFn
+		// fn sync `status` with `cs.queue.Status`
+		fn = func(status *schedulingv1alpha1.QueueStatus, pgList []string) {
+			if cs.queue.Status.State == schedulingv1alpha1.QueueStateOpen {
 				status.State = schedulingv1alpha1.QueueStateOpen
 				return
 			}
-			if specState == schedulingv1alpha1.QueueStateClosing {
+			if cs.queue.Status.State == schedulingv1alpha1.QueueStateClosing {
 				if len(pgList) == 0 {
 					status.State = schedulingv1alpha1.QueueStateClosed
 					return
@@ -57,6 +70,8 @@ func (cs *closingState) Execute(action busv1alpha1.Action) error {
 				return
 			}
 			status.State = schedulingv1alpha1.QueueStateUnknown
-		})
+		}
+		// update cs.queue's status with fn (os.queue.Status <- status)
+		return SyncQueue(cs.queue, fn)
 	}
 }
