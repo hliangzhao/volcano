@@ -25,16 +25,16 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
-	kubeclient "k8s.io/client-go/kubernetes/fake"
+	fakekubeclient "k8s.io/client-go/kubernetes/fake"
 	"testing"
 )
 
-// TODO: just copied. Not checked.
+// TODO: just copied.
 // Passed.
 
 func newFakeController() *jobController {
 	volcanoClientSet := volcanoclient.NewSimpleClientset()
-	kubeClientSet := kubeclient.NewSimpleClientset()
+	kubeClientSet := fakekubeclient.NewSimpleClientset()
 
 	sharedInformers := informers.NewSharedInformerFactory(kubeClientSet, 0)
 

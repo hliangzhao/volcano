@@ -16,25 +16,33 @@ limitations under the License.
 
 package state
 
+// fully checked and understood
+
 import (
 	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
 	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/controllers/apis"
 )
 
+// abortedState implements the State interface.
 type abortedState struct {
 	job *apis.JobInfo
 }
 
-func (state *abortedState) Execute(act busv1alpha1.Action) error {
-	switch act {
+func (state *abortedState) Execute(action busv1alpha1.Action) error {
+	switch action {
 	case busv1alpha1.ResumeJobAction:
-		return KillJob(state.job, PodRetainPhaseSoft, func(status *batchv1alpha1.JobStatus) bool {
+		var fn UpdateJobStatusFn
+		// fn updates `status` to `Restarting`
+		fn = func(status *batchv1alpha1.JobStatus) (jobPhaseChanged bool) {
 			status.State.Phase = batchv1alpha1.Restarting
 			status.RetryCount++
 			return true
-		})
+		}
+		// kill the non-retained pods of the job and update its status to restarting
+		return KillJob(state.job, PodRetainPhaseSoft, fn)
 	default:
+		// just kill the non-retained pods of the job
 		return KillJob(state.job, PodRetainPhaseSoft, nil)
 	}
 }

@@ -16,7 +16,7 @@ limitations under the License.
 
 package helpers
 
-// TODO: just copied. Not checked.
+// TODO: just copied.
 // Passed.
 
 import (

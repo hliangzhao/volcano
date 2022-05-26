@@ -16,9 +16,11 @@ limitations under the License.
 
 package state
 
+// fully checked and understood
+
 import batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
 
-// TotalTasks returns the total number of tasks in job.
+// TotalTasks returns the total number of task pods of the given job.
 func TotalTasks(job *batchv1alpha1.Job) int32 {
 	var num int32
 	for _, task := range job.Spec.Tasks {
@@ -27,7 +29,7 @@ func TotalTasks(job *batchv1alpha1.Job) int32 {
 	return num
 }
 
-// TotalTaskMinAvailable returns the minimum number of available tasks required by job.
+// TotalTaskMinAvailable returns the minimum number of available task pods required by job.
 func TotalTaskMinAvailable(job *batchv1alpha1.Job) int32 {
 	var num int32
 	for _, task := range job.Spec.Tasks {

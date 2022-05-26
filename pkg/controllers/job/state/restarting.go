@@ -16,31 +16,35 @@ limitations under the License.
 
 package state
 
+// fully checked and understood
+
 import (
 	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
 	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/controllers/apis"
 )
 
+// restartingState implements the State interface.
 type restartingState struct {
 	job *apis.JobInfo
 }
 
-func (state *restartingState) Execute(act busv1alpha1.Action) error {
-	return KillJob(state.job, PodRetainPhaseSoft, func(status *batchv1alpha1.JobStatus) bool {
+func (state *restartingState) Execute(action busv1alpha1.Action) error {
+	var fn UpdateJobStatusFn
+	// if state.job can still be restarted, update `status` to pending (wait for being scheduled),
+	// otherwise, just set `status` to failed (the job cannot be restarted because the max retry cannot be exceeded)
+	fn = func(status *batchv1alpha1.JobStatus) (jobPhaseChanged bool) {
 		maxRetry := state.job.Job.Spec.MaxRetry
 		if status.RetryCount >= maxRetry {
 			status.State.Phase = batchv1alpha1.Failed
 			return true
 		}
-		total := int32(0)
-		for _, task := range state.job.Job.Spec.Tasks {
-			total += task.Replicas
-		}
+		total := TotalTasks(state.job.Job)
 		if total-status.Terminating >= status.MinAvailable {
 			status.State.Phase = batchv1alpha1.Pending
 			return true
 		}
 		return false
-	})
+	}
+	return KillJob(state.job, PodRetainPhaseSoft, fn)
 }

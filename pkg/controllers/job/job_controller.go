@@ -16,6 +16,8 @@ limitations under the License.
 
 package job
 
+// fully checked and understood
+
 import (
 	"context"
 	"fmt"
@@ -63,6 +65,7 @@ func init() {
 }
 
 type jobController struct {
+	// clients
 	kubeClient    kubernetes.Interface
 	volcanoClient volcanoclient.Interface
 
@@ -100,16 +103,18 @@ type jobController struct {
 	queueLister schedulinglisterv1alpha1.QueueLister
 	queueSynced func() bool
 
-	// work queues
-	queueList []workqueue.RateLimitingInterface
-	cmdQueue  workqueue.RateLimitingInterface
-	cache     controllercache.Cache
+	// work-queues
+	numWorkers uint32                            // each worker process one work-queue of jobs
+	queueList  []workqueue.RateLimitingInterface // work-queue of jobs
+	cmdQueue   workqueue.RateLimitingInterface   // work-queue of cmd
+	errTasks   workqueue.RateLimitingInterface   // work-queue of tasks
+
+	// the local store (of volcano jobs, tasks, and pods)
+	cache controllercache.Cache
 
 	// event recorder
 	recorder record.EventRecorder
 
-	errTasks      workqueue.RateLimitingInterface
-	workers       uint32
 	maxRequeueNum int
 }
 
@@ -122,26 +127,26 @@ func (jc *jobController) Initialize(opt *framework.ControllerOption) error {
 	jc.volcanoClient = opt.VolcanoClient
 
 	sharedInformers := opt.SharedInformerFactory
-	workers := opt.WorkerNum
+	workerNum := opt.WorkerNum
 
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&coretypedv1.EventSinkImpl{Interface: jc.kubeClient.CoreV1().Events("")})
 	recorder := eventBroadcaster.NewRecorder(volcanoscheme.Scheme, corev1.EventSource{Component: "vc-controller-manager"})
 
-	jc.queueList = make([]workqueue.RateLimitingInterface, workers)
+	jc.queueList = make([]workqueue.RateLimitingInterface, workerNum)
 	jc.cmdQueue = workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	jc.cache = controllercache.NewCache()
 	jc.errTasks = newRateLimitingQueue()
 	jc.recorder = recorder
-	jc.workers = workers
+	jc.numWorkers = workerNum
 	jc.maxRequeueNum = opt.MaxRequeueNum
 	if jc.maxRequeueNum < 0 {
 		jc.maxRequeueNum = -1
 	}
 
 	var i uint32
-	for i = 0; i < workers; i++ {
+	for i = 0; i < workerNum; i++ {
 		jc.queueList[i] = workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	}
 
@@ -227,13 +232,16 @@ func (jc *jobController) Run(stopCh <-chan struct{}) {
 	go jc.queueInformer.Informer().Run(stopCh)
 
 	// wait for cache sync
-	cache.WaitForCacheSync(stopCh, jc.jobSynced, jc.podSynced, jc.pvcSynced, jc.pgSynced,
-		jc.svcSynced, jc.cmdSynced, jc.priorityclassSynced, jc.queueSynced)
+	if !cache.WaitForCacheSync(stopCh, jc.jobSynced, jc.podSynced, jc.pvcSynced, jc.pgSynced,
+		jc.svcSynced, jc.cmdSynced, jc.priorityclassSynced, jc.queueSynced) {
+		klog.Errorf("unable to sync caches for job controller.")
+		return
+	}
 
-	// finally, start each worker as seperated goroutine and run forever
+	// finally, start each worker as seperated goroutines and run forever
 	go wait.Until(jc.handleCommands, 0, stopCh)
 	var i uint32
-	for i = 0; i < jc.workers; i++ {
+	for i = 0; i < jc.numWorkers; i++ {
 		go func(num uint32) {
 			wait.Until(
 				func() {
@@ -245,20 +253,23 @@ func (jc *jobController) Run(stopCh <-chan struct{}) {
 		}(i)
 	}
 
+	// start the local store
 	go jc.cache.Run(stopCh)
 
-	// Re-sync error tasks
+	// start the coroutine of re-sync error tasks
 	go wait.Until(jc.processReSyncedTask, 0, stopCh)
 
-	klog.Infof("job-controller is running...")
+	klog.Infof("job controller is running...")
 }
 
+// worker processes the i-th work-queue forever.
 func (jc *jobController) worker(i uint32) {
 	klog.Infof("worker %d starting...", i)
 	for jc.processNextReq(i) {
 	}
 }
 
+// belongsToThisRoutine judges whether `key` (representing a job request) should be handled by the `count`-th worker (work-queue).
 func (jc *jobController) belongsToThisRoutine(key string, count uint32) bool {
 	var hashVal hash.Hash32
 	var val uint32
@@ -267,9 +278,10 @@ func (jc *jobController) belongsToThisRoutine(key string, count uint32) bool {
 	_, _ = hashVal.Write([]byte(key))
 	val = hashVal.Sum32()
 
-	return val%jc.workers == count
+	return val%jc.numWorkers == count
 }
 
+// getWorkerQueue returns the work-queue that handled by the `key`-th worker (work-queue).
 func (jc *jobController) getWorkerQueue(key string) workqueue.RateLimitingInterface {
 	var hashVal hash.Hash32
 	var val uint32
@@ -278,11 +290,12 @@ func (jc *jobController) getWorkerQueue(key string) workqueue.RateLimitingInterf
 	_, _ = hashVal.Write([]byte(key))
 	val = hashVal.Sum32()
 
-	return jc.queueList[val%jc.workers]
+	return jc.queueList[val%jc.numWorkers]
 }
 
-// processNextReq retrieves a callback from work queue and process it.
+// processNextReq retrieves a callback from the `count`-th work-queue and process it.
 // `false` is returned only if the request cannot be retrieved.
+// Specifically, this function creates a bew state according to the request and calls the Execute function to update the job's status.
 func (jc *jobController) processNextReq(count uint32) bool {
 	queue := jc.queueList[count]
 	obj, shutdown := queue.Get()
@@ -294,16 +307,18 @@ func (jc *jobController) processNextReq(count uint32) bool {
 	req := obj.(apis.Request)
 	defer queue.Done(req)
 
+	// if the request was put into a wrong work-queue, add it to the right work-queue and goto process next one
 	key := controllercache.JobKeyByRequest(&req)
 	if !jc.belongsToThisRoutine(key, count) {
 		// add this req to the right queue
-		klog.Errorf("Should not occur. The job does not belongs to this routine key:%s, worker:%d...... ", key, count)
+		klog.Errorf("Should not occur. The job does not belongs to this routine key: %s, worker: %d...... ", key, count)
 		queueLocal := jc.getWorkerQueue(key)
 		queueLocal.Add(req)
 		return true
 	}
 
 	klog.V(3).Infof("Try to handle request <%v>", req)
+	// get the job represented by this request
 	jobInfo, err := jc.cache.Get(key)
 	if err != nil {
 		// TODO: ignore not-ready error.
@@ -311,35 +326,39 @@ func (jc *jobController) processNextReq(count uint32) bool {
 		return true
 	}
 
-	stt := state.NewState(jobInfo)
-	if stt == nil {
+	jobState := state.NewState(jobInfo)
+	if jobState == nil {
 		klog.Errorf("Invalid state <%s> of Job <%v/%v>",
 			jobInfo.Job.Status.State, jobInfo.Job.Namespace, jobInfo.Job.Name)
 		return true
 	}
 
-	act := applyPolices(jobInfo.Job, &req)
+	// get the action parsed from the job request
+	action := applyPolices(jobInfo.Job, &req)
 	klog.V(3).Infof("Execute <%v> on Job <%s/%s> in <%s> by <%T>.",
-		act, req.Namespace, req.JobName, jobInfo.Job.Status.State.Phase, stt)
+		action, req.Namespace, req.JobName, jobInfo.Job.Status.State.Phase, jobState)
 
-	if act != busv1alpha1.SyncJobAction {
+	if action != busv1alpha1.SyncJobAction {
 		jc.recordJobEvent(jobInfo.Job.Namespace, jobInfo.Job.Name, batchv1alpha1.ExecuteAction, fmt.Sprintf(
-			"Start to execute action %s ", act))
+			"Start to execute action %s ", action))
 	}
 
-	if err = stt.Execute(act); err != nil {
+	// call the Execute function to update job status
+	if err = jobState.Execute(action); err != nil {
 		if jc.maxRequeueNum == -1 || queue.NumRequeues(req) < jc.maxRequeueNum {
+			// job status update failed, but we still have chance to update it
 			klog.V(2).Infof("Failed to handle Job <%s/%s>: %v",
 				jobInfo.Job.Namespace, jobInfo.Job.Name, err)
-			// If any error, requeue it.
 			queue.AddRateLimited(req)
 			return true
 		}
 		jc.recordJobEvent(jobInfo.Job.Namespace, jobInfo.Job.Name, batchv1alpha1.ExecuteAction, fmt.Sprintf(
-			"Job failed on action %s for retry limit reached", act))
+			"Job failed on action %s for retry limit reached", action))
 		klog.Warningf("Terminating Job <%s/%s> and releasing resources", jobInfo.Job.Namespace, jobInfo.Job.Name)
 
-		if err = stt.Execute(busv1alpha1.TerminateJobAction); err != nil {
+		// Job status update failed, and the job has no chance to be re-enqueued.
+		// Thus, we just terminate it.
+		if err = jobState.Execute(busv1alpha1.TerminateJobAction); err != nil {
 			klog.Errorf("Failed to terminate Job<%s/%s>: %v", jobInfo.Job.Namespace, jobInfo.Job.Name, err)
 		}
 		klog.Warningf("Dropping job <%s/%s> out of the queue: %v because max retries has reached",
@@ -360,6 +379,7 @@ func newRateLimitingQueue() workqueue.RateLimitingInterface {
 	))
 }
 
+// processReSyncedTask acquires a task request from the errTasks work-queue and handle it.
 func (jc *jobController) processReSyncedTask() {
 	obj, shutdown := jc.errTasks.Get()
 	if shutdown {
@@ -385,8 +405,8 @@ func (jc *jobController) processReSyncedTask() {
 	}
 }
 
+// syncTask gets the latest pod from cluster and update it to job-controller's local store (cache).
 func (jc *jobController) syncTask(oldTask *corev1.Pod) error {
-	// get the latest pod from cluster and update it to job-controller's cache
 	newPod, err := jc.kubeClient.CoreV1().Pods(oldTask.Namespace).Get(context.TODO(), oldTask.Name, metav1.GetOptions{})
 	if err != nil {
 		// pod not found in cluster, delete it from cache
@@ -421,6 +441,7 @@ func MakePodName(jobName, taskName string, index int) string {
 	return fmt.Sprintf(helpers.PodNameFmt, jobName, taskName, index)
 }
 
+// createJobPod creates a pod of the input job according to the given template.
 func createJobPod(job *batchv1alpha1.Job, template *corev1.PodTemplateSpec, topologyPolicy batchv1alpha1.NumaPolicy,
 	index int, jobForwarding bool) *corev1.Pod {
 
@@ -476,6 +497,7 @@ func createJobPod(job *batchv1alpha1.Job, template *corev1.PodTemplateSpec, topo
 		tsKey = batchv1alpha1.DefaultTaskSpec
 	}
 
+	// set annotations
 	if len(pod.Annotations) == 0 {
 		pod.Annotations = make(map[string]string)
 	}
@@ -529,11 +551,14 @@ func createJobPod(job *batchv1alpha1.Job, template *corev1.PodTemplateSpec, topo
 	return pod
 }
 
+// applyPolices parses the action to take from job request.
 func applyPolices(job *batchv1alpha1.Job, req *apis.Request) busv1alpha1.Action {
+	// if Action in the request is set, just return it directly
 	if len(req.Action) != 0 {
 		return req.Action
 	}
 
+	// sync job firstly if out-of-sync
 	if req.Event == busv1alpha1.OutOfSyncEvent {
 		return busv1alpha1.SyncJobAction
 	}
@@ -582,14 +607,17 @@ func applyPolices(job *batchv1alpha1.Job, req *apis.Request) busv1alpha1.Action 
 	return busv1alpha1.SyncJobAction
 }
 
+// getEventList returns the event list of the given lifecycle policy.
 func getEventList(policy batchv1alpha1.LifecyclePolicy) []busv1alpha1.Event {
-	el := policy.Events
+	eventList := policy.Events
+	// if policy.Event exist, append it before return
 	if len(policy.Event) > 0 {
-		el = append(el, policy.Event)
+		eventList = append(eventList, policy.Event)
 	}
-	return el
+	return eventList
 }
 
+// checkEventExist checks whether reqEvent is in policyEvents.
 func checkEventExist(policyEvents []busv1alpha1.Event, reqEvent busv1alpha1.Event) bool {
 	for _, e := range policyEvents {
 		if e == reqEvent {
@@ -599,6 +627,7 @@ func checkEventExist(policyEvents []busv1alpha1.Event, reqEvent busv1alpha1.Even
 	return false
 }
 
+// addResourceList creates a ResourceList and adds the resources required (or limited resources) to the list.
 func addResourceList(list, req, limit corev1.ResourceList) {
 	for resName, resQuantity := range req {
 		if val, ok := list[resName]; !ok {
@@ -625,25 +654,27 @@ func addResourceList(list, req, limit corev1.ResourceList) {
 	}
 }
 
+// TaskPriority is used to indicate the priority of a task.
 type TaskPriority struct {
 	priority int32
 	batchv1alpha1.TaskSpec
 }
 
-type TasksPriority []TaskPriority
+type TasksPriorities []TaskPriority
 
-func (p TasksPriority) Len() int {
+func (p TasksPriorities) Len() int {
 	return len(p)
 }
 
-func (p TasksPriority) Less(i, j int) bool {
+func (p TasksPriorities) Less(i, j int) bool {
 	return p[i].priority > p[j].priority
 }
 
-func (p TasksPriority) Swap(i, j int) {
+func (p TasksPriorities) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
 }
 
+// isControlledBy judges whether obj is controlled by gvk.
 func isControlledBy(obj metav1.Object, gvk schema.GroupVersionKind) bool {
 	controllerRef := metav1.GetControllerOf(obj)
 	if controllerRef == nil {

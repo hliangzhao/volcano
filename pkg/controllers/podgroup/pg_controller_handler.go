@@ -16,6 +16,8 @@ limitations under the License.
 
 package podgroup
 
+// fully checked and understood
+
 import (
 	"context"
 	"github.com/hliangzhao/volcano/pkg/apis/helpers"
@@ -34,6 +36,7 @@ type podRequest struct {
 	podNamespace string
 }
 
+// addPod adds an obj (a pod actually) to the work-queue of the pgController.
 func (pgC *pgController) addPod(obj interface{}) {
 	pod, ok := obj.(*corev1.Pod)
 	if !ok {
@@ -46,7 +49,7 @@ func (pgC *pgController) addPod(obj interface{}) {
 	})
 }
 
-// updatePodAnnotations updates the annotation which denotes the podgroup this pod belongs to.
+// updatePodAnnotations updates the annotation which denotes the podgroup that this pod belongs to.
 func (pgC *pgController) updatePodAnnotations(pod *corev1.Pod, pgName string) error {
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
@@ -60,14 +63,16 @@ func (pgC *pgController) updatePodAnnotations(pod *corev1.Pod, pgName string) er
 		}
 		return nil
 	}
+	// update the pod resource in cluster
 	if _, err := pgC.kubeClient.CoreV1().Pods(pod.Namespace).Update(context.TODO(), pod, metav1.UpdateOptions{}); err != nil {
 		klog.Errorf("Failed to update pod <%s/%s>: %v", pod.Namespace, pod.Name, err)
 		return err
 	}
-
 	return nil
 }
 
+// createNormalPodPGIfNotExist creates a podgroup resource in cluster if the given pod does not belong to one.
+// The main logic in this func is setting the relations between the newly created podgroup and the input pod.
 func (pgC *pgController) createNormalPodPGIfNotExist(pod *corev1.Pod) error {
 	// TODO: judge `pod.Annotations == nil` should be placed here
 	pgName := helpers.GeneratePodGroupName(pod)
@@ -82,26 +87,27 @@ func (pgC *pgController) createNormalPodPGIfNotExist(pod *corev1.Pod) error {
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace:       pod.Namespace,
 				Name:            pgName,
-				OwnerReferences: newPGOwnerReferences(pod),
+				OwnerReferences: newPGOwnerReferences(pod), // set the OwnerReferences of the podgroup as the same as the pod
 				Annotations:     map[string]string{},
 				Labels:          map[string]string{},
 			},
 			Spec: schedulingv1alpha1.PodGroupSpec{
 				MinMember:         1,
 				PriorityClassName: pod.Spec.PriorityClassName,
-				MinResources:      calcPGMinResources(pod),
+				MinResources:      calcPGMinResources(pod), // NOTE that a podgroup main contain multiple pods
 			},
+			// a newly created podgroup is in Pending phase
 			Status: schedulingv1alpha1.PodGroupStatus{
 				Phase: schedulingv1alpha1.PodGroupPending,
 			},
 		}
 
-		// set podgroup's queue
+		// set the queue name which this podgroup belongs to
 		if queueName, ok := pod.Annotations[schedulingv1alpha1.QueueNameAnnotationKey]; ok {
 			obj.Spec.Queue = queueName
 		}
 
-		// set other annotations
+		// set other annotations of the podgroup according to the annotations of the pod
 		if value, ok := pod.Annotations[schedulingv1alpha1.PodPreemptable]; ok {
 			obj.Annotations[schedulingv1alpha1.PodPreemptable] = value
 		}
@@ -117,6 +123,7 @@ func (pgC *pgController) createNormalPodPGIfNotExist(pod *corev1.Pod) error {
 			obj.Annotations[schedulingv1alpha1.JDBMaxUnavailable] = value
 		}
 
+		// finally, we create the podgroup resource in cluster
 		if _, err = pgC.volcanoClient.SchedulingV1alpha1().PodGroups(pod.Namespace).Create(context.TODO(),
 			obj, metav1.CreateOptions{}); err != nil {
 			klog.Errorf("Failed to create normal PodGroup for Pod <%s/%s>: %v",
@@ -124,18 +131,23 @@ func (pgC *pgController) createNormalPodPGIfNotExist(pod *corev1.Pod) error {
 			return err
 		}
 	}
+	// do not forget to update the annotation which indicates the podgroup that the pod belongs to
 	return pgC.updatePodAnnotations(pod, pgName)
 }
 
-// newPGOwnerReferences sets controller for the given pod.
+// newPGOwnerReferences return the OwnerReferences of the given pod.
 func newPGOwnerReferences(pod *corev1.Pod) []metav1.OwnerReference {
 	if len(pod.OwnerReferences) != 0 {
+		// if this pod is managed by a controller, then an entry in the list `pod.OwnerReferences`
+		// will point to this controller, with the controller field set to true.
 		for _, ownerRef := range pod.OwnerReferences {
 			if ownerRef.Controller != nil && *ownerRef.Controller {
 				return pod.OwnerReferences
 			}
 		}
 	}
+	// if we reach here, it means that the input pod is not managed by any controller,
+	// just set a new controller reference for it
 	gvk := schema.GroupVersionKind{
 		Group:   corev1.SchemeGroupVersion.Group,
 		Version: corev1.SchemeGroupVersion.Version,
@@ -171,6 +183,7 @@ func newPGOwnerReferences(pod *corev1.Pod) []metav1.OwnerReference {
 // 	}
 // }
 
+// calcPGMinResources returns the minimal ResourceList to successfully start the pod.
 func calcPGMinResources(pod *corev1.Pod) *corev1.ResourceList {
 	// pgMinRes := corev1.ResourceList{}
 	// for _, c := range pod.Spec.Containers {

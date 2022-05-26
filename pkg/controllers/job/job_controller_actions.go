@@ -16,6 +16,8 @@ limitations under the License.
 
 package job
 
+// fully checked and understood
+
 import (
 	"context"
 	"fmt"
@@ -29,7 +31,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	v1 "k8s.io/apiserver/pkg/quota/v1"
+	quotav1 "k8s.io/apiserver/pkg/quota/v1"
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/quota/v1/evaluator/core"
 	"k8s.io/utils/clock"
@@ -102,7 +104,7 @@ func (jc *jobController) initOnJobUpdate(job *batchv1alpha1.Job) error {
 	return nil
 }
 
-// GetQueueInfo returns the queueInfo instance with the given queue name.
+// GetQueueInfo returns the Queue with the given queue name from the work-queue of queues.
 func (jc *jobController) GetQueueInfo(queue string) (*schedulingv1alpha1.Queue, error) {
 	queueInfo, err := jc.queueLister.Get(queue)
 	if err != nil {
@@ -111,8 +113,8 @@ func (jc *jobController) GetQueueInfo(queue string) (*schedulingv1alpha1.Queue, 
 	return queueInfo, nil
 }
 
-// syncJob syncs the job instance in the cluster.
-func (jc *jobController) syncJob(jobInfo *controllerapis.JobInfo, updateStatus state.UpdateJobStatusFn) error {
+// syncJob syncs the given job resource in the cluster.
+func (jc *jobController) syncJob(jobInfo *controllerapis.JobInfo, updateJobStatusFn state.UpdateJobStatusFn) error {
 	job := jobInfo.Job
 	klog.V(3).Infof("Starting to sync up Job <%s/%s>, current version %d", job.Namespace, job.Name, job.Status.Version)
 	defer klog.V(3).Infof("Finished Job <%s/%s> sync up, current version %d", job.Namespace, job.Name, job.Status.Version)
@@ -127,12 +129,11 @@ func (jc *jobController) syncJob(jobInfo *controllerapis.JobInfo, updateStatus s
 	job = job.DeepCopy()
 
 	// Find the queue that the job belongs to, and check if the queue has forwarding metadata
-	// If yes, update the queue instance in cluster
+	// If yes, update the job instance's annotations in cluster
 	queueInfo, err := jc.GetQueueInfo(job.Spec.Queue)
 	if err != nil {
 		return err
 	}
-
 	var jobForwarding bool
 	if len(queueInfo.Spec.ExtendClusters) != 0 {
 		jobForwarding = true
@@ -159,16 +160,16 @@ func (jc *jobController) syncJob(jobInfo *controllerapis.JobInfo, updateStatus s
 		}
 	}
 
-	// TODO: why call this again? (looks like a bug)
-	if len(queueInfo.Spec.ExtendClusters) != 0 {
-		jobForwarding = true
-		job.Annotations[batchv1alpha1.JobForwardingKey] = "true"
-		_, err := jc.volcanoClient.BatchV1alpha1().Jobs(job.Namespace).Update(context.TODO(), job, metav1.UpdateOptions{})
-		if err != nil {
-			klog.Errorf("failed to update job: %s/%s, error: %s", job.Namespace, job.Name, err.Error())
-			return err
-		}
-	}
+	// TODO: why call this again? (looks like a bug. I just comment it)
+	// if len(queueInfo.Spec.ExtendClusters) != 0 {
+	// 	jobForwarding = true
+	// 	job.Annotations[batchv1alpha1.JobForwardingKey] = "true"
+	// 	_, err := jc.volcanoClient.BatchV1alpha1().Jobs(job.Namespace).Update(context.TODO(), job, metav1.UpdateOptions{})
+	// 	if err != nil {
+	// 		klog.Errorf("failed to update job: %s/%s, error: %s", job.Namespace, job.Name, err.Error())
+	// 		return err
+	// 	}
+	// }
 
 	var syncTask bool
 	// Sync the corresponding podgroup's status (update Unscheduable event if it happens)
@@ -189,19 +190,22 @@ func (jc *jobController) syncJob(jobInfo *controllerapis.JobInfo, updateStatus s
 	// (1) Update job conditions
 	var jobCondition batchv1alpha1.JobCondition
 	if !syncTask {
-		if updateStatus != nil {
-			if updateStatus(&job.Status) {
+		if updateJobStatusFn != nil {
+			// update job.Status and add the new status to jobConditions
+			if updateJobStatusFn(&job.Status) {
 				job.Status.State.LastTransitionTime = metav1.Now()
 				jobCondition = newJobCondition(job.Status.State.Phase, &job.Status.State.LastTransitionTime)
 				job.Status.Conditions = append(job.Status.Conditions, jobCondition)
 			}
 		}
+		// update job status in cluster
 		newJob, err := jc.volcanoClient.BatchV1alpha1().Jobs(job.Namespace).UpdateStatus(context.TODO(), job, metav1.UpdateOptions{})
 		if err != nil {
 			klog.Errorf("Failed to update status of Job %v/%v: %v",
 				job.Namespace, job.Name, err)
 			return err
 		}
+		// update the local store of job
 		if err := jc.cache.Update(newJob); err != nil {
 			klog.Errorf("SyncJob - Failed to update Job %v/%v in cache:  %v",
 				newJob.Namespace, newJob.Name, err)
@@ -210,7 +214,7 @@ func (jc *jobController) syncJob(jobInfo *controllerapis.JobInfo, updateStatus s
 		return nil
 	}
 
-	// Sync the job's status and update the job in cache
+	// Sync the job instance's status in cluster and update the job in cache
 	// (2) Create task pods that need to be created, and delete task pods that need to be deleted
 	//     And then update the count of tasks in different status
 	var running, pending, terminating, succeeded, failed, unknown int32
@@ -230,7 +234,7 @@ func (jc *jobController) syncJob(jobInfo *controllerapis.JobInfo, updateStatus s
 
 	waitCreationGroup := sync.WaitGroup{}
 
-	// (2.1) Create task pod struct instances
+	// (2.1) Create task pod instances
 	for _, task := range job.Spec.Tasks {
 		task.Template.Name = task.Name
 		tc := task.Template.DeepCopy()
@@ -341,8 +345,7 @@ func (jc *jobController) syncJob(jobInfo *controllerapis.JobInfo, updateStatus s
 
 	// Sync the job's status again with the above changes
 	job.Status = batchv1alpha1.JobStatus{
-		State: job.Status.State,
-
+		State:               job.Status.State,
 		Pending:             pending,
 		Running:             running,
 		Succeeded:           succeeded,
@@ -357,8 +360,8 @@ func (jc *jobController) syncJob(jobInfo *controllerapis.JobInfo, updateStatus s
 		RetryCount:          job.Status.RetryCount,
 	}
 
-	if updateStatus != nil {
-		if updateStatus(&job.Status) {
+	if updateJobStatusFn != nil {
+		if updateJobStatusFn(&job.Status) {
 			job.Status.State.LastTransitionTime = metav1.Now()
 			jobCondition = newJobCondition(job.Status.State.Phase, &job.Status.State.LastTransitionTime)
 			job.Status.Conditions = append(job.Status.Conditions, jobCondition)
@@ -370,6 +373,8 @@ func (jc *jobController) syncJob(jobInfo *controllerapis.JobInfo, updateStatus s
 			job.Namespace, job.Name, err)
 		return err
 	}
+
+	// update the local store again
 	if e := jc.cache.Update(newJob); e != nil {
 		klog.Errorf("SyncJob - Failed to update Job %v/%v in cache:  %v",
 			newJob.Namespace, newJob.Name, e)
@@ -379,7 +384,8 @@ func (jc *jobController) syncJob(jobInfo *controllerapis.JobInfo, updateStatus s
 	return nil
 }
 
-func (jc *jobController) killJob(jobInfo *controllerapis.JobInfo, podRetainPhase state.PhaseMap, updateStatus state.UpdateJobStatusFn) error {
+// killJob kills the non-retained pods of the job in cluster.
+func (jc *jobController) killJob(jobInfo *controllerapis.JobInfo, podRetainPhase state.PhaseMap, updateJobStatusFn state.UpdateJobStatusFn) error {
 	job := jobInfo.Job
 	klog.V(3).Infof("Killing Job <%s/%s>, current version %d", job.Namespace, job.Name, job.Status.Version)
 	defer klog.V(3).Infof("Finished Job <%s/%s> killing, current version %d", job.Namespace, job.Name, job.Status.Version)
@@ -415,10 +421,12 @@ func (jc *jobController) killJob(jobInfo *controllerapis.JobInfo, podRetainPhase
 			// If it is not the last retry, kill pod as defined in `podRetainPhase`.
 			retainPhase := podRetainPhase
 			if lastRetry {
+				// if this is the last retry of this pod, set retainPhase as state.PodRetainPhaseSoft
 				retainPhase = state.PodRetainPhaseSoft
 			}
 			_, retain := retainPhase[pod.Status.Phase]
 			if !retain {
+				// if this pod is not succeed or failed, just delete it (which means it is not retained)
 				err := jc.deleteJobPod(job.Name, pod)
 				if err == nil {
 					terminating++
@@ -455,33 +463,35 @@ func (jc *jobController) killJob(jobInfo *controllerapis.JobInfo, podRetainPhase
 	klog.V(3).Infof("Running duration is %s", metav1.Duration{Duration: time.Since(jobInfo.Job.CreationTimestamp.Time)}.ToUnstructured())
 	job.Status.RunningDuration = &metav1.Duration{Duration: time.Since(jobInfo.Job.CreationTimestamp.Time)}
 
-	if updateStatus != nil {
-		if updateStatus(&job.Status) {
+	if updateJobStatusFn != nil {
+		if updateJobStatusFn(&job.Status) {
 			job.Status.State.LastTransitionTime = metav1.Now()
 			jobCondition := newJobCondition(job.Status.State.Phase, &job.Status.State.LastTransitionTime)
 			job.Status.Conditions = append(job.Status.Conditions, jobCondition)
 		}
 	}
 
-	// must be called before update job status
+	// must be called before update job status in cluster
 	if err := jc.pluginOnJobDelete(job); err != nil {
 		return err
 	}
 
-	// Update Job status
+	// Update the job resource's status in cluster
 	newJob, err := jc.volcanoClient.BatchV1alpha1().Jobs(job.Namespace).UpdateStatus(context.TODO(), job, metav1.UpdateOptions{})
 	if err != nil {
 		klog.Errorf("Failed to update status of Job %v/%v: %v",
 			job.Namespace, job.Name, err)
 		return err
 	}
+
+	// update the local store
 	if e := jc.cache.Update(newJob); e != nil {
 		klog.Errorf("KillJob - Failed to update Job %v/%v in cache:  %v",
 			newJob.Namespace, newJob.Name, e)
 		return e
 	}
 
-	// Delete PodGroup
+	// Delete the corresponding podgroup resource in cluster
 	if err := jc.volcanoClient.SchedulingV1alpha1().PodGroups(job.Namespace).Delete(context.TODO(), job.Name, metav1.DeleteOptions{}); err != nil {
 		if !apierrors.IsNotFound(err) {
 			klog.Errorf("Failed to delete PodGroup of Job %v/%v: %v",
@@ -495,6 +505,7 @@ func (jc *jobController) killJob(jobInfo *controllerapis.JobInfo, podRetainPhase
 	return nil
 }
 
+// waitDependsOnTaskMeetCondition waits the dependencies of the task (indexed by taskIdx) complete.
 func (jc *jobController) waitDependsOnTaskMeetCondition(taskName string, taskIdx int, podToCreateEachTask []*corev1.Pod, job *batchv1alpha1.Job) {
 	if job.Spec.Tasks[taskIdx].DependsOn != nil {
 		dependsOn := *job.Spec.Tasks[taskIdx].DependsOn
@@ -561,7 +572,7 @@ func (jc *jobController) isDependsOnPodsReady(task string, job *batchv1alpha1.Jo
 	return true
 }
 
-// createJobIOIfNotExist creates pvc resources for job if needed.
+// createJobIOIfNotExist creates pvc resources in cluster for job and updates the job resource if needed.
 func (jc *jobController) createJobIOIfNotExist(job *batchv1alpha1.Job) (*batchv1alpha1.Job, error) {
 	// If PVCs does not exist, create them for Job.
 	var needUpdate bool
@@ -586,7 +597,7 @@ func (jc *jobController) createJobIOIfNotExist(job *batchv1alpha1.Job) (*batchv1
 				needUpdate = true
 				break
 			}
-			// TODO: check VolumeClaim must be set if VolumeClaimName is empty
+			// TODO: check that VolumeClaim must be set if VolumeClaimName is empty
 			if volume.VolumeClaim != nil {
 				if err := jc.createPVC(job, vcName, volume.VolumeClaim); err != nil {
 					return job, err
@@ -618,6 +629,7 @@ func (jc *jobController) createJobIOIfNotExist(job *batchv1alpha1.Job) (*batchv1
 	return job, nil
 }
 
+// checkPVCExist checks the pvc resource of job exists or not.
 func (jc *jobController) checkPVCExist(job *batchv1alpha1.Job, pvc string) (bool, error) {
 	if _, err := jc.pvcLister.PersistentVolumeClaims(job.Namespace).Get(pvc); err != nil {
 		if apierrors.IsNotFound(err) {
@@ -630,7 +642,7 @@ func (jc *jobController) checkPVCExist(job *batchv1alpha1.Job, pvc string) (bool
 	return true, nil
 }
 
-// createPVC creates PVC in cluster for job.
+// createPVC creates PVC resource in cluster for job.
 func (jc *jobController) createPVC(job *batchv1alpha1.Job, vcName string, pvcSpec *corev1.PersistentVolumeClaimSpec) error {
 	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
@@ -653,7 +665,7 @@ func (jc *jobController) createPVC(job *batchv1alpha1.Job, vcName string, pvcSpe
 	return nil
 }
 
-// createOrUpdatePodGroup creates or updates podgroup for job.
+// createOrUpdatePodGroup creates or updates the podgroup resource corresponding to the given job.
 // Note that each job must be wrapped as a podgroup for scheduling.
 func (jc *jobController) createOrUpdatePodGroup(job *batchv1alpha1.Job) error {
 	// If the corresponding podgroup does not exist, create a podgroup with the same name for Job.
@@ -750,7 +762,7 @@ func (jc *jobController) createOrUpdatePodGroup(job *batchv1alpha1.Job) error {
 	return nil
 }
 
-// deleteJobPod deletes pod from the cluster for job.
+// deleteJobPod deletes the specific pod resource from the cluster for job.
 func (jc *jobController) deleteJobPod(jobName string, pod *corev1.Pod) error {
 	err := jc.kubeClient.CoreV1().Pods(pod.Namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
 	if err != nil && !apierrors.IsNotFound(err) {
@@ -762,9 +774,10 @@ func (jc *jobController) deleteJobPod(jobName string, pod *corev1.Pod) error {
 	return nil
 }
 
+// calcPGMinResources calculates the minimal resource requirements of the given job.
 func (jc *jobController) calcPGMinResources(job *batchv1alpha1.Job) *corev1.ResourceList {
 	// sort task by priorityClasses
-	var tasksPriority TasksPriority
+	var tasksPriority TasksPriorities
 	for _, task := range job.Spec.Tasks {
 		tp := TaskPriority{
 			priority: 0,
@@ -797,14 +810,14 @@ func (jc *jobController) calcPGMinResources(job *batchv1alpha1.Job) *corev1.Reso
 				Spec: tp.Template.Spec,
 			}
 			res, _ := core.PodUsageFunc(pod, clock.RealClock{})
-			minAvailableTasksRes = v1.Add(minAvailableTasksRes, res)
+			minAvailableTasksRes = quotav1.Add(minAvailableTasksRes, res)
 		}
 	}
 
 	return &minAvailableTasksRes
 }
 
-// initJobStatus updates a job instance's status in the cluster and updates it in cache.
+// initJobStatus updates a job resource's status in the cluster and updates it in cache.
 func (jc *jobController) initJobStatus(job *batchv1alpha1.Job) (*batchv1alpha1.Job, error) {
 	// init job status
 	if job.Status.State.Phase != "" {
@@ -834,6 +847,7 @@ func (jc *jobController) initJobStatus(job *batchv1alpha1.Job) (*batchv1alpha1.J
 	return newJob, nil
 }
 
+// classifyAndAddUpPodBaseOnPhase set the input number according to the phase of the given pod.
 func classifyAndAddUpPodBaseOnPhase(pod *corev1.Pod, pending, running, succeeded, failed, unknown *int32) {
 	switch pod.Status.Phase {
 	case corev1.PodPending:
@@ -879,6 +893,7 @@ func calcPodStatus(pod *corev1.Pod, taskStatusCount map[string]batchv1alpha1.Tas
 	}
 }
 
+// isInitiated checks whether job is initialized.
 func isInitiated(job *batchv1alpha1.Job) bool {
 	if job.Status.State.Phase == "" || job.Status.State.Phase == batchv1alpha1.Pending {
 		return false
@@ -886,6 +901,7 @@ func isInitiated(job *batchv1alpha1.Job) bool {
 	return true
 }
 
+// newJobCondition creates a new JobCondition according to the input status.
 func newJobCondition(status batchv1alpha1.JobPhase, lastTransitionTime *metav1.Time) batchv1alpha1.JobCondition {
 	return batchv1alpha1.JobCondition{
 		Status:             status,

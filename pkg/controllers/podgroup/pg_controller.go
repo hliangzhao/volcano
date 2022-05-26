@@ -16,6 +16,8 @@ limitations under the License.
 
 package podgroup
 
+// fully checked and understood
+
 import (
 	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
 	volcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
@@ -74,7 +76,9 @@ func (pgC *pgController) Initialize(opt *framework.ControllerOption) error {
 	pgC.podInformer = opt.SharedInformerFactory.Core().V1().Pods()
 	pgC.podLister = pgC.podInformer.Lister()
 	pgC.podSynced = pgC.podInformer.Informer().HasSynced
-	pgC.podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{AddFunc: pgC.addPod})
+	pgC.podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: pgC.addPod,
+	})
 
 	// init for podgroups
 	pgC.pgInformer = volcanoinformers.NewSharedInformerFactory(pgC.volcanoClient, 0).Scheduling().V1alpha1().PodGroups()
@@ -84,13 +88,17 @@ func (pgC *pgController) Initialize(opt *framework.ControllerOption) error {
 	return nil
 }
 
+// Run starts the worker and informers in separate coroutines.
 func (pgC *pgController) Run(stopCh <-chan struct{}) {
-	// start informer as a goroutine
+	// start informers as separate goroutines
 	go pgC.podInformer.Informer().Run(stopCh)
 	go pgC.pgInformer.Informer().Run(stopCh)
 
 	// wait for cache sync
-	cache.WaitForCacheSync(stopCh, pgC.podSynced, pgC.pgSynced)
+	if !cache.WaitForCacheSync(stopCh, pgC.podSynced, pgC.pgSynced) {
+		klog.Errorf("unable to sync caches for podgroup controller.")
+		return
+	}
 
 	// finally, start the worker and run forever
 	go wait.Until(pgC.worker, 0, stopCh)
@@ -104,12 +112,13 @@ func (pgC *pgController) worker() {
 	}
 }
 
-// processNextReq retrieves a callback from work queue and process it.
+// processNextReq retrieves a callback from work-queue and process it.
 // `false` is returned only if the request cannot be retrieved.
+// Specifically, this func retrieves a pod from work-queue and creates a corresponding podgroup resource for it if not exist.
 func (pgC *pgController) processNextReq() bool {
 	obj, shutdown := pgC.queue.Get()
 	if shutdown {
-		klog.Errorf("Failed to retrieve callback from queue")
+		klog.Errorf("Failed to retrieve callback from work-queue")
 		return false
 	}
 	req := obj.(podRequest)
@@ -120,6 +129,7 @@ func (pgC *pgController) processNextReq() bool {
 		klog.Errorf("Failed to get pod by <%v> from cache: %v", req, err)
 		return true
 	}
+	// this func only processes the pod whose schedulers contain volcano-scheduler
 	if !contains(pgC.schedulerNames, pod.Spec.SchedulerName) {
 		klog.V(5).Infof("pod %v/%v field SchedulerName is not matched", pod.Namespace, pod.Name)
 		return true

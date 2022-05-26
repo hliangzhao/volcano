@@ -31,7 +31,7 @@ type State interface {
 // UpdateQueueStatusFn is a function that updates the variable `status`.
 type UpdateQueueStatusFn func(status *schedulingv1alpha1.QueueStatus, pgList []string)
 
-// QueueActionFn is a function that updates queue by executing the UpdateQueueStatusFn fn.
+// QueueActionFn is a function that updates `queue` by executing the UpdateQueueStatusFn fn.
 type QueueActionFn func(queue *schedulingv1alpha1.Queue, fn UpdateQueueStatusFn) error
 
 var (

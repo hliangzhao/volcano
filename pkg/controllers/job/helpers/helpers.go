@@ -16,6 +16,8 @@ limitations under the License.
 
 package helpers
 
+// fully checked and understood
+
 import (
 	"fmt"
 	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
@@ -129,14 +131,14 @@ func GetTaskIndexUnderJob(taskName string, job *batchv1alpha1.Job) int {
 
 // GetPodsNameUnderTask returns names of all pods in the task.
 func GetPodsNameUnderTask(taskName string, job *batchv1alpha1.Job) []string {
-	var res []string
+	var podNames []string
 	for _, task := range job.Spec.Tasks {
 		if task.Name == taskName {
 			for idx := 0; idx < int(task.Replicas); idx++ {
-				res = append(res, MakePodName(job.Name, taskName, idx))
+				podNames = append(podNames, MakePodName(job.Name, taskName, idx))
 			}
 			break
 		}
 	}
-	return res
+	return podNames
 }

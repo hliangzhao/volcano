@@ -16,7 +16,7 @@ limitations under the License.
 
 package job
 
-// TODO: just copied. Not checked.
+// TODO: just copied.
 // Passed.
 
 import (
@@ -31,7 +31,7 @@ import (
 	"testing"
 
 	"github.com/agiledragon/gomonkey/v2"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -45,10 +45,10 @@ func TestKillJobFunc(t *testing.T) {
 		PodRetainPhase state.PhaseMap
 		UpdateStatus   state.UpdateJobStatusFn
 		JobInfo        *controllerapis.JobInfo
-		Services       []v1.Service
-		ConfigMaps     []v1.ConfigMap
-		Secrets        []v1.Secret
-		Pods           map[string]*v1.Pod
+		Services       []corev1.Service
+		ConfigMaps     []corev1.ConfigMap
+		Secrets        []corev1.Secret
+		Pods           map[string]*corev1.Pod
 		Plugins        []string
 		ExpectVal      error
 	}{
@@ -72,14 +72,14 @@ func TestKillJobFunc(t *testing.T) {
 			JobInfo: &controllerapis.JobInfo{
 				Namespace: namespace,
 				Name:      "jobinfo1",
-				Pods: map[string]map[string]*v1.Pod{
+				Pods: map[string]map[string]*corev1.Pod{
 					"task1": {
-						"pod1": buildPod(namespace, "pod1", v1.PodRunning, nil),
-						"pod2": buildPod(namespace, "pod2", v1.PodRunning, nil),
+						"pod1": buildPod(namespace, "pod1", corev1.PodRunning, nil),
+						"pod2": buildPod(namespace, "pod2", corev1.PodRunning, nil),
 					},
 				},
 			},
-			Services: []v1.Service{
+			Services: []corev1.Service{
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "job1",
@@ -87,7 +87,7 @@ func TestKillJobFunc(t *testing.T) {
 					},
 				},
 			},
-			Secrets: []v1.Secret{
+			Secrets: []corev1.Secret{
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "job1-e7f18111-1cec-11ea-b688-fa163ec79500-ssh",
@@ -95,9 +95,9 @@ func TestKillJobFunc(t *testing.T) {
 					},
 				},
 			},
-			Pods: map[string]*v1.Pod{
-				"pod1": buildPod(namespace, "pod1", v1.PodRunning, nil),
-				"pod2": buildPod(namespace, "pod2", v1.PodRunning, nil),
+			Pods: map[string]*corev1.Pod{
+				"pod1": buildPod(namespace, "pod1", corev1.PodRunning, nil),
+				"pod2": buildPod(namespace, "pod2", corev1.PodRunning, nil),
 			},
 			Plugins:   []string{"svc", "ssh", "env"},
 			ExpectVal: nil,
@@ -188,7 +188,7 @@ func TestSyncJobFunc(t *testing.T) {
 		PodRetainPhase state.PhaseMap
 		UpdateStatus   state.UpdateJobStatusFn
 		JobInfo        *controllerapis.JobInfo
-		Pods           map[string]*v1.Pod
+		Pods           map[string]*corev1.Pod
 		Plugins        []string
 		TotalNumPods   int
 		ExpectVal      error
@@ -205,13 +205,13 @@ func TestSyncJobFunc(t *testing.T) {
 						{
 							Name:     "task1",
 							Replicas: 6,
-							Template: v1.PodTemplateSpec{
+							Template: corev1.PodTemplateSpec{
 								ObjectMeta: metav1.ObjectMeta{
 									Name:      "pods",
 									Namespace: namespace,
 								},
-								Spec: v1.PodSpec{
-									Containers: []v1.Container{
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
 										{
 											Name: "Containers",
 										},
@@ -233,7 +233,7 @@ func TestSyncJobFunc(t *testing.T) {
 					Namespace: namespace,
 				},
 				Spec: schedulingv1alpha1.PodGroupSpec{
-					MinResources:  &v1.ResourceList{},
+					MinResources:  &corev1.ResourceList{},
 					MinTaskMember: map[string]int32{},
 				},
 				Status: schedulingv1alpha1.PodGroupStatus{
@@ -245,16 +245,16 @@ func TestSyncJobFunc(t *testing.T) {
 			JobInfo: &controllerapis.JobInfo{
 				Namespace: namespace,
 				Name:      "jobinfo1",
-				Pods: map[string]map[string]*v1.Pod{
+				Pods: map[string]map[string]*corev1.Pod{
 					"task1": {
-						"job1-task1-0": buildPod(namespace, "job1-task1-0", v1.PodRunning, nil),
-						"job1-task1-1": buildPod(namespace, "job1-task1-1", v1.PodRunning, nil),
+						"job1-task1-0": buildPod(namespace, "job1-task1-0", corev1.PodRunning, nil),
+						"job1-task1-1": buildPod(namespace, "job1-task1-1", corev1.PodRunning, nil),
 					},
 				},
 			},
-			Pods: map[string]*v1.Pod{
-				"job1-task1-0": buildPod(namespace, "job1-task1-0", v1.PodRunning, nil),
-				"job1-task1-1": buildPod(namespace, "job1-task1-1", v1.PodRunning, nil),
+			Pods: map[string]*corev1.Pod{
+				"job1-task1-0": buildPod(namespace, "job1-task1-0", corev1.PodRunning, nil),
+				"job1-task1-1": buildPod(namespace, "job1-task1-1", corev1.PodRunning, nil),
 			},
 			TotalNumPods: 6,
 			Plugins:      []string{"svc", "ssh", "env"},
@@ -371,7 +371,7 @@ func TestCreatePVCFunc(t *testing.T) {
 	testcases := []struct {
 		Name        string
 		Job         *batchv1alpha1.Job
-		VolumeClaim *v1.PersistentVolumeClaimSpec
+		VolumeClaim *corev1.PersistentVolumeClaimSpec
 		ExpectVal   error
 	}{
 		{
@@ -382,7 +382,7 @@ func TestCreatePVCFunc(t *testing.T) {
 					Namespace: namespace,
 				},
 			},
-			VolumeClaim: &v1.PersistentVolumeClaimSpec{
+			VolumeClaim: &corev1.PersistentVolumeClaimSpec{
 				VolumeName: "vol1",
 			},
 			ExpectVal: nil,
@@ -460,7 +460,7 @@ func TestUpdatePodGroupIfJobUpdateFunc(t *testing.T) {
 					Name:      "job1",
 				},
 				Spec: schedulingv1alpha1.PodGroupSpec{
-					MinResources: &v1.ResourceList{},
+					MinResources: &corev1.ResourceList{},
 				},
 			},
 			Job: &batchv1alpha1.Job{
@@ -507,8 +507,8 @@ func TestDeleteJobPod(t *testing.T) {
 	testcases := []struct {
 		Name      string
 		Job       *batchv1alpha1.Job
-		Pods      map[string]*v1.Pod
-		DeletePod *v1.Pod
+		Pods      map[string]*corev1.Pod
+		DeletePod *corev1.Pod
 		ExpectVal error
 	}{
 		{
@@ -519,11 +519,11 @@ func TestDeleteJobPod(t *testing.T) {
 					Namespace: namespace,
 				},
 			},
-			Pods: map[string]*v1.Pod{
-				"job1-task1-0": buildPod(namespace, "job1-task1-0", v1.PodRunning, nil),
-				"job1-task1-1": buildPod(namespace, "job1-task1-1", v1.PodRunning, nil),
+			Pods: map[string]*corev1.Pod{
+				"job1-task1-0": buildPod(namespace, "job1-task1-0", corev1.PodRunning, nil),
+				"job1-task1-1": buildPod(namespace, "job1-task1-1", corev1.PodRunning, nil),
 			},
-			DeletePod: buildPod(namespace, "job1-task1-0", v1.PodRunning, nil),
+			DeletePod: buildPod(namespace, "job1-task1-0", corev1.PodRunning, nil),
 			ExpectVal: nil,
 		},
 	}

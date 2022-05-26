@@ -16,6 +16,8 @@ limitations under the License.
 
 package state
 
+// fully checked and understood
+
 import (
 	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
 	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
@@ -23,21 +25,22 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-type PhaseMap map[corev1.PodPhase]struct{}
-
-// UpdateJobStatusFn updates job status
+// UpdateJobStatusFn is a function that updates the variable `status`.
+// If `status` been changed, return true
 type UpdateJobStatusFn func(status *batchv1alpha1.JobStatus) (jobPhaseChanged bool)
 
-// ActionFn creates or deletes Pods according to job's Spec
-type ActionFn func(job *apis.JobInfo, fn UpdateJobStatusFn) error
+// JobActionFn is a function that updates `job` by executing the UpdateJobStatusFn fn.
+type JobActionFn func(job *apis.JobInfo, fn UpdateJobStatusFn) error
 
-// KillActionFn kills all the Pods of job whose phase is not in podRetainPhase
-type KillActionFn func(job *apis.JobInfo, podRetainPhase PhaseMap, fn UpdateJobStatusFn) error
+// JobActionKillFn is a function that kill the non-retained pods of the job, and then executing the UpdateJobStatusFn fn to update the job's status.
+type JobActionKillFn func(job *apis.JobInfo, podRetainPhase PhaseMap, fn UpdateJobStatusFn) error
 
 var (
-	SyncJob ActionFn
-	KillJob KillActionFn
+	SyncJob JobActionFn     // SyncJob sync job resource in cluster
+	KillJob JobActionKillFn // KillJob kill the non-retained pods of the job in cluster
 )
+
+type PhaseMap map[corev1.PodPhase]struct{}
 
 // PodRetainPhaseNone stores no phase
 var PodRetainPhaseNone = PhaseMap{}
@@ -49,14 +52,13 @@ var PodRetainPhaseSoft = PhaseMap{
 }
 
 type State interface {
-	// Execute executes act based on current state
-	Execute(act busv1alpha1.Action) error
+	// Execute uses an internal status variable to update the status of the job we care about
+	Execute(action busv1alpha1.Action) error
 }
 
-// NewState returns the state of given job
+// NewState transforms the input job into new state.
 func NewState(jobInfo *apis.JobInfo) State {
-	job := jobInfo.Job
-	switch job.Status.State.Phase {
+	switch jobInfo.Job.Status.State.Phase {
 	case batchv1alpha1.Pending:
 		return &pendingState{job: jobInfo}
 	case batchv1alpha1.Running:
@@ -74,6 +76,6 @@ func NewState(jobInfo *apis.JobInfo) State {
 	case batchv1alpha1.Completing:
 		return &completingState{job: jobInfo}
 	}
-	// pending state by default
+	// if not specified, transform it to pending state
 	return &pendingState{job: jobInfo}
 }

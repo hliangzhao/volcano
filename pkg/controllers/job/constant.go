@@ -16,6 +16,8 @@ limitations under the License.
 
 package job
 
+// fully checked and understood
+
 // Reasons for pod events.
 const (
 	// FailedCreatePodReason is added in an event and in a replica set condition

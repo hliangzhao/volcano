@@ -16,6 +16,8 @@ limitations under the License.
 
 package job
 
+// fully checked and understood
+
 import (
 	"context"
 	"fmt"
@@ -35,7 +37,7 @@ import (
 	"strconv"
 )
 
-// addCommand adds obj (a cmd) to job controller.
+// addCommand adds obj (a cmd) to the work-queue jc.cmdQueue.
 func (jc *jobController) addCommand(obj interface{}) {
 	cmd, ok := obj.(*busv1alpha1.Command)
 	if !ok {
@@ -45,8 +47,8 @@ func (jc *jobController) addCommand(obj interface{}) {
 	jc.cmdQueue.Add(cmd)
 }
 
-// addJob adds ojb (a job) to job controller's work queue.
-// Also added to cache.
+// addJob adds obj (a job) to the job work-queue. Use key to find the right work-queue.
+// Also add the job to local store (cache).
 func (jc *jobController) addJob(obj interface{}) {
 	job, ok := obj.(*batchv1alpha1.Job)
 	if !ok {
@@ -134,7 +136,7 @@ func (jc *jobController) deleteJob(obj interface{}) {
 	}
 }
 
-// addPod adds obj (a pod) to job controller's work queue.
+// addPod adds obj (a pod) to job controller's work-queue.
 // Also added to cache.
 func (jc *jobController) addPod(obj interface{}) {
 	pod, ok := obj.(*corev1.Pod)
@@ -380,7 +382,7 @@ func (jc *jobController) processNextCommand() bool {
 	cmd := obj.(*busv1alpha1.Command)
 	defer jc.cmdQueue.Done(cmd)
 
-	// delete cmd from cluster and construct it as a request adding to work queue
+	// delete cmd from cluster and construct it as a request adding to the work-queue
 
 	if err := jc.volcanoClient.BusV1alpha1().Commands(cmd.Namespace).Delete(context.TODO(), cmd.Name, metav1.DeleteOptions{}); err != nil {
 		if !apierrors.IsNotFound(err) {

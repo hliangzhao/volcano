@@ -47,6 +47,10 @@ import (
 	"time"
 )
 
+func init() {
+	_ = framework.RegisterController(&queueController{})
+}
+
 type queueController struct {
 	// clients
 	kubeClient    kubernetes.Interface
@@ -180,6 +184,8 @@ func (qc *queueController) Run(stopCh <-chan struct{}) {
 	go wait.Until(qc.worker, 0, stopCh)
 	go wait.Until(qc.cmdWorker, 0, stopCh)
 
+	klog.Infof("queue-controller is running...")
+
 	// if stopCh has content, exit
 	<-stopCh
 }
@@ -193,6 +199,7 @@ func (qc *queueController) worker() {
 func (qc *queueController) processNextReq() bool {
 	obj, shutdown := qc.queue.Get()
 	if shutdown {
+		klog.Errorf("Failed to retrieve callback from work-queue")
 		return false
 	}
 	defer qc.queue.Done(obj)
@@ -328,8 +335,4 @@ func (qc *queueController) handleCmdErr(err error, obj interface{}) {
 
 	klog.V(2).Infof("Dropping command %v out of the queue for %v.", obj, err)
 	qc.cmdQueue.Forget(obj)
-}
-
-func init() {
-	_ = framework.RegisterController(&queueController{})
 }

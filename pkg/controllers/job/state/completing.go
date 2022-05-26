@@ -16,22 +16,28 @@ limitations under the License.
 
 package state
 
+// fully checked and understood
+
 import (
 	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
 	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/controllers/apis"
 )
 
+// completingState implements the State interface.
 type completingState struct {
 	job *apis.JobInfo
 }
 
-func (state *completingState) Execute(act busv1alpha1.Action) error {
-	return KillJob(state.job, PodRetainPhaseSoft, func(status *batchv1alpha1.JobStatus) bool {
+func (state *completingState) Execute(action busv1alpha1.Action) error {
+	var fn UpdateJobStatusFn
+	// fn updates `status` to `Completed`
+	fn = func(status *batchv1alpha1.JobStatus) (jobPhaseChanged bool) {
 		if status.Terminating != 0 || status.Pending != 0 || status.Running != 0 {
 			return false
 		}
 		status.State.Phase = batchv1alpha1.Completed
 		return true
-	})
+	}
+	return KillJob(state.job, PodRetainPhaseSoft, fn)
 }

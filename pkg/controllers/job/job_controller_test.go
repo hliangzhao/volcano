@@ -16,7 +16,7 @@ limitations under the License.
 
 package job
 
-// TODO: just copied. Not checked.
+// TODO: just copied.
 // Passed.
 
 import (
@@ -690,7 +690,7 @@ func TestAddResourceList(t *testing.T) {
 func TestTasksPriority_Less(t *testing.T) {
 	testcases := []struct {
 		Name          string
-		TasksPriority TasksPriority
+		TasksPriority TasksPriorities
 		Task1Index    int
 		Task2Index    int
 		ReturnVal     bool
@@ -746,7 +746,7 @@ func TestTasksPriority_Less(t *testing.T) {
 func TestTasksPriority_Swap(t *testing.T) {
 	testcases := []struct {
 		Name          string
-		TasksPriority TasksPriority
+		TasksPriority TasksPriorities
 		Task1Index    int
 		Task2Index    int
 		ReturnVal     bool

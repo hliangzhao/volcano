@@ -16,9 +16,7 @@ limitations under the License.
 
 package podgroup
 
-// TODO: re-test is required
-
-// TODO: just copied. Not checked.
+// TODO: just copied.
 // Passed.
 
 import (

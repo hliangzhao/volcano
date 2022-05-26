@@ -16,15 +16,18 @@ limitations under the License.
 
 package state
 
+// fully checked and understood
+
 import (
 	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/controllers/apis"
 )
 
+// finishedState implements the State interface.
 type finishedState struct {
 	job *apis.JobInfo
 }
 
-func (state *finishedState) Execute(act busv1alpha1.Action) error {
+func (state *finishedState) Execute(action busv1alpha1.Action) error {
 	return KillJob(state.job, PodRetainPhaseSoft, nil)
 }
