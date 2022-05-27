@@ -34,16 +34,19 @@ func init() {
 
 var pluginMutex sync.Mutex
 
-type PluginBuilder func(plugininterface.PluginClient, []string) plugininterface.PluginInterface
+// PluginBuilder is a function that returns the specific plugin (tensorflowPlugin, envPlugin, sshPlugin, or svcPlugin) based on the args
+type PluginBuilder func(client plugininterface.PluginClient, args []string) plugininterface.PluginInterface
 
 var PluginBuilders = map[string]PluginBuilder{}
 
+// RegisterPluginBuilder adds a PluginBuilder to the map PluginBuilders.
 func RegisterPluginBuilder(name string, pb PluginBuilder) {
 	pluginMutex.Lock()
 	defer pluginMutex.Unlock()
 	PluginBuilders[name] = pb
 }
 
+// GetPluginBuilder return the PluginBuilder based on the input plugin name.
 func GetPluginBuilder(name string) (PluginBuilder, bool) {
 	pluginMutex.Lock()
 	defer pluginMutex.Unlock()

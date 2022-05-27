@@ -16,6 +16,8 @@ limitations under the License.
 
 package ssh
 
+// fully checked and understood
+
 import (
 	"crypto/rand"
 	"crypto/rsa"
@@ -32,10 +34,9 @@ import (
 	"k8s.io/klog/v2"
 )
 
-/*
-This plugin will mount the secrets of SSH info to the given pod of volcano job.
-*/
+/* This plugin will mount the secrets of SSH info to the given job pod. */
 
+// sshPlugin implements the PluginInterface interface.
 type sshPlugin struct {
 	arguments      []string
 	client         plugininterface.PluginClient
@@ -54,10 +55,12 @@ func (sp *sshPlugin) OnPodCreate(pod *corev1.Pod, job *batchv1alpha1.Job) error 
 }
 
 func (sp *sshPlugin) OnJobAdd(job *batchv1alpha1.Job) error {
+	// already have the secret, nothing to do
 	if job.Status.ControlledResources["plugin-"+sp.Name()] == sp.Name() {
 		return nil
 	}
 
+	// get key pair data (user-provided or generated)
 	var data map[string][]byte
 	var err error
 	if len(sp.sshPrivateKey) > 0 {
@@ -69,15 +72,18 @@ func (sp *sshPlugin) OnJobAdd(job *batchv1alpha1.Job) error {
 		return err
 	}
 
+	// create the secret resource in cluster and set the owner reference
 	if err = apishelpers.CreateOrUpdateSecret(job, sp.client.KubeClient, data, sp.secretName(job)); err != nil {
 		return fmt.Errorf("create secret for job <%s/%s> with ssh plugin failed for %v",
 			job.Namespace, job.Name, err)
 	}
 
+	// add to controlled resources
 	job.Status.ControlledResources["plugin-"+sp.Name()] = sp.Name()
 	return nil
 }
 
+// OnJobDelete deletes the secret resource in cluster and remove the controlled segment from job.
 func (sp *sshPlugin) OnJobDelete(job *batchv1alpha1.Job) error {
 	if job.Status.ControlledResources["plugin-"+sp.Name()] != sp.Name() {
 		return nil
@@ -97,12 +103,13 @@ func (sp *sshPlugin) OnJobUpdate(job *batchv1alpha1.Job) error {
 	return nil
 }
 
-// mountRSAKey creates the RSA secret volume and mounts it to each container in pod.
+// mountRSAKey creates the RSA secret volume and mounts it to each container of the given pod.
 func (sp *sshPlugin) mountRSAKey(pod *corev1.Pod, job *batchv1alpha1.Job) {
+	// create the secret (a volume of course)
 	secretName := sp.secretName(job)
 	sshVolume := corev1.Volume{Name: secretName}
 
-	// create a secret volume
+	// set the k-v of the secret
 	var mode int32 = 0600
 	sshVolume.Secret = &corev1.SecretVolumeSource{
 		SecretName: secretName,
@@ -115,6 +122,7 @@ func (sp *sshPlugin) mountRSAKey(pod *corev1.Pod, job *batchv1alpha1.Job) {
 		DefaultMode: &mode,
 	}
 
+	// set no-root mode if the provided path is not absolute path
 	if sp.sshKeyFilePath != AbsolutePath {
 		var noRootMode int32 = 0600
 		sshVolume.Secret.DefaultMode = &noRootMode
@@ -132,6 +140,7 @@ func (sp *sshPlugin) mountRSAKey(pod *corev1.Pod, job *batchv1alpha1.Job) {
 		// c.VolumeMounts = append(c.VolumeMounts, vm)
 		pod.Spec.Containers[i].VolumeMounts = append(c.VolumeMounts, vm)
 	}
+	// mount the secret to each init container in this pod
 	for i, c := range pod.Spec.InitContainers {
 		vm := corev1.VolumeMount{
 			MountPath: sp.sshKeyFilePath,
@@ -143,10 +152,12 @@ func (sp *sshPlugin) mountRSAKey(pod *corev1.Pod, job *batchv1alpha1.Job) {
 	}
 }
 
+// generateRSAKey implements the procedure of private and public key pair generations.
 func generateRSAKey(job *batchv1alpha1.Job) (map[string][]byte, error) {
 	bitSize := 2048
 
-	privateKey, err := rsa.GenerateKey(rand.Reader, bitSize)
+	// generate the RSA keypair with the input bit size
+	rsaKeyPair, err := rsa.GenerateKey(rand.Reader, bitSize)
 	if err != nil {
 		klog.Errorf("rsa generateKey err: %v", err)
 		return nil, err
@@ -155,12 +166,12 @@ func generateRSAKey(job *batchv1alpha1.Job) (map[string][]byte, error) {
 	// generate private key
 	privateBlock := pem.Block{
 		Type:  "RSA PRIVATE KEY",
-		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+		Bytes: x509.MarshalPKCS1PrivateKey(rsaKeyPair),
 	}
 	privateKeyBytes := pem.EncodeToMemory(&privateBlock)
 
 	// generate public key
-	publicKey, err := ssh.NewPublicKey(&privateKey.PublicKey)
+	publicKey, err := ssh.NewPublicKey(&rsaKeyPair.PublicKey)
 	if err != nil {
 		klog.Errorf("ssh newPublicKey err: %v", err)
 		return nil, err
@@ -177,17 +188,19 @@ func generateRSAKey(job *batchv1alpha1.Job) (map[string][]byte, error) {
 	return data, nil
 }
 
+// secretName generates the name of the ssh plugin secret.
 func (sp *sshPlugin) secretName(job *batchv1alpha1.Job) string {
 	return fmt.Sprintf("%s-%s", job.Name, sp.Name())
 }
 
+// withUserProvidedRSAKey sets data by the user provided info directly.
+// No generation is required.
 func withUserProvidedRSAKey(job *batchv1alpha1.Job, sshPrivateKey, sshPublicKey string) (map[string][]byte, error) {
 	data := make(map[string][]byte)
 	data[PrivateKey] = []byte(sshPrivateKey)
 	data[PublicKey] = []byte(sshPublicKey)
 	data[AuthorizedKeys] = []byte(sshPublicKey)
 	data[Config] = []byte(generateSSHConfig(job))
-
 	return data, nil
 }
 
@@ -203,14 +216,23 @@ func (sp *sshPlugin) addFlags() {
 	}
 }
 
+// generateSSHConfig generates the config string for the given job.
+// The generated config is used for establishing ssh connection.
 func generateSSHConfig(job *batchv1alpha1.Job) string {
+	/*
+		e.g.,
+		StrictHostKeyChecking no
+		UserKnownHostsFile /dev/null
+		Host ubuntu-23EDer8DQ21
+		  HostName ubuntu-23EDsqR8DQ21.mnist-train-123HSDee6Q
+	*/
 	config := "StrictHostKeyChecking no\nUserKnownHostsFile /dev/null\n"
 
 	for _, task := range job.Spec.Tasks {
+		hostName := task.Template.Spec.Hostname
+		subdomain := task.Template.Spec.Subdomain
 		for i := 0; i < int(task.Replicas); i++ {
 			// NOTE hostName is the name of the container as a VM machine
-			hostName := task.Template.Spec.Hostname
-			subdomain := task.Template.Spec.Subdomain
 			if len(hostName) == 0 {
 				hostName = helpers.MakePodName(job.Name, task.Name, i)
 			}

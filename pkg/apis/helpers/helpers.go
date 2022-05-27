@@ -45,7 +45,7 @@ var JobKind = batchv1alpha1.SchemeGroupVersion.WithKind("Job")
 var CommandKind = busv1alpha1.SchemeGroupVersion.WithKind("Command")
 var QueueKind = schedulingv1alpha1.SchemeGroupVersion.WithKind("Queue")
 
-// CreateOrUpdateConfigMap creates or updates the ConfigMap with data for job.
+// CreateOrUpdateConfigMap creates or updates the ConfigMap resource in cluster with data for job.
 func CreateOrUpdateConfigMap(job *batchv1alpha1.Job, kubeClient kubernetes.Interface, data map[string]string, cmName string) error {
 	// The code in this func is standard!
 	// kubernetes.Interface is the client that we used for the CRUD of k8s resources

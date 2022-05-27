@@ -16,6 +16,8 @@ limitations under the License.
 
 package tensorflow
 
+// fully checked and understood
+
 import (
 	"flag"
 	"fmt"
@@ -33,6 +35,7 @@ const (
 	TFConfig    = "TF_CONFIG"
 )
 
+// tensorflowPlugin implements the PluginInterface interface.
 type tensorflowPlugin struct {
 	arguments     []string
 	client        plugininterface.PluginClient
@@ -47,6 +50,9 @@ func (tp *tensorflowPlugin) Name() string {
 	return "tensorflow"
 }
 
+// OnPodCreate generates the tf cluster spec info for the given pod and job and adds it to containers' environment variables.
+// TODO: from the perspective of efficiency, `tfClusterSpec.Cluster` should be generated for a job once.
+//  We don't need to set it again and again when process every pod of the job.
 func (tp *tensorflowPlugin) OnPodCreate(pod *corev1.Pod, job *batchv1alpha1.Job) error {
 	// No need to generate TF_CONFIG for stand-alone tensorflow job
 	if len(job.Spec.Tasks) == 1 && job.Spec.Tasks[0].Replicas == 1 {
@@ -114,6 +120,8 @@ func New(client plugininterface.PluginClient, arguments []string) plugininterfac
 	return &tp
 }
 
+// tfTaskType, taskInfo, and clusterInfo are used to describe the tf cluster.
+
 type tfTaskType string
 
 const (
@@ -153,6 +161,7 @@ type tfClusterSpec struct {
 	Task    taskInfo    `json:"task"`
 }
 
+// generateTFClusterSpec generates the tfClusterSpec for the given pod and job.
 func (tp *tensorflowPlugin) generateTFClusterSpec(pod *corev1.Pod, job *batchv1alpha1.Job) (tfClusterSpec, error) {
 	index, err := strconv.Atoi(helpers.GetPodIndexUnderTask(pod))
 	if err != nil {
@@ -161,11 +170,14 @@ func (tp *tensorflowPlugin) generateTFClusterSpec(pod *corev1.Pod, job *batchv1a
 
 	c := tfClusterSpec{
 		Task: taskInfo{
+			// a pod of a tf job will set the taskSpecKey to indicate that it belongs to a tf job
 			Type:  tp.getTaskType(helpers.GetTaskKey(pod)),
 			Index: index,
 		},
 	}
 
+	// a task (may consist of multiple pods) plays a single character, e.g., PS, Worker, Chief, or Evaluator.
+	// by checking all the tasks in the job, we can set the tfClusterSpec for the tf job.
 	for _, task := range job.Spec.Tasks {
 		var hosts []string
 		for i := 0; i < int(task.Replicas); i++ {
@@ -186,6 +198,7 @@ func (tp *tensorflowPlugin) generateTFClusterSpec(pod *corev1.Pod, job *batchv1a
 	return c, nil
 }
 
+// getTaskType return the tf task type based on the input taskKey.
 func (tp *tensorflowPlugin) getTaskType(taskKey string) tfTaskType {
 	switch taskKey {
 	case tp.chiefName:

@@ -16,6 +16,8 @@ limitations under the License.
 
 package svc
 
+// fully checked and understood
+
 import (
 	"context"
 	"flag"
@@ -34,10 +36,10 @@ import (
 	"strings"
 )
 
-/*
-This plugin will create DNS name for the given pod, so that it could be searched and visited through the DNS name.
-*/
+/* This plugin will create DNS name, svc, and network policy for the given pod,
+so that it could be searched and visited through the DNS name with specific network policies. */
 
+// svcPlugin implements the PluginInterface interface.
 type svcPlugin struct {
 	arguments            []string
 	client               plugininterface.PluginClient
@@ -67,7 +69,9 @@ func (sp *svcPlugin) Name() string {
 	return "svc"
 }
 
-// OnPodCreate adds `hostname` and `subdomain` for pod, and mount service config for pod.
+// OnPodCreate sets pod.Spec.Hostname and pod.Spec.Subdomain for the given pod, and mount a configmap for it.
+// A pod with `hostname` and `subdomain` can be accessed by pods in the same namespace through
+// the address `hostname.subdomain.namespace.svc.cluster-domain.example`.
 func (sp *svcPlugin) OnPodCreate(pod *corev1.Pod, job *batchv1alpha1.Job) error {
 	// Add `hostname` and `subdomain` for pod, mount service config for pod.
 	// A pod with `hostname` and `subdomain` will have the fully qualified domain name (FQDN)
@@ -87,9 +91,9 @@ func (sp *svcPlugin) OnPodCreate(pod *corev1.Pod, job *batchv1alpha1.Job) error 
 		pod.Spec.Subdomain = job.Name
 	}
 
+	// collect envNames of the task pods of the job
 	var hostEnv []corev1.EnvVar
 	var envNames []string
-
 	for _, task := range job.Spec.Tasks {
 		// TODO: The splitter and the prefix of env should be configurable
 		formatEnvKey := strings.Replace(task.Name, "-", "_", -1)
@@ -97,7 +101,7 @@ func (sp *svcPlugin) OnPodCreate(pod *corev1.Pod, job *batchv1alpha1.Job) error 
 		envNames = append(envNames, fmt.Sprintf(EnvHostNumFmt, strings.ToUpper(formatEnvKey)))
 	}
 
-	// set env variables
+	// set env variables where the data source is configmap
 	for _, name := range envNames {
 		hostEnv = append(hostEnv, corev1.EnvVar{
 			Name: name,
@@ -110,10 +114,12 @@ func (sp *svcPlugin) OnPodCreate(pod *corev1.Pod, job *batchv1alpha1.Job) error 
 		})
 	}
 
+	// set the environment variables in containers
 	for i := range pod.Spec.Containers {
 		pod.Spec.Containers[i].Env = append(pod.Spec.Containers[i].Env, hostEnv...)
 	}
 
+	// set the environment variables in init containers
 	for i := range pod.Spec.InitContainers {
 		pod.Spec.InitContainers[i].Env = append(pod.Spec.InitContainers[i].Env, hostEnv...)
 	}
@@ -122,35 +128,40 @@ func (sp *svcPlugin) OnPodCreate(pod *corev1.Pod, job *batchv1alpha1.Job) error 
 	return nil
 }
 
+// OnJobAdd creates the configmap, svc, and network policy resources in cluster when creating the job.
 func (sp *svcPlugin) OnJobAdd(job *batchv1alpha1.Job) error {
 	if job.Status.ControlledResources["plugin-"+sp.Name()] == sp.Name() {
 		return nil
 	}
 
-	// create configmap, service, and network
+	// use cmData to update the mounted configmap
 	cmData := GenerateHosts(job)
 	if err := helpers.CreateOrUpdateConfigMap(job, sp.client.KubeClient, cmData, sp.cmName(job)); err != nil {
 		return err
 	}
+	// create svc resource in cluster for the job
 	if err := sp.createServiceIfNotExist(job); err != nil {
 		return err
 	}
+	// create network policy resource in cluster for the job if needed
 	if !sp.disableNetworkPolicy {
 		if err := sp.createNetworkPolicyIfNotExist(job); err != nil {
 			return err
 		}
 	}
 
+	// set as a controlled resource
 	job.Status.ControlledResources["plugin-"+sp.Name()] = sp.Name()
 	return nil
 }
 
+// OnJobDelete deletes the configmap, service, and network policy resources when deleting the job.
 func (sp *svcPlugin) OnJobDelete(job *batchv1alpha1.Job) error {
 	if job.Status.ControlledResources["plugin-"+sp.Name()] != sp.Name() {
 		return nil
 	}
 
-	// delete configmap, service, and network
+	// delete configmap, service, and network policy
 	if err := helpers.DeleteConfigMap(job, sp.client.KubeClient, sp.cmName(job)); err != nil {
 		return err
 	}
@@ -160,7 +171,6 @@ func (sp *svcPlugin) OnJobDelete(job *batchv1alpha1.Job) error {
 			return err
 		}
 	}
-	delete(job.Status.ControlledResources, "plugin-"+sp.Name())
 	if !sp.disableNetworkPolicy {
 		if err := sp.client.KubeClient.NetworkingV1().NetworkPolicies(job.Namespace).Delete(context.TODO(), job.Name, metav1.DeleteOptions{}); err != nil {
 			if !apierrors.IsNotFound(err) {
@@ -169,14 +179,19 @@ func (sp *svcPlugin) OnJobDelete(job *batchv1alpha1.Job) error {
 			}
 		}
 	}
+
+	// delete the controlled resource
+	delete(job.Status.ControlledResources, "plugin-"+sp.Name())
 	return nil
 }
 
+// OnJobUpdate re-generates the configmap data about the job info and create the configmap resource in the cluster.
 func (sp *svcPlugin) OnJobUpdate(job *batchv1alpha1.Job) error {
 	cmData := GenerateHosts(job)
 	return helpers.CreateOrUpdateConfigMap(job, sp.client.KubeClient, cmData, sp.cmName(job))
 }
 
+// mountConfigMap creates the configmap and mounts it to the pod.
 func (sp *svcPlugin) mountConfigMap(pod *corev1.Pod, job *batchv1alpha1.Job) {
 	// create cm volume
 	cmName := sp.cmName(job)
@@ -203,6 +218,7 @@ func (sp *svcPlugin) mountConfigMap(pod *corev1.Pod, job *batchv1alpha1.Job) {
 	}
 }
 
+// createServiceIfNotExist creates a service resource in cluster for job.
 func (sp *svcPlugin) createServiceIfNotExist(job *batchv1alpha1.Job) error {
 	// If Service does not exist, create one for Job.
 	if _, err := sp.client.KubeClient.CoreV1().Services(job.Namespace).Get(context.TODO(), job.Name, metav1.GetOptions{}); err != nil {
@@ -242,6 +258,7 @@ func (sp *svcPlugin) createServiceIfNotExist(job *batchv1alpha1.Job) error {
 			klog.V(3).Infof("Failed to create Service for Job <%s/%s>: %v", job.Namespace, job.Name, e)
 			return e
 		}
+		// set the svcPlugin as the controlled resource of job
 		job.Status.ControlledResources["plugin-"+sp.Name()] = sp.Name()
 	}
 
@@ -275,6 +292,7 @@ func (sp *svcPlugin) createNetworkPolicyIfNotExist(job *batchv1alpha1.Job) error
 				},
 				Ingress: []networkingv1.NetworkPolicyIngressRule{{
 					From: []networkingv1.NetworkPolicyPeer{{
+						// use label selector to limit the pods that can access this job
 						PodSelector: &metav1.LabelSelector{
 							MatchLabels: map[string]string{
 								batchv1alpha1.JobNameKey:      job.Name,
@@ -297,14 +315,17 @@ func (sp *svcPlugin) createNetworkPolicyIfNotExist(job *batchv1alpha1.Job) error
 	return nil
 }
 
+// cmName returns the configmap name for the job.
 func (sp *svcPlugin) cmName(job *batchv1alpha1.Job) string {
 	return fmt.Sprintf("%s-%s", job.Name, sp.Name())
 }
 
+// GenerateHosts generates the configmap data of host info of the job.
 func GenerateHosts(job *batchv1alpha1.Job) map[string]string {
 	cmData := make(map[string]string, len(job.Spec.Tasks))
 
 	for _, task := range job.Spec.Tasks {
+		// generate host names for each task pod
 		hosts := make([]string, 0, task.Replicas)
 		for i := 0; i < int(task.Replicas); i++ {
 			hostName := task.Template.Spec.Hostname
@@ -321,10 +342,12 @@ func GenerateHosts(job *batchv1alpha1.Job) map[string]string {
 			}
 		}
 
+		// save the host names to cmData[ConfigMapTaskHostFmt]
 		formatEnvKey := strings.Replace(task.Name, "-", "_", -1)
 		key := fmt.Sprintf(ConfigMapTaskHostFmt, formatEnvKey)
 		cmData[key] = strings.Join(hosts, "\n")
 
+		// save other info about hosts to cmData
 		// TODO: The splitter and the prefix of env should be configurable.
 		// export hosts as environment
 		key = fmt.Sprintf(EnvTaskHostFmt, strings.ToUpper(formatEnvKey))

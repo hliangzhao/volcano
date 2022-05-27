@@ -16,6 +16,8 @@ limitations under the License.
 
 package ssh
 
+// fully checked and understood
+
 // constants used by ssh connection.
 const (
 	PrivateKey     = "id_rsa"

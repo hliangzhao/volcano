@@ -16,27 +16,31 @@ limitations under the License.
 
 package plugininterface
 
+// fully checked and understood
+
 import (
 	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
+// PluginClient wraps a kube client for plugin execution
 type PluginClient struct {
 	KubeClient kubernetes.Interface
 }
 
 type PluginInterface interface {
+	// Name returns the name of the plugin
 	Name() string
 
-	// OnPodCreate is called for all pod when createJobPod
+	// OnPodCreate is called when creating job pod
 	OnPodCreate(pod *corev1.Pod, job *batchv1alpha1.Job) error
 
 	// OnJobAdd is called when do job initiation
 	// Note: it can be called multi times, must be idempotent
 	OnJobAdd(job *batchv1alpha1.Job) error
 
-	// OnJobDelete is called when killJob
+	// OnJobDelete is called when killing job
 	// Note: it can be called multi times, must be idempotent
 	OnJobDelete(job *batchv1alpha1.Job) error
 

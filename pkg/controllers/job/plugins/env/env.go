@@ -16,6 +16,8 @@ limitations under the License.
 
 package env
 
+// fully checked and understood
+
 import (
 	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/controllers/job/helpers"
@@ -23,10 +25,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-/*
-This plugin will set environment variables to the given pod.
-*/
+/* This plugin will set environment variables to the given pod containers when creating the job pods. */
 
+// envPlugin implements the PluginInterface interface.
 type envPlugin struct {
 	arguments []string
 	client    plugininterface.PluginClient
@@ -71,6 +72,7 @@ func (ep *envPlugin) OnPodCreate(pod *corev1.Pod, job *batchv1alpha1.Job) error 
 	return nil
 }
 
+// OnJobAdd sets the envPlugin as the controlled resource of job.
 func (ep *envPlugin) OnJobAdd(job *batchv1alpha1.Job) error {
 	if job.Status.ControlledResources["plugin-"+ep.Name()] == ep.Name() {
 		return nil
@@ -79,6 +81,7 @@ func (ep *envPlugin) OnJobAdd(job *batchv1alpha1.Job) error {
 	return nil
 }
 
+// OnJobDelete deletes the envPlugin from the controlled resource of job.
 func (ep *envPlugin) OnJobDelete(job *batchv1alpha1.Job) error {
 	if job.Status.ControlledResources["plugin-"+ep.Name()] != ep.Name() {
 		return nil

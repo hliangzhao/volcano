@@ -16,11 +16,13 @@ limitations under the License.
 
 package env
 
+// fully checked and understood
+
 const (
 	// ConfigMapMountPath mount path
 	ConfigMapMountPath = "/etc/volcano"
 
-	// TODO: the following key are used to denote the index of task in a vcjob?
+	// the following key are used to denote the index of task in a vcjob?
 
 	// TaskVkIndex is used as key in container env
 	TaskVkIndex = "VK_TASK_INDEX"

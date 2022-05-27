@@ -21,7 +21,7 @@ import (
 	"testing"
 )
 
-// TODO: just copied. Not checked.
+// TODO: just copied.
 // Passed.
 
 func TestSSHPlugin(t *testing.T) {

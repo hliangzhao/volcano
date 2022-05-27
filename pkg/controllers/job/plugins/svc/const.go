@@ -16,6 +16,8 @@ limitations under the License.
 
 package svc
 
+// fully checked and understood
+
 const (
 	// ConfigMapTaskHostFmt key in config map
 	ConfigMapTaskHostFmt = "%s.host"
@@ -23,7 +25,6 @@ const (
 	EnvTaskHostFmt = "VC_%s_HOSTS"
 	// EnvHostNumFmt is the key for host number in environment
 	EnvHostNumFmt = "VC_%s_NUM"
-
 	// ConfigMapMountPath mount path
 	ConfigMapMountPath = "/etc/volcano"
 )
