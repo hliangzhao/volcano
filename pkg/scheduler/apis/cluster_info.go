@@ -16,6 +16,8 @@ limitations under the License.
 
 package apis
 
+// fully checked and understood
+
 import "fmt"
 
 // ClusterInfo is a snapshot of cluster by cache.

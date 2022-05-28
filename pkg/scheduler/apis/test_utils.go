@@ -16,6 +16,8 @@ limitations under the License.
 
 package apis
 
+// fully checked and understood
+
 import (
 	"fmt"
 	corev1 "k8s.io/api/core/v1"
@@ -24,7 +26,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// buildNode creates a node.
+/* The code in this file are used for *_test. */
+
+// buildNode creates a node with input capacity resource.
 func buildNode(name string, alloc corev1.ResourceList) *corev1.Node {
 	return &corev1.Node{
 		ObjectMeta: metav1.ObjectMeta{
@@ -37,7 +41,7 @@ func buildNode(name string, alloc corev1.ResourceList) *corev1.Node {
 	}
 }
 
-// buildPod creates a pod.
+// buildPod creates a pod which is scheduled to node and its owner is set.
 func buildPod(namespace, name, nodeName string, phase corev1.PodPhase, req corev1.ResourceList,
 	owner []metav1.OwnerReference, labels map[string]string) *corev1.Pod {
 

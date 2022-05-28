@@ -71,8 +71,8 @@ func NewServerOption() *ServerOption {
 
 // AddFlags adds flags for a specific CMServer to the specified FlagSet.
 func (s *ServerOption) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&s.KubeClientOptions.Master, "master", s.KubeClientOptions.Master, "The address of the Kubernetes API server (overrides any value in kubeconfig)")
-	fs.StringVar(&s.KubeClientOptions.KubeConfig, "kubeconfig", s.KubeClientOptions.KubeConfig, "Path to kubeconfig file with authorization and master location information.")
+	fs.StringVar(&s.KubeClientOptions.MasterUrl, "master", s.KubeClientOptions.MasterUrl, "The address of the Kubernetes API server (overrides any value in kubeconfig)")
+	fs.StringVar(&s.KubeClientOptions.KubeConfigPath, "kubeconfig", s.KubeClientOptions.KubeConfigPath, "Path to kubeconfig file with authorization and master location information.")
 	fs.BoolVar(&s.EnableLeaderElection, "leader-elect", s.EnableLeaderElection, "Start a leader election client and gain leadership before "+
 		"executing the main loop. Enable this when running replicated vc-controller-manager for high availability.")
 	fs.StringVar(&s.LockObjectNamespace, "lock-object-namespace", s.LockObjectNamespace, "Define the namespace of the lock object.")

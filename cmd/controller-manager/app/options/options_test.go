@@ -42,10 +42,10 @@ func TestAddFlags(t *testing.T) {
 	// This is a snapshot of expected options parsed by args.
 	expected := &ServerOption{
 		KubeClientOptions: kube.ClientOptions{
-			Master:     "127.0.0.1",
-			KubeConfig: "",
-			QPS:        defaultQPS,
-			Burst:      200,
+			MasterUrl:      "127.0.0.1",
+			KubeConfigPath: "",
+			QPS:            defaultQPS,
+			Burst:          200,
 		},
 		PrintVersion:   false,
 		WorkerThreads:  defaultWorkers,

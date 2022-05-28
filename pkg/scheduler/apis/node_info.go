@@ -16,6 +16,8 @@ limitations under the License.
 
 package apis
 
+// fully checked and understood
+
 import (
 	"fmt"
 	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
@@ -37,8 +39,8 @@ func (e *AllocateFailError) Error() string {
 
 // NodeUsage defines the usage info of a node.
 type NodeUsage struct {
-	CPUUsageAvg map[string]float64
-	MEMUsageAvg map[string]float64
+	CPUUsageAvg map[string]float64 // {cpuName: cpuUsage}
+	MEMUsageAvg map[string]float64 // {memName: memUsage}
 }
 
 func (nu *NodeUsage) DeepCopy() *NodeUsage {
@@ -55,7 +57,7 @@ func (nu *NodeUsage) DeepCopy() *NodeUsage {
 	return ret
 }
 
-// NodePhase defines the phase of a node.
+// NodePhase defines the phase of a node (Ready or NotReady).
 type NodePhase int
 
 const (
@@ -113,8 +115,9 @@ type NodeInfo struct {
 
 	// enable node resource oversubscription
 	OversubscriptionNode bool
+
 	// if OfflineJobEvicting is true, then when node resource usage too high,
-	// the dispatched pod can not use oversubscription resource
+	// the dispatched pod cannot use oversubscription resource
 	OfflineJobEvicting bool
 
 	// the Oversubscription Resource reported in annotation
@@ -201,7 +204,7 @@ func (ni *NodeInfo) setNodeGPUInfo(node *corev1.Node) {
 
 // setNodeState sets ni.State according to the input node.
 func (ni *NodeInfo) setNodeState(node *corev1.Node) {
-	// If node is nil, the node is un-initialized in cache
+	// If node is nil, set node state to NotReady because it is UnInitialized
 	if node == nil {
 		klog.Warningf("the argument node is null.")
 		ni.State = NodeState{
@@ -211,6 +214,7 @@ func (ni *NodeInfo) setNodeState(node *corev1.Node) {
 		return
 	}
 
+	// If used resource is larger than allocatable resource, it means the node is not ready because it is out-of-sync
 	if !ni.Used.LessEqual(ni.Allocatable, Zero) {
 		ni.State = NodeState{
 			Phase:  NotReady,
@@ -237,7 +241,6 @@ func (ni *NodeInfo) setNodeState(node *corev1.Node) {
 		Phase:  Ready,
 		Reason: "",
 	}
-
 	klog.V(4).Infof("set the node %s status to %s.", node.Name, Ready.String())
 }
 
@@ -608,7 +611,7 @@ func (ni *NodeInfo) RefreshNumaSchedulerInfoByCrd() {
 	} else if ni.NumaChgFlag == NumaInfoLessFlag {
 		numaResMap := ni.NumaSchedulerInfo.NumaResMap
 		for resName, resInfo := range tmp.NumaResMap {
-			klog.V(5).Infof("resource %s Allocatable : current %v new %v on node %s",
+			klog.V(5).Infof("resource %s Allocatable: current %v new %v on node %s",
 				resName, numaResMap[resName], resInfo, ni.Name)
 			if numaResMap[resName].Allocatable.Size() >= resInfo.Allocatable.Size() {
 				numaResMap[resName].Allocatable = resInfo.Allocatable.Clone()

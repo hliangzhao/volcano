@@ -60,8 +60,8 @@ func NewConfig() *Config {
 
 // AddFlags add flags.
 func (c *Config) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&c.KubeClientOptions.Master, "master", c.KubeClientOptions.Master, "The address of the Kubernetes apiserver (overrides any value in kubeconfig)")
-	fs.StringVar(&c.KubeClientOptions.KubeConfig, "kubeconfig", c.KubeClientOptions.KubeConfig, "Path to kubeconfig file with authorization and master location information.")
+	fs.StringVar(&c.KubeClientOptions.MasterUrl, "master", c.KubeClientOptions.MasterUrl, "The address of the Kubernetes apiserver (overrides any value in kubeconfig)")
+	fs.StringVar(&c.KubeClientOptions.KubeConfigPath, "kubeconfig", c.KubeClientOptions.KubeConfigPath, "Path to kubeconfig file with authorization and master location information.")
 	fs.StringVar(&c.CertFile, "tls-cert-file", c.CertFile, "File containing the default x509 Certificate for HTTPS. (CA cert, if any, concatenated after server cert).")
 	fs.StringVar(&c.KeyFile, "tls-private-key-file", c.KeyFile, "File containing the default x509 private key matching --tls-cert-file.")
 	fs.StringVar(&c.ListenAddress, "listen-address", "", "The address to listen on for the admission-controller-server.")

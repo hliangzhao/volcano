@@ -16,6 +16,8 @@ limitations under the License.
 
 package apis
 
+// fully checked and understood
+
 import (
 	"fmt"
 	"github.com/hliangzhao/volcano/pkg/scheduler/utils/assert"
@@ -35,7 +37,7 @@ const (
 	minResource float64 = 0.1
 )
 
-// DimensionDefaultValue means default value for black resource dimension
+// DimensionDefaultValue means default value of each resource dimension
 type DimensionDefaultValue int
 
 const (
@@ -46,22 +48,25 @@ const (
 	Infinity DimensionDefaultValue = -1
 )
 
-// Resource defines all the resource type.
+// Resource contains the info we care about.
 type Resource struct {
 	MilliCPU float64 // CPU usage
 	Memory   float64 // Memory usage
 
-	ScalarResources map[corev1.ResourceName]float64 // resources other than CPU and Memory
+	// // resources other than CPU and Mem (e.g., Extended, Hugepages, Native and AttachableVolume resources)
+	ScalarResources map[corev1.ResourceName]float64
 
 	// MaxTaskNum is only used by predicates; it should NOT
 	// be accounted in other operators, e.g. Add.
 	MaxTaskNum int
 }
 
+// EmptyResource returns an empty Resource instance.
 func EmptyResource() *Resource {
 	return &Resource{}
 }
 
+// GetMinResource returns the minimal value of Resource.
 func GetMinResource() float64 {
 	return minResource
 }
@@ -86,7 +91,7 @@ func (r *Resource) AddScalar(name corev1.ResourceName, quantity float64) {
 	r.SetScalar(name, r.ScalarResources[name]+quantity)
 }
 
-// NewResource creates a Resource instance.
+// NewResource creates a Resource instance with the input ResourceList.
 func NewResource(resList corev1.ResourceList) *Resource {
 	r := EmptyResource()
 	for name, quantity := range resList {
@@ -370,6 +375,7 @@ func (r *Resource) LessEqualPartly(rr *Resource, defaultVal DimensionDefaultValu
 	return false
 }
 
+// sub subtracts rr from r without check.
 func (r *Resource) sub(rr *Resource) *Resource {
 	r.MilliCPU -= rr.MilliCPU
 	r.Memory -= rr.Memory
@@ -389,7 +395,7 @@ func (r *Resource) Sub(rr *Resource) *Resource {
 	return r.sub(rr)
 }
 
-// Multi multiples a ratio and each resource in r.
+// Multi multiples a ratio on each resource in r.
 func (r *Resource) Multi(ratio float64) *Resource {
 	r.MilliCPU *= ratio
 	r.Memory *= ratio
@@ -529,7 +535,8 @@ func (r *Resource) Diff(rr *Resource, defaultVal DimensionDefaultValue) (*Resour
 }
 
 // MinDimensionResource is used to reset the resource dimension of r which is less than rr's.
-// e.g r is <cpu 2000.00, memory 4047845376.00, hugepages-2Mi 0.00, hugepages-1Gi 0.00>, rr is <cpu 3000.00, memory 1000.00>,
+// e.g r is <cpu 2000.00, memory 4047845376.00, hugepages-2Mi 0.00, hugepages-1Gi 0.00>,
+// rr is <cpu 3000.00, memory 1000.00>,
 // return <cpu 2000.00, memory 1000.00, hugepages-2Mi 0.00, hugepages-1Gi 0.00>.
 // @param defaultVal is the default value ('Zero' or 'Infinity') for resource dimension not defined in ScalarResources.
 func (r *Resource) MinDimensionResource(rr *Resource, defaultVal DimensionDefaultValue) *Resource {
@@ -568,6 +575,66 @@ func (r *Resource) MinDimensionResource(rr *Resource, defaultVal DimensionDefaul
 	return r
 }
 
+// Min returns a new Resource instance where each resource quantity is the min one of l and r.
+func Min(l, r *Resource) *Resource {
+	res := &Resource{}
+	res.MilliCPU = math.Min(l.MilliCPU, r.MilliCPU)
+	res.Memory = math.Min(l.Memory, r.Memory)
+
+	if l.ScalarResources == nil || r.ScalarResources == nil {
+		return res
+	}
+
+	res.ScalarResources = map[corev1.ResourceName]float64{}
+	for lName, lQuantity := range l.ScalarResources {
+		res.ScalarResources[lName] = math.Min(lQuantity, r.ScalarResources[lName])
+	}
+	return res
+}
+
+// Max returns a new Resource instance where each resource quantity is the max one of l and r.
+func Max(l, r *Resource) *Resource {
+	res := &Resource{}
+	res.MilliCPU = math.Max(l.MilliCPU, r.MilliCPU)
+	res.Memory = math.Max(l.Memory, r.Memory)
+
+	if l.ScalarResources == nil && r.ScalarResources == nil {
+		return res
+	}
+
+	res.ScalarResources = map[corev1.ResourceName]float64{}
+	if l.ScalarResources != nil {
+		for lName, lQuantity := range l.ScalarResources {
+			if lQuantity > 0 {
+				res.ScalarResources[lName] = math.Max(lQuantity, r.ScalarResources[lName])
+			}
+		}
+	}
+	if r.ScalarResources != nil {
+		for rName, rQuantity := range r.ScalarResources {
+			if rQuantity > 0 {
+				res.ScalarResources[rName] = math.Max(rQuantity, res.ScalarResources[rName])
+			}
+		}
+	}
+	return res
+}
+
+// Share calculates the ratio of l to r.
+func Share(l, r float64) float64 {
+	var share float64
+	if r == 0 {
+		if l == 0 {
+			share = 0
+		} else {
+			share = 1
+		}
+	} else {
+		share = l / r
+	}
+	return share
+}
+
 // ParseResourceList parses the given configuration map into a ResourceList.
 func ParseResourceList(m map[string]string) (corev1.ResourceList, error) {
 	if len(m) == 0 {
@@ -578,8 +645,6 @@ func ParseResourceList(m map[string]string) (corev1.ResourceList, error) {
 	for k, v := range m {
 		switch corev1.ResourceName(k) {
 		// CPU, memory, local storage, and PID resources are supported.
-		// TODO: maybe we could add more custom resource. For example, privacy data block.
-		// 	In this case we need to define more CRDs.
 		case corev1.ResourceCPU, corev1.ResourceMemory, corev1.ResourceEphemeralStorage:
 			quantity, err := resource.ParseQuantity(v)
 			if err != nil {
@@ -614,6 +679,7 @@ func (rl ResourceNameList) Contains(rrl ResourceNameList) bool {
 	return true
 }
 
+// IsCountQuota checks whether the input resource name is started with "count/".
 func IsCountQuota(name corev1.ResourceName) bool {
 	return strings.HasPrefix(string(name), "count/")
 }

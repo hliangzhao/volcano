@@ -16,6 +16,8 @@ limitations under the License.
 
 package apis
 
+// fully checked and understood
+
 import (
 	"fmt"
 	corev1 "k8s.io/api/core/v1"
@@ -33,17 +35,19 @@ const (
 
 type NamespaceName string
 
+// NamespaceInfo stores the information about resource quotas of a namespace.
 type NamespaceInfo struct {
 	// Name is the name of this namespace
 	Name NamespaceName
 
-	// Weight is the highest weight among many ResourceQuota
+	// Weight is "the highest weight" among many ResourceQuota
 	Weight int64
 
 	// QuotaStatus stores the ResourceQuotaStatus of all ResourceQuotas in this namespace
 	QuotaStatus map[string]corev1.ResourceQuotaStatus
 }
 
+// GetWeight returns the weight of ni.
 func (ni *NamespaceInfo) GetWeight() int64 {
 	if ni == nil || ni.Weight == 0 {
 		return DefaultNamespaceWeight
@@ -98,10 +102,12 @@ func NewNamespaceCollection(name string) *NamespaceCollection {
 
 /* delete and update func of NamespaceCollection */
 
+// deleteWeight deletes quotaItem q from nc.
 func (nc *NamespaceCollection) deleteWeight(q *quotaItem) {
 	_ = nc.quotaWeight.Delete(q)
 }
 
+// updateWeight updates quotaItem q in nc.
 func (nc *NamespaceCollection) updateWeight(q *quotaItem) {
 	_ = nc.quotaWeight.Update(q)
 }
@@ -119,11 +125,13 @@ func itemFromQuota(quota *corev1.ResourceQuota) *quotaItem {
 	}
 }
 
+// Update updates a quotaItem (created from quota) to nc.
 func (nc *NamespaceCollection) Update(quota *corev1.ResourceQuota) {
 	nc.updateWeight(itemFromQuota(quota))
 	nc.QuotaStatus[quota.Name] = quota.Status
 }
 
+// Delete deletes a quotaItem (created from quota) in nc.
 func (nc *NamespaceCollection) Delete(quota *corev1.ResourceQuota) {
 	nc.deleteWeight(itemFromQuota(quota))
 	delete(nc.QuotaStatus, quota.Name)

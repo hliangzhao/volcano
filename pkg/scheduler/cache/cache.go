@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	`github.com/hliangzhao/volcano/cmd/scheduler/app/options`
-	batchv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/batch/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/apis/scheduling"
 	schedulingscheme "github.com/hliangzhao/volcano/pkg/apis/scheduling/scheme"
 	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
@@ -30,6 +29,7 @@ import (
 	nodeinfoinformersv1alpha1 "github.com/hliangzhao/volcano/pkg/client/informers/externalversions/nodeinfo/v1alpha1"
 	schedulinginformersv1alpha1 "github.com/hliangzhao/volcano/pkg/client/informers/externalversions/scheduling/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
+	`github.com/hliangzhao/volcano/pkg/scheduler/apis/helpers`
 	"github.com/hliangzhao/volcano/pkg/scheduler/metrics"
 	"github.com/prometheus/client_golang/api"
 	prometheusv1 "github.com/prometheus/client_golang/api/prometheus/v1"
@@ -78,242 +78,6 @@ func init() {
 	}
 
 	utilruntime.Must(schemeBuilder.AddToScheme(scheme.Scheme))
-}
-
-/* Binder related. Binder is used to bind task to node. */
-
-type defaultBinder struct {
-	// kubeClient *kubernetes.Clientset
-}
-
-func NewBinder() *defaultBinder {
-	return &defaultBinder{}
-}
-
-// Bind sends bind request to api server through the kube client.
-func (binder *defaultBinder) Bind(kubeClient *kubernetes.Clientset, tasks []*apis.TaskInfo) ([]*apis.TaskInfo, error) {
-	var errTasks []*apis.TaskInfo
-	for _, task := range tasks {
-		pod := task.Pod
-		if err := kubeClient.CoreV1().Pods(pod.Namespace).Bind(
-			context.TODO(),
-			&corev1.Binding{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace:   pod.Namespace,
-					Name:        pod.Name,
-					UID:         pod.UID,
-					Annotations: pod.Annotations,
-				},
-				Target: corev1.ObjectReference{
-					Kind: "Node",
-					Name: task.NodeName, // the to-be-bind node has already been written into task.NodeName
-				},
-			},
-			metav1.CreateOptions{},
-		); err != nil {
-			klog.Errorf("Failed to bind pod <%v/%v> to node %s : %#v", pod.Namespace, pod.Name, task.NodeName, err)
-			errTasks = append(errTasks, task)
-		}
-	}
-
-	if len(errTasks) > 0 {
-		return errTasks, fmt.Errorf("failed to bind pods")
-	}
-
-	return nil, nil
-}
-
-/* Evictor related. Evictor is used to evict pod. */
-
-type defaultEvictor struct {
-	kubeClient *kubernetes.Clientset
-	recorder   record.EventRecorder
-}
-
-// Evict evicts pod because of reason.
-// Evict is used to guarantee that both task and job could be in the original state if error happens.
-func (evictor *defaultEvictor) Evict(pod *corev1.Pod, reason string) error {
-	klog.V(3).Infof("Evicting pod %v/%v, because of %v", pod.Namespace, pod.Name, reason)
-
-	evictMsg := fmt.Sprintf("Pod is evicted, because of %v", reason)
-	annotations := map[string]string{}
-	// record event and add annotation simultaneously
-	evictor.recorder.AnnotatedEventf(pod, annotations, corev1.EventTypeWarning, "Evict", evictMsg)
-
-	newPod := pod.DeepCopy()
-	cond := &corev1.PodCondition{
-		Type:    corev1.PodReady,
-		Status:  corev1.ConditionFalse,
-		Reason:  "Evict",
-		Message: evictMsg,
-	}
-	if !podutil.UpdatePodCondition(&newPod.Status, cond) {
-		klog.V(1).Infof("UpdatePodCondition: existed condition, not update")
-		klog.V(1).Infof("%+v", newPod.Status.Conditions)
-		return nil
-	}
-
-	// update pod status then delete
-	if _, err := evictor.kubeClient.CoreV1().Pods(pod.Namespace).UpdateStatus(context.TODO(),
-		newPod, metav1.UpdateOptions{}); err != nil {
-		klog.Errorf("Failed to update pod <%v/%v> status: %v", newPod.Namespace, newPod.Name, err)
-		return err
-	}
-	if err := evictor.kubeClient.CoreV1().Pods(pod.Namespace).Delete(context.TODO(),
-		pod.Name, metav1.DeleteOptions{}); err != nil {
-		klog.Errorf("Failed to evict pod <%v/%v>: %#v", pod.Namespace, pod.Name, err)
-		return err
-	}
-
-	return nil
-}
-
-/* StatusUpdater related */
-
-// defaultStatusUpdater is the default implementation of the StatusUpdater interface
-type defaultStatusUpdater struct {
-	kubeClient *kubernetes.Clientset
-	vcClient   *volcanoclient.Clientset
-}
-
-// UpdatePodCondition updates pod with podCondition.
-func (su *defaultStatusUpdater) UpdatePodCondition(pod *corev1.Pod, condition *corev1.PodCondition) (*corev1.Pod, error) {
-	klog.V(3).Infof("Updating pod condition for %s/%s to (%s==%s)",
-		pod.Namespace, pod.Name, condition.Type, condition.Status)
-	if podutil.UpdatePodCondition(&pod.Status, condition) {
-		return su.kubeClient.CoreV1().Pods(pod.Namespace).UpdateStatus(context.TODO(), pod, metav1.UpdateOptions{})
-	}
-	return pod, nil
-}
-
-// UpdatePodGroup updates the podgroup that represented by pg.
-func (su *defaultStatusUpdater) UpdatePodGroup(pg *apis.PodGroup) (*apis.PodGroup, error) {
-	// convert apis.podgroup into kind PodGroup
-	podgroup := &schedulingv1alpha1.PodGroup{}
-	if err := schedulingscheme.Scheme.Convert(&pg.PodGroup, podgroup, nil); err != nil {
-		klog.Errorf("Error while converting apis.PodGroup to v1alpha1.PodGroup with error: %v", err)
-		return nil, err
-	}
-
-	// call the client to update the kind resource
-	updated, err := su.vcClient.SchedulingV1alpha1().PodGroups(podgroup.Namespace).Update(context.TODO(),
-		podgroup, metav1.UpdateOptions{})
-	if err != nil {
-		klog.Errorf("Error while updating PodGroup with error: %v", err)
-		return nil, err
-	}
-
-	// get the updated podgroup info
-	pgInfo := &apis.PodGroup{Version: apis.PodGroupVersionV1Alpha1}
-	if err := schedulingscheme.Scheme.Convert(updated, &pgInfo, nil); err != nil {
-		klog.Errorf("Error while converting v1alpha.PodGroup to apis.PodGroup with error: %v", err)
-		return nil, err
-	}
-
-	return pgInfo, nil
-}
-
-/* VolumeBinder related */
-
-type defaultVolumeBinder struct {
-	volumeBinder volumebinding.SchedulerVolumeBinder
-}
-
-// AllocateVolumes allocates volume on the host to the task.
-func (vb *defaultVolumeBinder) AllocateVolumes(task *apis.TaskInfo, hostname string, podVolumes *volumebinding.PodVolumes) error {
-	allBound, err := vb.volumeBinder.AssumePodVolumes(task.Pod, hostname, podVolumes)
-	task.VolumeReady = allBound
-	return err
-}
-
-func (vb *defaultVolumeBinder) RevertVolumes(task *apis.TaskInfo, podVolumes *volumebinding.PodVolumes) {
-	if podVolumes != nil {
-		klog.Infof("Revert assumed volumes for task %v/%v on node %s", task.Namespace, task.Name, task.NodeName)
-		vb.volumeBinder.RevertAssumedPodVolumes(podVolumes)
-		task.VolumeReady = false
-		task.PodVolumes = nil
-	}
-}
-
-// GetPodVolumes gets pod volume binding status of task on the given node.
-func (vb *defaultVolumeBinder) GetPodVolumes(task *apis.TaskInfo, node *corev1.Node) (*volumebinding.PodVolumes, error) {
-	boundClaims, claimsToBind, unboundClaimsImmediate, err := vb.volumeBinder.GetPodVolumes(task.Pod)
-	if err != nil {
-		return nil, err
-	}
-	if len(unboundClaimsImmediate) > 0 {
-		return nil, fmt.Errorf("pod has unbound immeidate PersistentVolumeClaims")
-	}
-
-	podVolumes, reasons, err := vb.volumeBinder.FindPodVolumes(task.Pod, boundClaims, claimsToBind, node)
-	if err != nil {
-		return nil, err
-	} else if len(reasons) > 0 {
-		var errors []string
-		for _, reason := range reasons {
-			errors = append(errors, string(reason))
-		}
-		return nil, fmt.Errorf(strings.Join(errors, ","))
-	}
-	return podVolumes, err
-}
-
-// BindVolumes binds volumes to the task.
-func (vb *defaultVolumeBinder) BindVolumes(task *apis.TaskInfo, podVolumes *volumebinding.PodVolumes) error {
-	// If task's volumes are ready, did not bind them again.
-	if task.VolumeReady {
-		return nil
-	}
-	return vb.volumeBinder.BindPodVolumes(task.Pod, podVolumes)
-}
-
-/* Batch Binder related */
-
-type pgBinder struct {
-	kubeClient *kubernetes.Clientset
-	vcClient   *volcanoclient.Clientset
-}
-
-// Bind binds job to podgroup. Specifically, it adds silo cluster annotation on pod and podgroup.
-func (pgb *pgBinder) Bind(job *apis.JobInfo, cluster string) (*apis.JobInfo, error) {
-	if len(job.Tasks) == 0 {
-		klog.V(4).Infof("Job pods have not been created yet")
-		return job, nil
-	}
-
-	for _, task := range job.Tasks {
-		// update each task's annotation and resourceVersion
-		pod := task.Pod
-		pod.Annotations[batchv1alpha1.ForwardClusterKey] = cluster
-		pod.ResourceVersion = ""
-
-		_, err := pgb.kubeClient.CoreV1().Pods(pod.Namespace).UpdateStatus(context.TODO(), pod, metav1.UpdateOptions{})
-		if err != nil {
-			klog.Errorf("Error while update pod annotation with error: %v", err)
-			return nil, err
-		}
-	}
-
-	// set annotation on the podgroup and update
-	pg := job.PodGroup
-	pg.Annotations[batchv1alpha1.ForwardClusterKey] = cluster
-	podgroup := &schedulingv1alpha1.PodGroup{}
-
-	if err := schedulingscheme.Scheme.Convert(&pg.PodGroup, podgroup, nil); err != nil {
-		klog.Errorf("Error while converting apis.PodGroup to v1alpha1.PodGroup with error: %v", err)
-		return nil, err
-	}
-
-	newPg, err := pgb.vcClient.SchedulingV1alpha1().PodGroups(pg.Namespace).Update(context.TODO(),
-		podgroup, metav1.UpdateOptions{})
-	if err != nil {
-		klog.Errorf("Error while update PodGroup annotation with error: %v", err)
-		return nil, err
-	}
-	job.PodGroup.ResourceVersion = newPg.ResourceVersion
-
-	klog.V(4).Infof("Bind PodGroup <%s> successfully", job.PodGroup.Name)
-	return job, nil
 }
 
 /* Cache related */
@@ -837,7 +601,7 @@ func (sc *SchedulerCache) processCleanupJob() {
 	sc.Mutex.Lock()
 	defer sc.Mutex.Unlock()
 
-	if apis.JobTerminated(job) {
+	if helpers.JobTerminated(job) {
 		delete(sc.Jobs, job.UID)
 		metrics.DeleteJobShare(job.Namespace, job.Name)
 		klog.V(3).Infof("Job <%v:%v/%v> was deleted.", job.UID, job.Namespace, job.Name)

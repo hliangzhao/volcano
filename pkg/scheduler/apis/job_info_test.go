@@ -22,7 +22,7 @@ package apis
 import (
 	"github.com/hliangzhao/volcano/pkg/apis/scheduling"
 	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"reflect"
@@ -40,25 +40,25 @@ func TestAddTaskInfo(t *testing.T) {
 	case01Owner := buildOwnerReference("uid")
 
 	case01Pod1 := buildPod(
-		case01Ns, "p1", "", v1.PodPending,
+		case01Ns, "p1", "", corev1.PodPending,
 		buildResourceList("1000m", "1G"),
 		[]metav1.OwnerReference{case01Owner},
 		make(map[string]string))
 	case01Task1 := NewTaskInfo(case01Pod1)
 
-	case01Pod2 := buildPod(case01Ns, "p2", "n1", v1.PodRunning,
+	case01Pod2 := buildPod(case01Ns, "p2", "n1", corev1.PodRunning,
 		buildResourceList("2000m", "2G"),
 		[]metav1.OwnerReference{case01Owner},
 		make(map[string]string))
 	case01Task2 := NewTaskInfo(case01Pod2)
 
-	case01Pod3 := buildPod(case01Ns, "p3", "n1", v1.PodPending,
+	case01Pod3 := buildPod(case01Ns, "p3", "n1", corev1.PodPending,
 		buildResourceList("1000m", "1G"),
 		[]metav1.OwnerReference{case01Owner},
 		make(map[string]string))
 	case01Task3 := NewTaskInfo(case01Pod3)
 
-	case01Pod4 := buildPod(case01Ns, "p4", "n1", v1.PodPending,
+	case01Pod4 := buildPod(case01Ns, "p4", "n1", corev1.PodPending,
 		buildResourceList("1000m", "1G"),
 		[]metav1.OwnerReference{case01Owner},
 		make(map[string]string))
@@ -67,13 +67,13 @@ func TestAddTaskInfo(t *testing.T) {
 	tests := []struct {
 		name     string
 		uid      JobID
-		pods     []*v1.Pod
+		pods     []*corev1.Pod
 		expected *JobInfo
 	}{
 		{
 			name: "add 1 pending owner pod, 1 running owner pod",
 			uid:  case01UID,
-			pods: []*v1.Pod{case01Pod1, case01Pod2, case01Pod3, case01Pod4},
+			pods: []*corev1.Pod{case01Pod1, case01Pod2, case01Pod3, case01Pod4},
 			expected: &JobInfo{
 				UID:          case01UID,
 				Allocated:    buildResource("4000m", "4G"),
@@ -122,14 +122,14 @@ func TestDeleteTaskInfo(t *testing.T) {
 	case01UID := JobID("owner1")
 	case01Ns := "c1"
 	case01Owner := buildOwnerReference(string(case01UID))
-	case01Pod1 := buildPod(case01Ns, "p1", "", v1.PodPending,
+	case01Pod1 := buildPod(case01Ns, "p1", "", corev1.PodPending,
 		buildResourceList("1000m", "1G"),
 		[]metav1.OwnerReference{case01Owner}, make(map[string]string))
 	case01Task1 := NewTaskInfo(case01Pod1)
-	case01Pod2 := buildPod(case01Ns, "p2", "n1", v1.PodRunning,
+	case01Pod2 := buildPod(case01Ns, "p2", "n1", corev1.PodRunning,
 		buildResourceList("2000m", "2G"),
 		[]metav1.OwnerReference{case01Owner}, make(map[string]string))
-	case01Pod3 := buildPod(case01Ns, "p3", "n1", v1.PodRunning,
+	case01Pod3 := buildPod(case01Ns, "p3", "n1", corev1.PodRunning,
 		buildResourceList("3000m", "3G"),
 		[]metav1.OwnerReference{case01Owner}, make(map[string]string))
 	case01Task3 := NewTaskInfo(case01Pod3)
@@ -138,14 +138,14 @@ func TestDeleteTaskInfo(t *testing.T) {
 	case02UID := JobID("owner2")
 	case02Ns := "c2"
 	case02Owner := buildOwnerReference(string(case02UID))
-	case02Pod1 := buildPod(case02Ns, "p1", "", v1.PodPending,
+	case02Pod1 := buildPod(case02Ns, "p1", "", corev1.PodPending,
 		buildResourceList("1000m", "1G"),
 		[]metav1.OwnerReference{case02Owner}, make(map[string]string))
 	case02Task1 := NewTaskInfo(case02Pod1)
-	case02Pod2 := buildPod(case02Ns, "p2", "n1", v1.PodPending,
+	case02Pod2 := buildPod(case02Ns, "p2", "n1", corev1.PodPending,
 		buildResourceList("2000m", "2G"),
 		[]metav1.OwnerReference{case02Owner}, make(map[string]string))
-	case02Pod3 := buildPod(case02Ns, "p3", "n1", v1.PodRunning,
+	case02Pod3 := buildPod(case02Ns, "p3", "n1", corev1.PodRunning,
 		buildResourceList("3000m", "3G"),
 		[]metav1.OwnerReference{case02Owner}, make(map[string]string))
 	case02Task3 := NewTaskInfo(case02Pod3)
@@ -153,15 +153,15 @@ func TestDeleteTaskInfo(t *testing.T) {
 	tests := []struct {
 		name     string
 		uid      JobID
-		pods     []*v1.Pod
-		rmPods   []*v1.Pod
+		pods     []*corev1.Pod
+		rmPods   []*corev1.Pod
 		expected *JobInfo
 	}{
 		{
 			name:   "add 1 pending owner pod, 2 running owner pod, remove 1 running owner pod",
 			uid:    case01UID,
-			pods:   []*v1.Pod{case01Pod1, case01Pod2, case01Pod3},
-			rmPods: []*v1.Pod{case01Pod2},
+			pods:   []*corev1.Pod{case01Pod1, case01Pod2, case01Pod3},
+			rmPods: []*corev1.Pod{case01Pod2},
 			expected: &JobInfo{
 				Allocated:    buildResource("3000m", "3G"),
 				TotalRequest: buildResource("4000m", "4G"),
@@ -181,8 +181,8 @@ func TestDeleteTaskInfo(t *testing.T) {
 		{
 			name:   "add 2 pending owner pod, 1 running owner pod, remove 1 pending owner pod",
 			uid:    case02UID,
-			pods:   []*v1.Pod{case02Pod1, case02Pod2, case02Pod3},
-			rmPods: []*v1.Pod{case02Pod2},
+			pods:   []*corev1.Pod{case02Pod1, case02Pod2, case02Pod3},
+			rmPods: []*corev1.Pod{case02Pod2},
 			expected: &JobInfo{
 				Allocated:    buildResource("3000m", "3G"),
 				TotalRequest: buildResource("4000m", "4G"),
@@ -226,29 +226,29 @@ func TestDeleteTaskInfo(t *testing.T) {
 }
 
 func TestTaskSchedulingReason(t *testing.T) {
-	t1 := buildPod("ns1", "task-1", "", v1.PodPending,
+	t1 := buildPod("ns1", "task-1", "", corev1.PodPending,
 		buildResourceList("1", "1G"), nil, make(map[string]string))
-	t2 := buildPod("ns1", "task-2", "", v1.PodPending,
+	t2 := buildPod("ns1", "task-2", "", corev1.PodPending,
 		buildResourceList("1", "1G"), nil, make(map[string]string))
-	t3 := buildPod("ns1", "task-3", "node1", v1.PodPending,
+	t3 := buildPod("ns1", "task-3", "node1", corev1.PodPending,
 		buildResourceList("1", "1G"), nil, make(map[string]string))
-	t4 := buildPod("ns1", "task-4", "node2", v1.PodPending,
+	t4 := buildPod("ns1", "task-4", "node2", corev1.PodPending,
 		buildResourceList("1", "1G"), nil, make(map[string]string))
-	t5 := buildPod("ns1", "task-5", "node3", v1.PodPending,
+	t5 := buildPod("ns1", "task-5", "node3", corev1.PodPending,
 		buildResourceList("1", "1G"), nil, make(map[string]string))
-	t6 := buildPod("ns1", "task-6", "", v1.PodPending,
+	t6 := buildPod("ns1", "task-6", "", corev1.PodPending,
 		buildResourceList("1", "1G"), nil, make(map[string]string))
 
 	tests := []struct {
 		desc        string
-		pods        []*v1.Pod
+		pods        []*corev1.Pod
 		jobID       JobID
 		nodeFitErrs map[TaskID]*FitErrors
 		expected    map[types.UID]string
 	}{
 		{
 			desc:  "task3 ~ 5 are schedulable",
-			pods:  []*v1.Pod{t1, t2, t3, t4, t5, t6},
+			pods:  []*corev1.Pod{t1, t2, t3, t4, t5, t6},
 			jobID: JobID("case1"),
 			nodeFitErrs: map[TaskID]*FitErrors{
 				TaskID(t6.UID): {

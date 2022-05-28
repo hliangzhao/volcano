@@ -16,6 +16,8 @@ limitations under the License.
 
 package apis
 
+// fully checked and understood
+
 import (
 	"encoding/json"
 	"fmt"
@@ -62,7 +64,7 @@ func (db *DisruptionBudget) Clone() *DisruptionBudget {
 type TaskStatus int
 
 const (
-	// Pending means the task is pending in the api-server.
+	// Pending means the task is pending in the apiserver.
 	Pending TaskStatus = 1 << iota
 
 	// Allocated means the scheduler assigns a host to it.
@@ -71,7 +73,7 @@ const (
 	// Pipelined means the scheduler assigns a host to wait for releasing resource.
 	Pipelined
 
-	// Binding means the scheduler send Bind request to apiserver.
+	// Binding means the scheduler sends Bind request to apiserver.
 	Binding
 
 	// Bound means the task/Pod bounds to a host.
@@ -161,7 +163,7 @@ func AllocatedStatus(status TaskStatus) bool {
 
 // validateStatusUpdate validates whether the status transfer is valid.
 func validateStatusUpdate(oldStatus, newStatus TaskStatus) error {
-	// TODO: this func seems not implemented?
+	// TODO: implement this
 	return nil
 }
 
@@ -179,7 +181,7 @@ func (tx *TransactionContext) Clone() *TransactionContext {
 	return &clone
 }
 
-// TaskInfo has all info of a task.
+// TaskInfo has all info of a task, used by the scheduler.
 type TaskInfo struct {
 	UID TaskID
 	Job JobID // the job that this task belongs to
@@ -209,6 +211,7 @@ type TaskInfo struct {
 	Pod        *corev1.Pod // TODO: a task may consist of multiple pods, why not use slice here?
 }
 
+// NewTaskInfo creates a TaskInfo instance for the given pod.
 func NewTaskInfo(pod *corev1.Pod) *TaskInfo {
 	initResReq := GetPodResourceRequest(pod)
 	resReq := initResReq
@@ -239,7 +242,7 @@ func NewTaskInfo(pod *corev1.Pod) *TaskInfo {
 		Pod:           pod,
 	}
 
-	// update priority if exist
+	// set task priority if exist
 	if pod.Spec.Priority != nil {
 		ti.Priority = *pod.Spec.Priority
 	}
@@ -278,7 +281,7 @@ func (ti *TaskInfo) Clone() *TaskInfo {
 
 const TaskPriorityAnnotation = "volcano.sh/task-priority"
 
-// GetTransactionContext gets transaction context of a task。
+// GetTransactionContext gets transaction context of a task.
 func (ti *TaskInfo) GetTransactionContext() TransactionContext {
 	return ti.TransactionContext
 }
@@ -326,7 +329,7 @@ func (ti *TaskInfo) GetTaskSpecKey() TaskID {
 	return getTaskID(ti.Pod)
 }
 
-// String returns the taskInfo details in a string
+// String returns the taskInfo details in a string.
 func (ti TaskInfo) String() string {
 	if ti.NumaInfo == nil {
 		return fmt.Sprintf("Task (%v:%v/%v): job %v, status %v, pri %v"+

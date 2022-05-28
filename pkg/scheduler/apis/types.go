@@ -16,9 +16,13 @@ limitations under the License.
 
 package apis
 
+// fully checked and understood
+
 import (
 	k8sframework "k8s.io/kubernetes/pkg/scheduler/framework"
 )
+
+/* The file defines the filters and scorers of nodes and some utilities for scheduling. */
 
 // LessFn is the func declaration used by sort or priority queue.
 type LessFn func(interface{}, interface{}) bool
@@ -72,17 +76,17 @@ type NodeOrderMapFn func(*TaskInfo, *NodeInfo) (map[string]float64, float64, err
 // NodeOrderReduceFn is the func declaration used to reduce priority score of all nodes for a plugin for a particular task.
 type NodeOrderReduceFn func(*TaskInfo, map[string]k8sframework.NodeScoreList) (map[string]float64, error)
 
-// TargetJobFn is the func declaration used to select the target job satisfies some conditions
+// TargetJobFn is the func declaration used to select the target job from the job list that satisfies some conditions.
 type TargetJobFn func([]*JobInfo) *JobInfo
 
-// ReservedNodesFn is the func declaration used to select the reserved nodes
+// ReservedNodesFn is the func declaration used to select the reserved nodes.
 type ReservedNodesFn func()
 
-// VictimTasksFn is the func declaration used to select victim tasks
+// VictimTasksFn is the func declaration used to select victim tasks for the input task.
 type VictimTasksFn func([]*TaskInfo) []*TaskInfo
 
 // UnderUsedResourceFn is the func declaration used to get under used resource list for queue
 // type UnderUsedResourceFn func(*QueueInfo) ResourceNameList
 
-// AllocatableFn is the func declaration used to check whether the task can be allocated
+// AllocatableFn is the func declaration used to check whether the task can be allocated.
 type AllocatableFn func(*QueueInfo, *TaskInfo) bool

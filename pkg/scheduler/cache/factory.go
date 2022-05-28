@@ -16,7 +16,7 @@ limitations under the License.
 
 package cache
 
-// TODO: why only Binder needs the factory method?
+// fully checked and understood
 
 var bindMethodMap Binder
 

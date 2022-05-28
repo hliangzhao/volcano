@@ -27,7 +27,7 @@ import (
 
 // Cache collects pods/nodes/queues information and provides their snapshots.
 type Cache interface {
-	// Run start informer
+	// Run start the cache
 	Run(stopCh <-chan struct{})
 
 	// Snapshot deepcopy overall cache information into snapshot

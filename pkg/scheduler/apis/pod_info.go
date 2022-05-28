@@ -16,6 +16,8 @@ limitations under the License.
 
 package apis
 
+// fully checked and understood
+
 import (
 	"fmt"
 	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
@@ -170,10 +172,17 @@ func GetGPUIndex(pod *corev1.Pod) int {
 
 func escapeJSONPointer(p string) string {
 	// Escaping reference name using https://tools.ietf.org/html/rfc6901
+	// Because the characters '~' (%x7E) and '/' (%x2F) have special
+	// meanings in JSON Pointer, '~' needs to be encoded as '~0' and '/'
+	// needs to be encoded as '~1' when these characters appear in a
+	// reference token.
 	p = strings.Replace(p, "~", "~0", -1)
 	p = strings.Replace(p, "/", "~1", -1)
 	return p
 }
+
+/* The following two functions return json string of adding and removing GPUs to a pod.
+The generated json could be used by `kubectl patch` to update the annotations of the pod. */
 
 // AddGPUIndexPatch returns the patch adding GPU index.
 func AddGPUIndexPatch(id int) string {

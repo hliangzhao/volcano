@@ -16,6 +16,8 @@ limitations under the License.
 
 package apis
 
+// fully checked and understood
+
 import (
 	"errors"
 	"fmt"
@@ -86,7 +88,7 @@ type JobInfo struct {
 	// RevocableZone support set volcano.sh/revocable-zone annotation or label for pod/podgroup.
 	// We only support empty value or * value for this version, and we will support specify revocable zone name for future release.
 	// Empty value means workload can not use revocable node;
-	// "*" value means workload can use all the revocable node for during node active revocable time.
+	// "*" value means workload can use all the revocable nodes during node active revocable time.
 	RevocableZone string
 }
 
@@ -288,6 +290,8 @@ func (ji *JobInfo) GetMinResources() *Resource {
 	return NewResource(*ji.PodGroup.Spec.MinResources)
 }
 
+// GetElasticResources returns the Resource quantity that could be revoked by other workloads.
+// Allocated - MinRequired = Elastic
 func (ji *JobInfo) GetElasticResources() *Resource {
 	if ji.Allocated.LessEqualPartly(ji.GetMinResources(), Zero) {
 		return EmptyResource()
@@ -362,7 +366,7 @@ func (ji *JobInfo) UpdateTaskStatus(task *TaskInfo, status TaskStatus) error {
 	return nil
 }
 
-// IsPending returns whether job is pending.
+// IsPending returns whether the job is pending.
 func (ji *JobInfo) IsPending() bool {
 	if ji.PodGroup == nil ||
 		ji.PodGroup.Status.Phase == scheduling.PodGroupPending ||

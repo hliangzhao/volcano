@@ -16,6 +16,8 @@ limitations under the License.
 
 package apis
 
+// fully checked and understood
+
 const (
 	GroupName = "volcano.sh"
 

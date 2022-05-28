@@ -16,67 +16,41 @@ limitations under the License.
 
 package helpers
 
+// fully checked and understood
+
 import (
+	`fmt`
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
-	corev1 "k8s.io/api/core/v1"
-	"math"
 )
 
-// Min returns a new Resource instance where each resource quantity is the min one of l and r.
-func Min(l, r *apis.Resource) *apis.Resource {
-	res := &apis.Resource{}
-	res.MilliCPU = math.Min(l.MilliCPU, r.MilliCPU)
-	res.Memory = math.Min(l.Memory, r.Memory)
+// MergeErrors is used to merge multiple errors into a single error.
+func MergeErrors(errs ...error) error {
+	msg := "errors: "
 
-	if l.ScalarResources == nil || r.ScalarResources == nil {
-		return res
+	notFirst := false
+	i := 1
+
+	for _, e := range errs {
+		if e != nil {
+			if notFirst {
+				msg = fmt.Sprintf("%s, %d: ", msg, i)
+			} else {
+				msg = fmt.Sprintf("%s %d: ", msg, i)
+			}
+			msg = fmt.Sprintf("%s%v", msg, e)
+			notFirst = true
+			i++
+		}
 	}
 
-	res.ScalarResources = map[corev1.ResourceName]float64{}
-	for lName, lQuantity := range l.ScalarResources {
-		res.ScalarResources[lName] = math.Min(lQuantity, r.ScalarResources[lName])
+	// the returned string is "errors: 1: xxx, 2: xxx, 3: xxx"
+	if notFirst {
+		return fmt.Errorf("%s", msg)
 	}
-	return res
+	return nil
 }
 
-// Max returns a new Resource instance where each resource quantity is the max one of l and r.
-func Max(l, r *apis.Resource) *apis.Resource {
-	res := &apis.Resource{}
-	res.MilliCPU = math.Max(l.MilliCPU, r.MilliCPU)
-	res.Memory = math.Max(l.Memory, r.Memory)
-
-	if l.ScalarResources == nil && r.ScalarResources == nil {
-		return res
-	}
-
-	res.ScalarResources = map[corev1.ResourceName]float64{}
-	if l.ScalarResources != nil {
-		for lName, lQuantity := range l.ScalarResources {
-			if lQuantity > 0 {
-				res.ScalarResources[lName] = math.Max(lQuantity, r.ScalarResources[lName])
-			}
-		}
-	}
-	if r.ScalarResources != nil {
-		for rName, rQuantity := range r.ScalarResources {
-			if rQuantity > 0 {
-				res.ScalarResources[rName] = math.Max(rQuantity, res.ScalarResources[rName])
-			}
-		}
-	}
-	return res
-}
-
-func Share(l, r float64) float64 {
-	var share float64
-	if r == 0 {
-		if l == 0 {
-			share = 0
-		} else {
-			share = 1
-		}
-	} else {
-		share = l / r
-	}
-	return share
+// JobTerminated checks whether job is terminated.
+func JobTerminated(job *apis.JobInfo) bool {
+	return job.PodGroup == nil && len(job.Tasks) == 0
 }

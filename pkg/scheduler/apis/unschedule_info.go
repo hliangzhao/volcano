@@ -16,6 +16,8 @@ limitations under the License.
 
 package apis
 
+// fully checked and understood
+
 import (
 	"fmt"
 	"sort"
@@ -48,7 +50,7 @@ const (
 	PodReasonUndetermined = "Undetermined"
 )
 
-// FitError describes the reason why task could not fit that node
+// FitError describes the reason why task could not fit that node.
 type FitError struct {
 	taskNamespace string
 	taskName      string

@@ -16,6 +16,8 @@ limitations under the License.
 
 package filewatcher
 
+// fully checked and understood
+
 import "github.com/fsnotify/fsnotify"
 
 /* This module wraps fsnotify/fileWatcher. */
@@ -31,6 +33,7 @@ type fileWatcher struct {
 }
 
 // NewFileWatcher creates a file watcher for the given path.
+// FileWatcher is used to watch the change of config files to update the config instantly.
 func NewFileWatcher(path string) (FileWatcher, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {

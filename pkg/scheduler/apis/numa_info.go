@@ -16,6 +16,8 @@ limitations under the License.
 
 package apis
 
+// fully checked and understood
+
 import (
 	nodeinfov1alpha1 "github.com/hliangzhao/volcano/pkg/apis/nodeinfo/v1alpha1"
 	"gopkg.in/square/go-jose.v2/json"
@@ -128,8 +130,8 @@ func (info *NumaTopoInfo) DeepCopy() *NumaTopoInfo {
 	return ret
 }
 
-// Compare is the function to show the change of the resource on kubelet
-// return val:
+// Compare is the function to show the change of the resource on kubelet.
+// Return val:
 // true: at least one resource on kubelet is getting more or no change;
 // false: otherwise.
 func (info *NumaTopoInfo) Compare(newInfo *NumaTopoInfo) bool {
@@ -146,21 +148,21 @@ func (info *NumaTopoInfo) Compare(newInfo *NumaTopoInfo) bool {
 // ResNumaSets key is the resource name
 type ResNumaSets map[string]cpuset.CPUSet
 
-// Allocate is the function to remove the allocated resource.
+// Allocate is the function to remove the allocated resource from info.
 func (info *NumaTopoInfo) Allocate(resSets ResNumaSets) {
 	for resName := range resSets {
 		info.NumaResMap[resName].Allocatable = info.NumaResMap[resName].Allocatable.Difference(resSets[resName])
 	}
 }
 
-// Release is the function to release the allocated resource.
+// Release is the function to release the allocated resource to info.
 func (info *NumaTopoInfo) Release(resSets ResNumaSets) {
 	for resName := range resSets {
 		info.NumaResMap[resName].Allocatable = info.NumaResMap[resName].Allocatable.Union(resSets[resName])
 	}
 }
 
-// GetPodResourceNumaInfo returns numa resources from the annotation of the given task.
+// GetPodResourceNumaInfo returns numa resources from (or the annotation of) the given task.
 func GetPodResourceNumaInfo(ti *TaskInfo) map[int]corev1.ResourceList {
 	// has already been filled into ti, return directly
 	if ti.NumaInfo != nil && len(ti.NumaInfo.ResMap) > 0 {
@@ -236,7 +238,7 @@ func GenerateNumaNodes(nodes map[string]*NodeInfo) map[string][]int {
 	return nodeNumaMap
 }
 
-// Allocate is to remove the allocated resource which is assigned to task.
+// Allocate is to remove the allocated resource which is assigned to task from resSets.
 func (resSets ResNumaSets) Allocate(taskSets ResNumaSets) {
 	for resName := range taskSets {
 		if _, ok := resSets[resName]; !ok {
@@ -246,7 +248,7 @@ func (resSets ResNumaSets) Allocate(taskSets ResNumaSets) {
 	}
 }
 
-// Release is to reclaim the allocated resource which is assigned to task.
+// Release is to reclaim the allocated resource which is assigned to task to resSets.
 func (resSets ResNumaSets) Release(taskSets ResNumaSets) {
 	for resName := range taskSets {
 		if _, ok := resSets[resName]; !ok {

@@ -19,7 +19,6 @@ package proportion
 import (
 	"github.com/hliangzhao/volcano/pkg/apis/scheduling"
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
-	"github.com/hliangzhao/volcano/pkg/scheduler/apis/helpers"
 	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
 	"github.com/hliangzhao/volcano/pkg/scheduler/metrics"
 	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/utils"
@@ -124,7 +123,7 @@ func (pp *proportionPlugin) OnSessionOpen(sess *framework.Session) {
 			if attr.capability == nil {
 				attr.realCapability = realCapacity
 			} else {
-				attr.realCapability = helpers.Min(realCapacity, attr.capability)
+				attr.realCapability = apis.Min(realCapacity, attr.capability)
 			}
 
 			pp.queueOpts[job.Queue] = attr
@@ -222,7 +221,7 @@ func (pp *proportionPlugin) OnSessionOpen(sess *framework.Session) {
 				meet[attr.queueID] = struct{}{}
 				klog.V(4).Infof("queue <%s> is meet cause of the capability", attr.name)
 			}
-			attr.deserved = helpers.Max(attr.deserved, attr.guarantee)
+			attr.deserved = apis.Max(attr.deserved, attr.guarantee)
 			pp.updateShare(attr)
 			klog.V(4).Infof("The attributes of queue <%s> in proportion: deserved <%v>, realCapability <%v>, allocate <%v>, request <%v>, share <%0.2f>",
 				attr.name, attr.deserved, attr.realCapability, attr.allocated, attr.request, attr.share)
@@ -407,7 +406,7 @@ func (pp *proportionPlugin) updateShare(attr *queueAttr) {
 
 	// TODO: how to handle fragment issues?
 	for _, resName := range attr.deserved.ResourceNames() {
-		share := helpers.Share(attr.allocated.Get(resName), attr.deserved.Get(resName))
+		share := apis.Share(attr.allocated.Get(resName), attr.deserved.Get(resName))
 		if share > res {
 			res = share
 		}

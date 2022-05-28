@@ -81,8 +81,8 @@ func NewServerOption() *ServerOption {
 
 // AddFlags adds flags for a specific CMServer to the specified FlagSet.
 func (s *ServerOption) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&s.KubeClientOptions.Master, "master", s.KubeClientOptions.Master, "The address of the Kubernetes API server (overrides any value in kubeconfig)")
-	fs.StringVar(&s.KubeClientOptions.KubeConfig, "kubeconfig", s.KubeClientOptions.KubeConfig, "Path to kubeconfig file with authorization and master location information")
+	fs.StringVar(&s.KubeClientOptions.MasterUrl, "master", s.KubeClientOptions.MasterUrl, "The address of the Kubernetes API server (overrides any value in kubeconfig)")
+	fs.StringVar(&s.KubeClientOptions.KubeConfigPath, "kubeconfig", s.KubeClientOptions.KubeConfigPath, "Path to kubeconfig file with authorization and master location information")
 	// volcano scheduler will ignore pods with scheduler names other than specified with the option
 	fs.StringVar(&s.SchedulerName, "scheduler-name", defaultSchedulerName, "vc-scheduler will handle pods whose .spec.SchedulerName is same as scheduler-name")
 	fs.StringVar(&s.SchedulerConf, "scheduler-conf", "", "The absolute path of scheduler configuration file")

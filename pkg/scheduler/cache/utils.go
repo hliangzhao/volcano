@@ -16,6 +16,8 @@ limitations under the License.
 
 package cache
 
+// fully checked and understood
+
 import (
 	"fmt"
 	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"

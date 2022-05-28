@@ -35,6 +35,7 @@ func TestNodeInfo_AddPod(t *testing.T) {
 	case01Node := buildNode("n1", buildResourceList("8000m", "10G"))
 	case01Pod1 := buildPod("c1", "p1", "n1", corev1.PodRunning, buildResourceList("1000m", "1G"), []metav1.OwnerReference{}, make(map[string]string))
 	case01Pod2 := buildPod("c1", "p2", "n1", corev1.PodRunning, buildResourceList("2000m", "2G"), []metav1.OwnerReference{}, make(map[string]string))
+
 	// case2
 	case02Node := buildNode("n2", buildResourceList("2000m", "1G"))
 	case02Pod1 := buildPod("c2", "p1", "n2", corev1.PodUnknown, buildResourceList("1000m", "2G"), []metav1.OwnerReference{}, make(map[string]string))

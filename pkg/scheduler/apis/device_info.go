@@ -16,6 +16,8 @@ limitations under the License.
 
 package apis
 
+// fully checked and understood
+
 import corev1 "k8s.io/api/core/v1"
 
 // GPUDevice include gpu id, memory and the pods who are sharing it.
@@ -36,22 +38,22 @@ func NewGPUDevice(id int, mem uint) *GPUDevice {
 	}
 }
 
-// getGPUResourceOfContainer returns the GPU resource (GPU mem) required by the given container c.
+// getGPUResourceOfContainer returns the GPU resource (GPU mem) size required by the given container c.
 func getGPUResourceOfContainer(c *corev1.Container) uint {
-	var mem uint
+	var gpuMem uint
 	if val, ok := c.Resources.Limits[VolcanoGPUResource]; ok {
-		mem = uint(val.Value())
+		gpuMem = uint(val.Value())
 	}
-	return mem
+	return gpuMem
 }
 
-// GetGPUResourceOfPod returns the GPU resource required by the input pod.
+// GetGPUResourceOfPod returns the GPU resource size required by the input pod.
 func GetGPUResourceOfPod(pod *corev1.Pod) uint {
-	var mem uint
+	var gpuMem uint
 	for _, c := range pod.Spec.Containers {
-		mem += getGPUResourceOfContainer(&c)
+		gpuMem += getGPUResourceOfContainer(&c)
 	}
-	return mem
+	return gpuMem
 }
 
 // getUsedGPUMemory calculates the used memory of the device.

@@ -16,9 +16,9 @@ limitations under the License.
 
 package apis
 
-import "github.com/hliangzhao/volcano/pkg/apis/scheduling"
+// fully checked and understood
 
-// No more wrapper is required for podgroup.
+import "github.com/hliangzhao/volcano/pkg/apis/scheduling"
 
 // PodGroupPhase is the phase of a podgroup at current time.
 type PodGroupPhase string
@@ -29,6 +29,7 @@ const (
 	PodGroupVersionV1Alpha1 string = "v1alpha1"
 )
 
+// PodGroup does not need to be wrapped.
 type PodGroup struct {
 	scheduling.PodGroup
 	Version string

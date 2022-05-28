@@ -16,6 +16,8 @@ limitations under the License.
 
 package kube
 
+// fully checked and understood
+
 import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -24,15 +26,15 @@ import (
 /* This module defines volcano config. */
 
 type ClientOptions struct {
-	Master     string
-	KubeConfig string
-	QPS        float32
-	Burst      int
+	MasterUrl      string
+	KubeConfigPath string
+	QPS            float32
+	Burst          int
 }
 
 // BuildConfig builds a config from ClientOptions.
 func BuildConfig(opt ClientOptions) (*rest.Config, error) {
-	cfg, err := clientcmd.BuildConfigFromFlags(opt.Master, opt.KubeConfig)
+	cfg, err := clientcmd.BuildConfigFromFlags(opt.MasterUrl, opt.KubeConfigPath)
 	if err != nil {
 		return nil, err
 	}

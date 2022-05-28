@@ -85,7 +85,6 @@ func TestGetPodResourceRequest(t *testing.T) {
 			expectedResource: NewResource(buildResourceList("3000m", "5G")),
 		},
 	}
-
 	for i, test := range tests {
 		req := GetPodResourceRequest(test.pod)
 		if !reflect.DeepEqual(req, test.expectedResource) {
@@ -178,7 +177,6 @@ func TestGetPodResourceWithoutInitContainers(t *testing.T) {
 			expectedResource: NewResource(buildResourceList("3500m", "3G")),
 		},
 	}
-
 	for i, test := range tests {
 		req := GetPodResourceWithoutInitContainers(test.pod)
 		if !reflect.DeepEqual(req, test.expectedResource) {

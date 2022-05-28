@@ -16,6 +16,8 @@ limitations under the License.
 
 package apis
 
+// fully checked and understood
+
 import (
 	"github.com/hliangzhao/volcano/pkg/apis/scheduling"
 	"k8s.io/apimachinery/pkg/types"
@@ -23,7 +25,7 @@ import (
 
 type ClusterID types.UID
 
-// TODO: where to use SiloClusterInfo?
+// TODO: SiloClusterInfo currently is not used
 
 // SiloClusterInfo will have all details about queue.
 type SiloClusterInfo struct {

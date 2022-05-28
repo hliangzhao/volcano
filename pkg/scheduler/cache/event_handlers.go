@@ -25,6 +25,7 @@ import (
 	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
 	"github.com/hliangzhao/volcano/pkg/apis/utils"
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
+	`github.com/hliangzhao/volcano/pkg/scheduler/apis/helpers`
 	corev1 "k8s.io/api/core/v1"
 	schedulingv1 "k8s.io/api/scheduling/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -205,7 +206,7 @@ func (sc *SchedulerCache) deletePod(pod *corev1.Pod) error {
 	}
 
 	// Further, if job was terminated, delete it.
-	if job, found := sc.Jobs[ti.Job]; found && apis.JobTerminated(job) {
+	if job, found := sc.Jobs[ti.Job]; found && helpers.JobTerminated(job) {
 		sc.deleteJob(job)
 	}
 
@@ -267,7 +268,7 @@ func (sc *SchedulerCache) deleteTask(task *apis.TaskInfo) error {
 	// TODO: numaErr not set
 
 	if jobErr != nil || nodeErr != nil {
-		return apis.MergeErrors(jobErr, nodeErr, numaErr)
+		return helpers.MergeErrors(jobErr, nodeErr, numaErr)
 	}
 
 	return nil
