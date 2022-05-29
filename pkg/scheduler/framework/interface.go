@@ -16,12 +16,14 @@ limitations under the License.
 
 package framework
 
+// fully checked and understood
+
 // Action is the action interface. Typical actions including enqueue, allocate, backfill, etc.
 type Action interface {
 	Name() string
-	Initialize() // install plugins
-	Execute(sess *Session)
-	UnInitialize() // uninstall plugins
+	Initialize()           // install plugins
+	Execute(sess *Session) // execution of the action in the input session
+	UnInitialize()         // uninstall plugins
 }
 
 // Plugin is the plugin interface. Custom scheduling algorithms are implemented as plugins.

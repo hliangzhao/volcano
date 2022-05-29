@@ -37,7 +37,8 @@ type pgBinder struct {
 	vcClient   *volcanoclient.Clientset
 }
 
-// Bind binds job to podgroup. Specifically, it adds silo cluster annotation on pod and podgroup.
+// Bind binds job to podgroup and update the info in the cluster.
+// Specifically, it adds silo cluster annotation on pod and podgroup.
 func (pgb *pgBinder) Bind(job *apis.JobInfo, cluster string) (*apis.JobInfo, error) {
 	if len(job.Tasks) == 0 {
 		klog.V(4).Infof("Job pods have not been created yet")
@@ -50,8 +51,7 @@ func (pgb *pgBinder) Bind(job *apis.JobInfo, cluster string) (*apis.JobInfo, err
 		pod.Annotations[batchv1alpha1.ForwardClusterKey] = cluster
 		pod.ResourceVersion = ""
 
-		_, err := pgb.kubeClient.CoreV1().Pods(pod.Namespace).UpdateStatus(context.TODO(), pod, metav1.UpdateOptions{})
-		if err != nil {
+		if _, err := pgb.kubeClient.CoreV1().Pods(pod.Namespace).UpdateStatus(context.TODO(), pod, metav1.UpdateOptions{}); err != nil {
 			klog.Errorf("Error while update pod annotation with error: %v", err)
 			return nil, err
 		}

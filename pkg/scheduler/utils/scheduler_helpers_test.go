@@ -16,6 +16,9 @@ limitations under the License.
 
 package utils
 
+// TODO: just copied.
+//  Passed.
+
 import (
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
 	"reflect"

@@ -16,12 +16,16 @@ limitations under the License.
 
 package framework
 
+// fully checked
+
 import (
 	"github.com/hliangzhao/volcano/pkg/apis/scheduling"
 	"github.com/hliangzhao/volcano/pkg/controllers/job/helpers"
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
 	k8sframework "k8s.io/kubernetes/pkg/scheduler/framework"
 )
+
+// TODO: Why implement plugins in different Tiers? What the tiers used here?
 
 func isEnabled(enabled *bool) bool {
 	return enabled != nil && *enabled
@@ -539,7 +543,7 @@ func (sess *Session) VictimTasks(tasks []*apis.TaskInfo) map[*apis.TaskInfo]bool
 	return victimSet
 }
 
-// ReservedNodes invokes ReservedNodes function of the plugins.
+// ReservedNodes invokes reserve node function of the plugins.
 func (sess *Session) ReservedNodes() {
 	for _, tier := range sess.Tiers {
 		for _, plugin := range tier.Plugins {
@@ -572,7 +576,7 @@ func (sess *Session) JobOrderFn(l, r interface{}) bool {
 		}
 	}
 
-	// If no job order funcs, order job by CreationTimestamp first, then by UID.
+	// If no job order functions, ordering job by CreationTimestamp first, then by UID.
 	lv := l.(*apis.JobInfo)
 	rv := r.(*apis.JobInfo)
 	if lv.CreationTimestamp.Equal(&rv.CreationTimestamp) {
@@ -623,7 +627,7 @@ func (sess *Session) ClusterOrderFn(l, r interface{}) bool {
 		}
 	}
 
-	// If no cluster order funcs, order cluster by ClusterID
+	// If no cluster order functions, order cluster by ClusterID
 	lv := l.(*scheduling.Cluster)
 	rv := r.(*scheduling.Cluster)
 	return lv.Name < rv.Name
@@ -646,7 +650,7 @@ func (sess *Session) QueueOrderFn(l, r interface{}) bool {
 		}
 	}
 
-	// If no queue order funcs, order queue by CreationTimestamp first, then by UID.
+	// If no queue order functions, order queue by CreationTimestamp first, then by UID.
 	lv := l.(*apis.QueueInfo)
 	rv := r.(*apis.QueueInfo)
 	if lv.Queue.CreationTimestamp.Equal(&rv.Queue.CreationTimestamp) {

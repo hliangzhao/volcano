@@ -16,6 +16,8 @@ limitations under the License.
 
 package cache
 
+// fully checked and understood
+
 import (
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
 	corev1 "k8s.io/api/core/v1"
@@ -25,7 +27,8 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/volumebinding"
 )
 
-// Cache collects pods/nodes/queues information and provides their snapshots.
+// Cache collects pods/nodes/queues information and make the scheduling decisions periodically.
+// TODO: it looks like Cache plays the role of scheduler, its implementation is similar to *_controllers.
 type Cache interface {
 	// Run start the cache
 	Run(stopCh <-chan struct{})
@@ -65,7 +68,7 @@ type Cache interface {
 	// BindVolumes binds volumes to the task
 	BindVolumes(task *apis.TaskInfo, volumes *volumebinding.PodVolumes) error
 
-	// Client returns the kubernetes clientSet, which can be used by plugins
+	// Client returns the kubernetes clientset, which can be used by plugins
 	Client() kubernetes.Interface
 
 	// UpdateSchedulerNumaInfo updates numa info
@@ -91,13 +94,13 @@ type Evictor interface {
 	Evict(pod *corev1.Pod, reason string) error
 }
 
-// StatusUpdater updates pod with given PodCondition
+// StatusUpdater updates pod status with given PodCondition
 type StatusUpdater interface {
 	UpdatePodCondition(pod *corev1.Pod, podCondition *corev1.PodCondition) (*corev1.Pod, error)
 	UpdatePodGroup(pg *apis.PodGroup) (*apis.PodGroup, error)
 }
 
-// VolumeBinder allocates and binds volumes
+// VolumeBinder allocates and binds volumes to task pod
 type VolumeBinder interface {
 	GetPodVolumes(task *apis.TaskInfo, node *corev1.Node) (*volumebinding.PodVolumes, error)
 	AllocateVolumes(task *apis.TaskInfo, hostname string, podVolumes *volumebinding.PodVolumes) error
@@ -105,7 +108,7 @@ type VolumeBinder interface {
 	RevertVolumes(task *apis.TaskInfo, podVolumes *volumebinding.PodVolumes)
 }
 
-// BatchBinder updates job information
+// BatchBinder binds job to podgroup
 type BatchBinder interface {
 	Bind(job *apis.JobInfo, cluster string) (*apis.JobInfo, error)
 }

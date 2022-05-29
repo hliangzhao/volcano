@@ -16,6 +16,8 @@ limitations under the License.
 
 package cache
 
+// fully checked and understood
+
 import (
 	"context"
 	"fmt"
@@ -31,7 +33,7 @@ import (
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
 	`github.com/hliangzhao/volcano/pkg/scheduler/apis/helpers`
 	"github.com/hliangzhao/volcano/pkg/scheduler/metrics"
-	"github.com/prometheus/client_golang/api"
+	prometheusclientapi "github.com/prometheus/client_golang/api"
 	prometheusv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	corev1 "k8s.io/api/core/v1"
 	schedulingv1 "k8s.io/api/scheduling/v1"
@@ -104,7 +106,7 @@ type SchedulerCache struct {
 	csiSCInformer     storagev1beta1.CSIStorageCapacityInformer
 	cpuInformer       nodeinfoinformersv1alpha1.NumatopologyInformer
 
-	// cache interfaces
+	// various executors that will be used in scheduling
 	Binder         Binder
 	Evictor        Evictor
 	StatusUpdater  StatusUpdater
@@ -162,7 +164,7 @@ func newSchedulerCache(config *rest.Config, schedulerName string, defaultQueue s
 		panic(fmt.Sprintf("failed init eventClient, with err: %v", err))
 	}
 
-	// create default queue instance, and create it in cluster if not exist
+	// create default queue instance, and create the resource in cluster if not exist
 	reclaimable := true
 	q := schedulingv1alpha1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
@@ -223,8 +225,11 @@ func newSchedulerCache(config *rest.Config, schedulerName string, defaultQueue s
 	broadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: eventClient.CoreV1().Events("")})
 	sc.Recorder = broadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: schedulerName})
 
-	// TODO: what BindFlowChannel does?
+	// BindFlowChannel is a channel that accepts tasks.
+	// Tasks in the channel will be fetched out one by one for binding.
 	sc.BindFlowChannel = make(chan *apis.TaskInfo, 5000)
+
+	// init binder
 	sc.Binder = GetBindMethod()
 
 	// get batch bind num from os ENV
@@ -236,6 +241,7 @@ func newSchedulerCache(config *rest.Config, schedulerName string, defaultQueue s
 		sc.batchNum = 1
 	}
 
+	// init the evictor, status updater, and podgroup (batch) binder
 	sc.Evictor = &defaultEvictor{
 		kubeClient: sc.kubeClient,
 		recorder:   sc.Recorder,
@@ -290,14 +296,6 @@ func newSchedulerCache(config *rest.Config, schedulerName string, defaultQueue s
 		0,
 	)
 
-	sc.podInformer = informerFactory.Core().V1().Pods()
-	sc.pvcInformer = informerFactory.Core().V1().PersistentVolumeClaims()
-	sc.pvInformer = informerFactory.Core().V1().PersistentVolumes()
-	sc.scInformer = informerFactory.Storage().V1().StorageClasses()
-	sc.csiNodeInformer = informerFactory.Storage().V1().CSINodes()
-	sc.csiDriverInformer = informerFactory.Storage().V1().CSIDrivers()
-	sc.csiSCInformer = informerFactory.Storage().V1beta1().CSIStorageCapacities()
-
 	var capacityCheck *volumebinding.CapacityCheck
 	if options.ServerOpts.EnableCSIStorage {
 		capacityCheck = &volumebinding.CapacityCheck{
@@ -308,6 +306,7 @@ func newSchedulerCache(config *rest.Config, schedulerName string, defaultQueue s
 		capacityCheck = nil
 	}
 
+	// init the volume binder
 	sc.VolumeBinder = &defaultVolumeBinder{
 		volumeBinder: volumebinding.NewVolumeBinder(
 			sc.kubeClient,
@@ -321,6 +320,15 @@ func newSchedulerCache(config *rest.Config, schedulerName string, defaultQueue s
 			30*time.Second,
 		),
 	}
+
+	// set other informers
+	sc.podInformer = informerFactory.Core().V1().Pods()
+	sc.pvcInformer = informerFactory.Core().V1().PersistentVolumeClaims()
+	sc.pvInformer = informerFactory.Core().V1().PersistentVolumes()
+	sc.scInformer = informerFactory.Storage().V1().StorageClasses()
+	sc.csiNodeInformer = informerFactory.Storage().V1().CSINodes()
+	sc.csiDriverInformer = informerFactory.Storage().V1().CSIDrivers()
+	sc.csiSCInformer = informerFactory.Storage().V1beta1().CSIStorageCapacities()
 
 	// create informer for pod information
 	sc.podInformer.Informer().AddEventHandler(
@@ -546,7 +554,7 @@ func (sc *SchedulerCache) String() string {
 	return str
 }
 
-// WaitForCacheSync syncs the cache with the api server.
+// WaitForCacheSync syncs the cache with the apiserver.
 func (sc *SchedulerCache) WaitForCacheSync(stopCh <-chan struct{}) {
 	sc.kubeInformerFactory.WaitForCacheSync(stopCh)
 	sc.vcInformerFactory.WaitForCacheSync(stopCh)
@@ -641,7 +649,7 @@ func (sc *SchedulerCache) BindTask() {
 	return
 }
 
-// processBindTask retrieves tasks from sc.BindFlowChannel and calls the bind method for them.
+// processBindTask retrieves tasks from the channel sc.BindFlowChannel and calls the bind method for them.
 func (sc *SchedulerCache) processBindTask() {
 	for {
 		select {
@@ -668,21 +676,22 @@ func (sc *SchedulerCache) processBindTask() {
 	sc.BindTask()
 }
 
-// Run starts the informer, re-sync operations, binding operations in loop, etc.
+// Run starts the informer factories, re-sync operations, binding operations in loop, etc.
 func (sc *SchedulerCache) Run(stopCh <-chan struct{}) {
 	sc.kubeInformerFactory.Start(stopCh)
 	sc.vcInformerFactory.Start(stopCh)
 
-	// Re-sync error tasks.
+	// start the worker of re-sync tasks until a stop signal received
 	go wait.Until(sc.processReSyncTask, 0, stopCh)
 
-	// Cleanup jobs.
+	// start the worker of garbage collector until a stop signal received
 	go wait.Until(sc.processCleanupJob, 0, stopCh)
 
-	// Bind volumes and hosts for tasks.
+	// start the worker of binding tasks
+	// The default scheduling period is set as 20ms.
 	go wait.Until(sc.processBindTask, time.Millisecond*20, stopCh)
 
-	// Get metrics data
+	// start the worker of collecting metrics data
 	interval, err := time.ParseDuration(sc.metricsConf["interval"])
 	if err != nil || interval <= 0 {
 		interval = time.Duration(defaultMetricsInternal)
@@ -690,7 +699,7 @@ func (sc *SchedulerCache) Run(stopCh <-chan struct{}) {
 	go wait.Until(sc.GetMetricsData, interval, stopCh)
 }
 
-// Evict will evict the pod. If error occurs both task and job are guaranteed to be in the original state.
+// Evict will evict the task pod. If error occurs both task and job are guaranteed to be in the original state.
 func (sc *SchedulerCache) Evict(taskInfo *apis.TaskInfo, reason string) error {
 	sc.Mutex.Lock()
 	defer sc.Mutex.Unlock()
@@ -707,11 +716,12 @@ func (sc *SchedulerCache) Evict(taskInfo *apis.TaskInfo, reason string) error {
 	}
 
 	originalStatus := task.Status
+	// to evict a task pod, firstly set its status to Releasing
 	if err = job.UpdateTaskStatus(task, apis.Releasing); err != nil {
 		return err
 	}
 
-	// Add new task to node.
+	// Update the node with the status-updated task
 	if err = node.UpdateTask(task); err != nil {
 		// After failing to update task to a node we need to revert task status from Releasing,
 		// otherwise task might be stuck in the Releasing state indefinitely.
@@ -724,8 +734,8 @@ func (sc *SchedulerCache) Evict(taskInfo *apis.TaskInfo, reason string) error {
 		return err
 	}
 
+	// evict the pod in a separate coroutine
 	p := task.Pod
-
 	go func() {
 		err := sc.Evictor.Evict(p, reason)
 		if err != nil {
@@ -750,6 +760,7 @@ func (sc *SchedulerCache) RecordJobStatusEvent(job *apis.JobInfo) {
 			job.PodGroup.Status.Phase == scheduling.PodGroupInqueue)
 
 	// If pending or unschedulable, record unschedulable event.
+	// Otherwise, record scheduled event.
 	if pgUnschedulable {
 		msg := fmt.Sprintf("%v/%v tasks in gang unschedulable: %v",
 			len(job.TaskStatusIndex[apis.Pending]),
@@ -798,10 +809,6 @@ func podConditionHaveUpdate(status *corev1.PodStatus, condition *corev1.PodCondi
 		lastTransitTime.Equal(&oldCondition.LastTransitionTime))
 }
 
-func (sc *SchedulerCache) EventRecorder() record.EventRecorder {
-	return sc.Recorder
-}
-
 // taskUnschedulable updates pod status of pending task
 func (sc *SchedulerCache) taskUnschedulable(task *apis.TaskInfo, reason, msg string) error {
 	pod := task.Pod
@@ -829,6 +836,11 @@ func (sc *SchedulerCache) taskUnschedulable(task *apis.TaskInfo, reason, msg str
 	return nil
 }
 
+// EventRecorder returns the event recorder of sc.
+func (sc *SchedulerCache) EventRecorder() record.EventRecorder {
+	return sc.Recorder
+}
+
 // Client returns sc.kubeClient.
 func (sc *SchedulerCache) Client() kubernetes.Interface {
 	return sc.kubeClient
@@ -840,6 +852,7 @@ func (sc *SchedulerCache) SharedInformerFactory() informers.SharedInformerFactor
 }
 
 // UpdateSchedulerNumaInfo removes the allocated resources denoted by AllocatedSets from each node.
+// (update allocatable numa resources)
 func (sc *SchedulerCache) UpdateSchedulerNumaInfo(AllocatedSets map[string]apis.ResNumaSets) error {
 	sc.Mutex.Lock()
 	defer sc.Mutex.Unlock()
@@ -859,7 +872,7 @@ func (sc *SchedulerCache) UpdateSchedulerNumaInfo(AllocatedSets map[string]apis.
 	return nil
 }
 
-// recordPodGroupEvent constructs and event for podgroup with (eventType, reason, msg).
+// recordPodGroupEvent constructs an event for podgroup with (eventType, reason, msg).
 func (sc *SchedulerCache) recordPodGroupEvent(podgroup *apis.PodGroup, eventType, reason, msg string) {
 	if podgroup == nil {
 		return
@@ -888,7 +901,7 @@ func (sc *SchedulerCache) UpdateJobStatus(job *apis.JobInfo, updatePg bool) (*ap
 	return job, nil
 }
 
-// Bind starts a coroutine to bind tasks through sc.Binder.
+// Bind starts a coroutine to bind each task through sc.Binder.
 func (sc *SchedulerCache) Bind(tasks []*apis.TaskInfo) error {
 	go func(taskArr []*apis.TaskInfo) {
 		tmp := time.Now()
@@ -911,7 +924,7 @@ func (sc *SchedulerCache) Bind(tasks []*apis.TaskInfo) error {
 	return nil
 }
 
-// BindPodGroup binds job to silo cluster.
+// BindPodGroup binds job to a podgroup in some cluster.
 func (sc *SchedulerCache) BindPodGroup(job *apis.JobInfo, cluster string) error {
 	if _, err := sc.PodGroupBinder.Bind(job, cluster); err != nil {
 		klog.Errorf("Bind job <%s> to cluster <%s> failed: %v", job.Name, cluster, err)
@@ -1011,14 +1024,14 @@ func (sc *SchedulerCache) GetMetricsData() {
 		return
 	}
 	klog.V(4).Infof("Get metrics from Prometheus: %s", address)
-	client, err := api.NewClient(api.Config{
+	client, err := prometheusclientapi.NewClient(prometheusclientapi.Config{
 		Address: address,
 	})
 	if err != nil {
 		klog.Errorf("Error creating client: %v\n", err)
 		return
 	}
-	v1api := prometheusv1.NewAPI(client)
+	prometheusAPI := prometheusv1.NewAPI(client)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 	nodeUsageMap := make(map[string]*apis.NodeUsage)
@@ -1038,7 +1051,7 @@ func (sc *SchedulerCache) GetMetricsData() {
 			for _, metric := range supportedMetrics {
 				queryStr := fmt.Sprintf("%s_%s{instance=\"%s\"}", metric, period, node)
 				klog.V(4).Infof("Query prometheus by %s", queryStr)
-				res, warnings, err := v1api.Query(ctx, queryStr, time.Now())
+				res, warnings, err := prometheusAPI.Query(ctx, queryStr, time.Now())
 				if err != nil {
 					klog.Errorf("Error querying Prometheus: %v", err)
 				}

@@ -16,6 +16,8 @@ limitations under the License.
 
 package conf
 
+// fully checked and understood
+
 // PluginOption defines the options of plugin.
 type PluginOption struct {
 	// The name of Plugin

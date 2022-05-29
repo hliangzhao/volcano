@@ -29,7 +29,7 @@ import (
 	podutil `k8s.io/kubernetes/pkg/api/v1/pod`
 )
 
-/* Evictor is used to evict pod. */
+/* Evictor is used to evict pod resources from the cluster. */
 
 type defaultEvictor struct {
 	kubeClient *kubernetes.Clientset

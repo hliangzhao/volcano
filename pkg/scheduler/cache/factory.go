@@ -18,6 +18,8 @@ package cache
 
 // fully checked and understood
 
+/* Binder is used to bind task pod to host (node) in the cluster. */
+
 var bindMethodMap Binder
 
 // RegisterBindMethod register Bind Method

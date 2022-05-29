@@ -16,6 +16,8 @@ limitations under the License.
 
 package utils
 
+// fully checked and understood
+
 import (
 	"container/heap"
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"

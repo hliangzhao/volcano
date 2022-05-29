@@ -16,9 +16,12 @@ limitations under the License.
 
 package utils
 
+// fully checked and understood
+
 import (
 	"context"
 	"fmt"
+	`github.com/hliangzhao/volcano/cmd/scheduler/app/options`
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
@@ -40,11 +43,27 @@ func init() {
 	Reservation = NewResourceReservation()
 }
 
-// CalculateNumOfFeasibleNodesToFind returns the number of feasible nodes that once found,
-// the scheduler stops its search for more feasible nodes.
+// CalculateNumOfFeasibleNodesToFind returns the number of feasible nodes to find based on server options.
+// Once found, the scheduler stops its search for more feasible nodes.
 func CalculateNumOfFeasibleNodesToFind(numAllNodes int32) (numNodes int32) {
-	// TODO: scheduler/app not implemented
-	return 0
+	opts := options.ServerOpts
+	if numAllNodes <= opts.MinNodesToFind || opts.PercentageOfNodesToFind >= 100 {
+		return numAllNodes
+	}
+
+	adaptivePercentage := opts.PercentageOfNodesToFind
+	if adaptivePercentage <= 0 {
+		adaptivePercentage = baselinePercentageOfNodesToFind - numAllNodes/125
+		if adaptivePercentage < opts.MinPercentageOfNodesToFind {
+			adaptivePercentage = opts.MinPercentageOfNodesToFind
+		}
+	}
+
+	numNodes = numAllNodes * adaptivePercentage / 100
+	if numNodes < opts.MinNodesToFind {
+		numNodes = opts.MinNodesToFind
+	}
+	return numNodes
 }
 
 // GetMinInt returns the minimal value from the input slice.

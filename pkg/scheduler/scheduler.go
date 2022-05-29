@@ -16,6 +16,8 @@ limitations under the License.
 
 package scheduler
 
+// fully checked and understood
+
 import (
 	"fmt"
 	"github.com/fsnotify/fsnotify"
@@ -52,7 +54,7 @@ tiers:
 `
 
 // Scheduler watches for new unscheduled pods for volcano. It attempts to find
-// nodes that they fit on and writes bindings back to the api server.
+// nodes that they fit on and writes bindings back to the apiserver.
 type Scheduler struct {
 	cache          cache.Cache
 	schedulerConf  string                  // the path of scheduler's config
@@ -91,7 +93,9 @@ func NewScheduler(config *rest.Config, schedulerName string, schedulerConf strin
 	return sched, nil
 }
 
+// Run starts the scheduler until a stop signal received.
 func (s *Scheduler) Run(stopCh <-chan struct{}) {
+	// load the config
 	s.loadSchedulerConf()
 	go s.watchSchedulerConf(stopCh)
 
@@ -104,6 +108,8 @@ func (s *Scheduler) Run(stopCh <-chan struct{}) {
 	go wait.Until(s.runOnce, s.schedulePeriod, stopCh)
 }
 
+// runOnce starts a scheduling session and executes the actions in this session.
+// This function is called in every scheduling period.
 func (s *Scheduler) runOnce() {
 	klog.V(4).Infof("Start volcano scheduling ...")
 	scheduleStartTime := time.Now()
@@ -119,23 +125,27 @@ func (s *Scheduler) runOnce() {
 	sess := framework.OpenSession(s.cache, plgs, configurations)
 	defer framework.CloseSession(sess)
 
+	// execute the actions in this session
 	for _, act := range actions {
 		actStartTime := time.Now()
 		act.Execute(sess)
+		// update the action time consumption for metrics analysis
 		metrics.UpdateActionDuration(act.Name(), metrics.Duration(actStartTime))
 	}
+	// update the session running time for metrics analysis
 	metrics.UpdateE2eDuration(metrics.Duration(scheduleStartTime))
 }
 
+// readSchedulerConf reads the config string from the given path.
 func readSchedulerConf(confPath string) (string, error) {
-	dat, err := ioutil.ReadFile(confPath)
+	configBytes, err := ioutil.ReadFile(confPath)
 	if err != nil {
 		return "", err
 	}
-	return string(dat), nil
+	return string(configBytes), nil
 }
 
-// unmarshalSchedulerConf unmarshal the vc scheduler config string to schedulerConf.
+// unmarshalSchedulerConf unmarshal the vc scheduler config string to the go struct SchedulerConfiguration.
 func unmarshalSchedulerConf(configStr string) ([]framework.Action, []conf.Tier, []conf.Configuration, map[string]string, error) {
 	var actions []framework.Action
 	schedulerConf := &conf.SchedulerConfiguration{}
@@ -177,6 +187,7 @@ func unmarshalSchedulerConf(configStr string) ([]framework.Action, []conf.Tier, 
 	return actions, schedulerConf.Tiers, schedulerConf.Configurations, schedulerConf.MetricsConfiguration, nil
 }
 
+// loadSchedulerConf loads scheduler config from the config file. If config file not provided, use default config.
 func (s *Scheduler) loadSchedulerConf() {
 	var err error
 
@@ -198,7 +209,6 @@ func (s *Scheduler) loadSchedulerConf() {
 			return
 		}
 	}
-
 	actions, plgs, configurations, metricsConf, err := unmarshalSchedulerConf(configStr)
 	if err != nil {
 		klog.Errorf("scheduler config %s is invalid: %v", configStr, err)
@@ -214,6 +224,8 @@ func (s *Scheduler) loadSchedulerConf() {
 	s.metricsConf = metricsConf
 }
 
+// watchSchedulerConf watches the change of scheduler config dir and update the scheduler's config
+// immediately. The watch stop until a stop signal received.
 func (s *Scheduler) watchSchedulerConf(stopCh <-chan struct{}) {
 	if s.fileWatcher == nil {
 		return

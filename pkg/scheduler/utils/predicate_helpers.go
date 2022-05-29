@@ -16,6 +16,8 @@ limitations under the License.
 
 package utils
 
+// fully checked and understood
+
 import (
 	"context"
 	"fmt"
@@ -35,10 +37,13 @@ type predicateHelper struct {
 }
 
 func NewPredicateHelper() PredicateHelper {
-	return &predicateHelper{taskPredicateErrorCache: map[string]map[string]error{}}
+	return &predicateHelper{
+		taskPredicateErrorCache: map[string]map[string]error{},
+	}
 }
 
 // PredicateNodes returns the nodes that fit a task after the predicates.
+// Specifically, it selects `numNodesToFind` nodes from the input node list for task.
 func (ph *predicateHelper) PredicateNodes(task *apis.TaskInfo, nodes []*apis.NodeInfo,
 	fn apis.PredicateFn) ([]*apis.NodeInfo, *apis.FitErrors) {
 
@@ -86,7 +91,7 @@ func (ph *predicateHelper) PredicateNodes(task *apis.TaskInfo, nodes []*apis.Nod
 			}
 		}
 
-		// TODO: Enable eCache for performance improvement.
+		// TODO: Enable errCache for performance improvement.
 		if err := fn(task, node); err != nil {
 			klog.V(3).Infof("Predicates failed for task <%s/%s> on node <%s>: %v",
 				task.Namespace, task.Name, node.Name, err)

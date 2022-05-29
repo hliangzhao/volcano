@@ -16,6 +16,8 @@ limitations under the License.
 
 package framework
 
+// fully checked and understood
+
 import (
 	"github.com/hliangzhao/volcano/pkg/scheduler/cache"
 	"github.com/hliangzhao/volcano/pkg/scheduler/conf"
@@ -24,7 +26,7 @@ import (
 	"time"
 )
 
-// OpenSession opens a scheduling session and register plugins and actions according to the input configs.
+// OpenSession opens a scheduling session and registers plugins and actions according to the input configs.
 func OpenSession(cache cache.Cache, tiers []conf.Tier, configs []conf.Configuration) *Session {
 	sess := openSession(cache)
 	sess.Tiers = tiers

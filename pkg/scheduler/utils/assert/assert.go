@@ -16,6 +16,8 @@ limitations under the License.
 
 package assert
 
+// fully checked and understood
+
 import (
 	"fmt"
 	"k8s.io/klog/v2"

@@ -16,6 +16,8 @@ limitations under the License.
 
 package framework
 
+// fully checked and understood
+
 import (
 	"context"
 	"github.com/hliangzhao/volcano/pkg/apis/scheduling"
@@ -38,6 +40,7 @@ type jobUpdater struct {
 	jobQueue []*apis.JobInfo
 }
 
+// newJobUpdater creates a jobUpdater from the given session.
 func newJobUpdater(sess *Session) *jobUpdater {
 	queue := make([]*apis.JobInfo, 0, len(sess.Jobs))
 	for _, job := range sess.Jobs {
@@ -61,6 +64,7 @@ func (ju *jobUpdater) updateJob(index int) {
 	job := ju.jobQueue[index]
 	sess := ju.sess
 
+	// update the podgroup that the job belongs to
 	job.PodGroup.Status = jobStatus(sess, job)
 	oldStatus, found := sess.podGroupStatus[job.UID]
 	updatePG := !found || isPodGroupStatusUpdated(job.PodGroup.Status, oldStatus)

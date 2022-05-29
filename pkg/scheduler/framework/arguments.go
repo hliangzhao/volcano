@@ -16,6 +16,8 @@ limitations under the License.
 
 package framework
 
+// fully checked and understood
+
 import (
 	"github.com/hliangzhao/volcano/pkg/scheduler/conf"
 	"k8s.io/klog/v2"

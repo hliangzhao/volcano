@@ -16,6 +16,8 @@ limitations under the License.
 
 package framework
 
+// fully checked and understood
+
 import (
 	"fmt"
 	"github.com/hliangzhao/volcano/pkg/apis/scheduling"
@@ -142,6 +144,7 @@ func openSession(cache cache.Cache) *Session {
 
 	snapshot := cache.Snapshot()
 
+	// firstly, filter out the jobs that not pass the validation
 	sess.Jobs = snapshot.Jobs
 	for _, job := range sess.Jobs {
 		// only conditions will be updated periodically
@@ -170,13 +173,14 @@ func openSession(cache cache.Cache) *Session {
 		}
 	}
 
+	// set basic segments of session
 	sess.NodeList = utils.GetNodeList(snapshot.Nodes, snapshot.NodeList)
 	sess.Nodes = snapshot.Nodes
 	sess.RevocableNodes = snapshot.RevocableNodes
 	sess.Queues = snapshot.Queues
 	sess.NamespaceInfo = snapshot.NamespaceInfo
 
-	// calculate all nodes' resource only once in each schedule cycle, other plugins can clone it when need
+	// update the total allocatable resources
 	for _, node := range sess.Nodes {
 		sess.TotalResource.Add(node.Allocatable)
 	}
@@ -361,6 +365,7 @@ func (sess *Session) dispatch(task *apis.TaskInfo, volumes *volumebinding.PodVol
 func (sess *Session) Allocate(task *apis.TaskInfo, nodeInfo *apis.NodeInfo) error {
 	// TODO: this Allocate is similar to statement.Allocate. Why statement.Allocate calls this directly?
 
+	// check whether the volumes are allocated to the task pod, if not, allocate it
 	podVolumes, err := sess.cache.GetPodVolumes(task, nodeInfo.Node)
 	if err != nil {
 		return err
@@ -370,6 +375,7 @@ func (sess *Session) Allocate(task *apis.TaskInfo, nodeInfo *apis.NodeInfo) erro
 	if err := sess.cache.AllocateVolumes(task, hostname, podVolumes); err != nil {
 		return err
 	}
+	// revert if failed
 	defer func() {
 		if err != nil {
 			sess.cache.RevertVolumes(task, podVolumes)
@@ -379,6 +385,7 @@ func (sess *Session) Allocate(task *apis.TaskInfo, nodeInfo *apis.NodeInfo) erro
 	task.Pod.Spec.NodeName = hostname
 	task.PodVolumes = podVolumes
 
+	// update the task status to Allocated
 	job, found := sess.Jobs[task.Job]
 	if found {
 		if err := job.UpdateTaskStatus(task, apis.Allocated); err != nil {
@@ -392,8 +399,8 @@ func (sess *Session) Allocate(task *apis.TaskInfo, nodeInfo *apis.NodeInfo) erro
 		return fmt.Errorf("failed to find job %s", task.Job)
 	}
 
+	// set the host that allocated to task
 	task.NodeName = hostname
-
 	if node, found := sess.Nodes[hostname]; found {
 		if err := node.AddTask(task); err != nil {
 			klog.Errorf("Failed to add task <%v/%v> to node <%v> in Session <%v>: %v",
@@ -417,6 +424,7 @@ func (sess *Session) Allocate(task *apis.TaskInfo, nodeInfo *apis.NodeInfo) erro
 		}
 	}
 
+	// if the job of the task is checked as Ready, ACTUALLY bind the Allocated tasks of the job to nodes
 	if sess.JobReady(job) {
 		for _, task := range job.TaskStatusIndex[apis.Allocated] {
 			if err := sess.dispatch(task, podVolumes); err != nil {
@@ -435,10 +443,12 @@ func (sess *Session) Allocate(task *apis.TaskInfo, nodeInfo *apis.NodeInfo) erro
 func (sess *Session) Evict(reclaimee *apis.TaskInfo, reason string) error {
 	// TODO: this Evict is similar to statement.Evict. Why statement.Evict calls this directly?
 
+	// evict the reclaimee task
 	if err := sess.cache.Evict(reclaimee, reason); err != nil {
 		return err
 	}
 
+	// update the status of the job of the task
 	job, found := sess.Jobs[reclaimee.Job]
 	if found {
 		if err := job.UpdateTaskStatus(reclaimee, apis.Releasing); err != nil {
@@ -452,6 +462,7 @@ func (sess *Session) Evict(reclaimee *apis.TaskInfo, reason string) error {
 		return fmt.Errorf("failed to find job %s", reclaimee.Job)
 	}
 
+	// update the node that related
 	if node, found := sess.Nodes[reclaimee.NodeName]; found {
 		if err := node.UpdateTask(reclaimee); err != nil {
 			klog.Errorf("Failed to update task <%v/%v> in Session <%v>: %v",
@@ -460,6 +471,7 @@ func (sess *Session) Evict(reclaimee *apis.TaskInfo, reason string) error {
 		}
 	}
 
+	// Callbacks
 	for _, eh := range sess.eventHandlers {
 		if eh.DeallocateFunc != nil {
 			eh.DeallocateFunc(&Event{
@@ -474,6 +486,7 @@ func (sess *Session) Evict(reclaimee *apis.TaskInfo, reason string) error {
 func (sess *Session) Pipeline(task *apis.TaskInfo, hostname string) error {
 	// TODO: this Pipeline is similar to statement.Pipeline. Why statement.Pipeline calls this directly?
 
+	// update the job task status
 	job, found := sess.Jobs[task.Job]
 	if found {
 		if err := job.UpdateTaskStatus(task, apis.Pipelined); err != nil {
@@ -487,8 +500,8 @@ func (sess *Session) Pipeline(task *apis.TaskInfo, hostname string) error {
 		return fmt.Errorf("failed to find job %s when binding", task.Job)
 	}
 
+	// set the host that allocated to this task
 	task.NodeName = hostname
-
 	if node, found := sess.Nodes[hostname]; found {
 		if err := node.AddTask(task); err != nil {
 			klog.Errorf("Failed to add task <%v/%v> to node <%v> in Session <%v>: %v",
@@ -503,6 +516,7 @@ func (sess *Session) Pipeline(task *apis.TaskInfo, hostname string) error {
 		return fmt.Errorf("failed to find node %s", hostname)
 	}
 
+	// Callbacks
 	for _, eh := range sess.eventHandlers {
 		if eh.AllocateFunc != nil {
 			eh.AllocateFunc(&Event{

@@ -19,7 +19,6 @@ package drf
 import (
 	"fmt"
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
-	"github.com/hliangzhao/volcano/pkg/scheduler/apis/helpers"
 	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
 	"github.com/hliangzhao/volcano/pkg/scheduler/metrics"
 	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/utils"
@@ -508,7 +507,7 @@ func (dp *drfPlugin) calculateShare(allocated, totalResource *apis.Resource) (st
 	res := float64(0)
 	dominantRes := ""
 	for _, resName := range totalResource.ResourceNames() {
-		share := helpers.Share(allocated.Get(resName), totalResource.Get(resName))
+		share := apis.Share(allocated.Get(resName), totalResource.Get(resName))
 		if share > res {
 			res = share
 			dominantRes = string(resName)

@@ -16,6 +16,8 @@ limitations under the License.
 
 package framework
 
+// fully checked and understood
+
 import "github.com/hliangzhao/volcano/pkg/scheduler/apis"
 
 // Event is happened on tasks

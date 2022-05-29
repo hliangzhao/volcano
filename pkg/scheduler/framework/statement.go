@@ -16,6 +16,8 @@ limitations under the License.
 
 package framework
 
+// fully checked and understood
+
 import (
 	"fmt"
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
@@ -188,7 +190,7 @@ func (s *Statement) Evict(reclaimee *apis.TaskInfo, reason string) error {
 }
 
 func (s *Statement) pipeline(task *apis.TaskInfo) {
-	// TODO: not implemented?
+	// not implemented
 }
 
 // Pipeline will pipeline task to host. Specifically, it will update s.sess.Jobs and
@@ -238,7 +240,7 @@ func (s *Statement) unpipeline(task *apis.TaskInfo) error {
 	if job, found := s.sess.Jobs[task.Job]; found {
 		if err := job.UpdateTaskStatus(task, apis.Pending); err != nil {
 			klog.Errorf("Failed to update task <%v/%v> status to %v in Session <%v>: %v",
-				// TODO: should be apis.Pending! [changed]
+				// TODO: should be apis.Pending! [bug fixed]
 				task.Namespace, task.Name, apis.Pending, s.sess.UID, err)
 		}
 	} else {
@@ -248,11 +250,11 @@ func (s *Statement) unpipeline(task *apis.TaskInfo) error {
 
 	if node, found := s.sess.Nodes[task.NodeName]; found {
 		if err := node.RemoveTask(task); err != nil {
-			// TODO: `pipeline` -> `remove` [changed]
+			// TODO: `pipeline` -> `remove` [bug fixed]
 			klog.Errorf("Failed to remove task <%v/%v> to node <%v> in Session <%v>: %v",
 				task.Namespace, task.Name, task.NodeName, s.sess.UID, err)
 		}
-		// TODO: `pipeline` -> `remove` [changed]
+		// TODO: `pipeline` -> `remove` [bug fixed]
 		klog.V(3).Infof("After remove Task <%v/%v> to Node <%v>: idle <%v>, used <%v>, releasing <%v>",
 			task.Namespace, task.Name, node.Name, node.Idle, node.Used, node.Releasing)
 	} else {
@@ -295,7 +297,7 @@ func (s *Statement) allocate(task *apis.TaskInfo) error {
 }
 
 // Allocate will allocate task to node. Specifically, it will update s.sess.Jobs and
-// // s.sess.Nodes status info and add this operation to s.operations.
+// s.sess.Nodes status info and add this operation to s.operations.
 func (s *Statement) Allocate(task *apis.TaskInfo, nodeInfo *apis.NodeInfo) error {
 	// get pod volumes and allocate it on the host, then, update task status
 	podVolumes, err := s.sess.cache.GetPodVolumes(task, nodeInfo.Node)

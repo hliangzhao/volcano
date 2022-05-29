@@ -44,8 +44,7 @@ func buildNode(name string, alloc corev1.ResourceList) *corev1.Node {
 	}
 }
 
-func buildPod(ns, n, nn string,
-	p corev1.PodPhase, req corev1.ResourceList,
+func buildPod(ns, n, nn string, p corev1.PodPhase, req corev1.ResourceList,
 	owner []metav1.OwnerReference, labels map[string]string) *corev1.Pod {
 
 	return &corev1.Pod{

@@ -16,6 +16,8 @@ limitations under the License.
 
 package utils
 
+// fully checked and understood
+
 import (
 	"context"
 	"fmt"
@@ -33,8 +35,6 @@ import (
 	"sync"
 	"time"
 )
-
-// TODO: NOT-FINISHED
 
 /* The fake functions defined in this file are used for code tests. */
 
