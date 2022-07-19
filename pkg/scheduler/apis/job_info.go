@@ -293,6 +293,7 @@ func (ji *JobInfo) GetMinResources() *Resource {
 // GetElasticResources returns the Resource quantity that could be revoked by other workloads.
 // Allocated - MinRequired = Elastic
 func (ji *JobInfo) GetElasticResources() *Resource {
+	// TODO: this could be improved! Resources are wasted!
 	if ji.Allocated.LessEqualPartly(ji.GetMinResources(), Zero) {
 		return EmptyResource()
 	}

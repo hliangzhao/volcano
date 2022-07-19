@@ -16,6 +16,8 @@ limitations under the License.
 
 package elect
 
+// fully checked and understood
+
 import (
 	"github.com/hliangzhao/volcano/pkg/apis/scheduling"
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
@@ -41,10 +43,13 @@ func (elect *Action) Name() string {
 
 func (elect *Action) Initialize() {}
 
+// Execute of Elect will elect a target job for resource reservation (setting utils.Reservation.TargetJob) by invoking targetJobFns.
 func (elect *Action) Execute(sess *framework.Session) {
 	klog.V(3).Infof("Enter Elect ...")
 	defer klog.V(3).Infof("Leaving Elect ...")
 
+	// Always process the reserved job first.
+	// If no reserved job, get all the pending jobs and elect a target job from them by invoking targetJobFns.
 	if utils.Reservation.TargetJob == nil {
 		klog.V(4).Infof("Start select Target Job")
 		var pendingJobs []*apis.JobInfo

@@ -16,6 +16,8 @@ limitations under the License.
 
 package binpack
 
+// fully checked and understood
+
 import (
 	"fmt"
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
@@ -54,6 +56,7 @@ type priorityWeight struct {
 	BinPackingResources map[corev1.ResourceName]int
 }
 
+// String returns a formatted string of priorityWeight for print.
 func (w *priorityWeight) String() string {
 	length := 3
 	if extendLength := len(w.BinPackingResources); extendLength == 0 {
@@ -93,23 +96,22 @@ func (bp *binpackPlugin) Name() string {
 	return PluginName
 }
 
+// calculateWeight parses the value of each segment of priorityWeight from args.
+// User Should give priorityWeight in this format (binpack.weight, binpack.cpu, binpack.memory).
+// Support change the weight about cpu, memory and additional resource by arguments.
+//
+// actions: "enqueue, reclaim, allocate, backfill, preempt"
+// tiers:
+// - plugins:
+//  - name: binpack
+//    arguments:
+//      binpack.weight: 10
+//      binpack.cpu: 5
+//      binpack.memory: 1
+//      binpack.resources: nvidia.com/gpu, example.com/foo
+//      binpack.resources.nvidia.com/gpu: 2
+//      binpack.resources.example.com/foo: 3
 func calculateWeight(args framework.Arguments) priorityWeight {
-	/*
-	   User Should give priorityWeight in this format (binpack.weight, binpack.cpu, binpack.memory).
-	   Support change the weight about cpu, memory and additional resource by arguments.
-
-	   actions: "enqueue, reclaim, allocate, backfill, preempt"
-	   tiers:
-	   - plugins:
-	     - name: binpack
-	       arguments:
-	         binpack.weight: 10
-	         binpack.cpu: 5
-	         binpack.memory: 1
-	         binpack.resources: nvidia.com/gpu, example.com/foo
-	         binpack.resources.nvidia.com/gpu: 2
-	         binpack.resources.example.com/foo: 3
-	*/
 	// Values are initialized to 1.
 	weight := priorityWeight{
 		BinPackingWeight:    1,
@@ -153,6 +155,7 @@ func calculateWeight(args framework.Arguments) priorityWeight {
 	return weight
 }
 
+// OnSessionOpen of binpackPlugin will register a nodeOrderFn based on BinPackingScore to this session.
 func (bp *binpackPlugin) OnSessionOpen(sess *framework.Session) {
 	klog.V(4).Infof("Enter binpack plugin ...")
 	if klog.V(4).Enabled() {
@@ -177,6 +180,7 @@ func (bp *binpackPlugin) OnSessionOpen(sess *framework.Session) {
 		klog.V(4).Infof("resources [%s] record in weight but not found on any node", strings.Join(notFoundRes, ", "))
 	}
 
+	// register a nodeOrderFn based on the bin-packing policy
 	nodeOrderFn := func(task *apis.TaskInfo, node *apis.NodeInfo) (float64, error) {
 		binPackingScore := BinPackingScore(task, node, bp.weight)
 		klog.V(4).Infof("Binpack score for Task %s/%s on node %s is: %v", task.Namespace, task.Name, node.Name, binPackingScore)

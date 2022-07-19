@@ -79,9 +79,9 @@ func NewPodLister(sess *framework.Session) *PodLister {
 	return pl
 }
 
-func NewPodListerFromNode(ssn *framework.Session) *PodLister {
+func NewPodListerFromNode(sess *framework.Session) *PodLister {
 	pl := &PodLister{
-		Session:          ssn,
+		Session:          sess,
 		CachedPods:       make(map[apis.TaskID]*corev1.Pod),
 		Tasks:            make(map[apis.TaskID]*apis.TaskInfo),
 		TaskWithAffinity: make(map[apis.TaskID]*apis.TaskInfo),

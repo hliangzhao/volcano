@@ -22,6 +22,7 @@ import (
 	"context"
 	"fmt"
 	busv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/bus/v1alpha1"
+	schedulingv1alpha1 `github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1`
 	volcanoclient "github.com/hliangzhao/volcano/pkg/client/clientset/versioned"
 	volcanoscheme "github.com/hliangzhao/volcano/pkg/client/clientset/versioned/scheme"
 	volcanoinformers "github.com/hliangzhao/volcano/pkg/client/informers/externalversions"
@@ -68,9 +69,8 @@ type queueController struct {
 	cmdLister   buslisterv1alpha1.CommandLister
 	cmdSynced   cache.InformerSynced
 
-	// NOTE that the following are work-queues, not the CRD we created
-	queue    workqueue.RateLimitingInterface // used for enqueue queue req
-	cmdQueue workqueue.RateLimitingInterface // used for enqueue cmd req
+	queueQueue workqueue.RateLimitingInterface // used for enqueue queue req
+	cmdQueue   workqueue.RateLimitingInterface // used for enqueue cmd req
 
 	pgMutex   sync.RWMutex
 	podgroups map[string]map[string]struct{} // queue-name: podgroup-ns/podgroup-name: podgroup{}
@@ -108,7 +108,7 @@ func (qc *queueController) Initialize(opt *framework.ControllerOption) error {
 	qc.cmdLister = qc.cmdInformer.Lister()
 	qc.cmdSynced = qc.cmdInformer.Informer().HasSynced
 
-	qc.queue = workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+	qc.queueQueue = workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	qc.cmdQueue = workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
 	qc.podgroups = make(map[string]map[string]struct{})
@@ -163,7 +163,7 @@ func (qc *queueController) Initialize(opt *framework.ControllerOption) error {
 // Run starts the workers and informers in separate coroutines.
 func (qc *queueController) Run(stopCh <-chan struct{}) {
 	defer runtime.HandleCrash()
-	defer qc.queue.ShutDown()
+	defer qc.queueQueue.ShutDown()
 	defer qc.cmdQueue.ShutDown()
 
 	klog.Infof("Starting queue controller.")
@@ -197,12 +197,12 @@ func (qc *queueController) worker() {
 
 // processNextReq acquires a queue request from the work-queue and handle it.
 func (qc *queueController) processNextReq() bool {
-	obj, shutdown := qc.queue.Get()
+	obj, shutdown := qc.queueQueue.Get()
 	if shutdown {
 		klog.Errorf("Failed to retrieve callback from work-queue")
 		return false
 	}
-	defer qc.queue.Done(obj)
+	defer qc.queueQueue.Done(obj)
 
 	req, ok := obj.(*controllerapis.Request)
 	if !ok {
@@ -248,14 +248,14 @@ func (qc *queueController) handleQueue(req *controllerapis.Request) error {
 func (qc *queueController) handleQueueErr(err error, obj interface{}) {
 	// no error happened
 	if err == nil {
-		qc.queue.Forget(obj)
+		qc.queueQueue.Forget(obj)
 		return
 	}
 
 	// obj should be requeue, it still has chance
-	if qc.maxRequeueNum == -1 || qc.queue.NumRequeues(obj) < qc.maxRequeueNum {
+	if qc.maxRequeueNum == -1 || qc.queueQueue.NumRequeues(obj) < qc.maxRequeueNum {
 		klog.V(4).Infof("Error syncing queue request %v for %v", obj, err)
-		qc.queue.AddRateLimited(obj)
+		qc.queueQueue.AddRateLimited(obj)
 		return
 	}
 
@@ -267,7 +267,7 @@ func (qc *queueController) handleQueueErr(err error, obj interface{}) {
 		fmt.Sprintf("%v queue failed for %v", req.Action, err),
 	)
 	klog.V(2).Infof("Dropping queue request %v out of the queue for %v.", obj, err)
-	qc.queue.Forget(obj)
+	qc.queueQueue.Forget(obj)
 }
 
 func (qc *queueController) cmdWorker() {
@@ -335,4 +335,15 @@ func (qc *queueController) handleCmdErr(err error, obj interface{}) {
 
 	klog.V(2).Infof("Dropping command %v out of the queue for %v.", obj, err)
 	qc.cmdQueue.Forget(obj)
+}
+
+// IsQueueReference judges whether ref is Queue.
+func IsQueueReference(ref *metav1.OwnerReference) bool {
+	if ref == nil {
+		return false
+	}
+	if ref.APIVersion != schedulingv1alpha1.SchemeGroupVersion.String() || ref.Kind != "Queue" {
+		return false
+	}
+	return true
 }

@@ -16,7 +16,7 @@ limitations under the License.
 
 package garbagecollector
 
-// TODO: just copied. Not checked.
+// TODO: just copied.
 // Passed.
 
 import (

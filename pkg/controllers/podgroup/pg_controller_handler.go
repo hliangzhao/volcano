@@ -36,14 +36,14 @@ type podRequest struct {
 	podNamespace string
 }
 
-// addPod adds an obj (a pod actually) to the work-queue of the pgController.
+// addPod adds an obj (a pod actually) to the work-podQueue of the pgController.
 func (pgC *pgController) addPod(obj interface{}) {
 	pod, ok := obj.(*corev1.Pod)
 	if !ok {
 		klog.Errorf("Failed to convert %v to corev1.Pod", obj)
 		return
 	}
-	pgC.queue.Add(podRequest{
+	pgC.podQueue.Add(podRequest{
 		podName:      pod.Name,
 		podNamespace: pod.Namespace,
 	})
@@ -102,7 +102,7 @@ func (pgC *pgController) createNormalPodPGIfNotExist(pod *corev1.Pod) error {
 			},
 		}
 
-		// set the queue name which this podgroup belongs to
+		// set the podQueue name which this podgroup belongs to
 		if queueName, ok := pod.Annotations[schedulingv1alpha1.QueueNameAnnotationKey]; ok {
 			obj.Spec.Queue = queueName
 		}

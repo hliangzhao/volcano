@@ -16,6 +16,8 @@ limitations under the License.
 
 package metrics
 
+// fully checked and understood
+
 import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"

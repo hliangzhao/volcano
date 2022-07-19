@@ -62,7 +62,7 @@ func (preempt *Action) Execute(sess *framework.Session) {
 		}
 
 		// Get the queue that this job is in.
-		// If not found, create it.
+		// If not found, add it to queues.
 		if queue, found := sess.Queues[job.Queue]; !found {
 			continue
 		} else if _, exist := queues[queue.UID]; !exist {

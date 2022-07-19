@@ -38,6 +38,9 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/tainttoleration"
 )
 
+// TODO: checked but not fully understood
+//  Pay attention to how the podgroup, job resource affect the node order.
+
 const (
 	// PluginName indicates name of volcano scheduler plugin.
 	PluginName = "nodeorder"
@@ -146,7 +149,7 @@ func (nop *nodeOrderPlugin) OnSessionOpen(sess *framework.Session) {
 	podList := utils.NewPodListerFromNode(sess)
 	nodeMap := utils.GenerateNodeMapAndSlice(sess.Nodes)
 
-	// Register event handlers to update task info in PodLister & nodeMap
+	// Register event handlers to update task info in podList & nodeMap
 	sess.AddEventHandler(&framework.EventHandler{
 		AllocateFunc: func(e *framework.Event) {
 			pod := podList.UpdateTask(e.Task, e.Task.NodeName)

@@ -105,7 +105,7 @@ type jobController struct {
 
 	// work-queues
 	numWorkers uint32                            // each worker process one work-queue of jobs
-	queueList  []workqueue.RateLimitingInterface // work-queue of jobs
+	jobQueues  []workqueue.RateLimitingInterface // work-queue of jobs
 	cmdQueue   workqueue.RateLimitingInterface   // work-queue of cmd
 	errTasks   workqueue.RateLimitingInterface   // work-queue of tasks
 
@@ -134,7 +134,7 @@ func (jc *jobController) Initialize(opt *framework.ControllerOption) error {
 	eventBroadcaster.StartRecordingToSink(&coretypedv1.EventSinkImpl{Interface: jc.kubeClient.CoreV1().Events("")})
 	recorder := eventBroadcaster.NewRecorder(volcanoscheme.Scheme, corev1.EventSource{Component: "vc-controller-manager"})
 
-	jc.queueList = make([]workqueue.RateLimitingInterface, workerNum)
+	jc.jobQueues = make([]workqueue.RateLimitingInterface, workerNum)
 	jc.cmdQueue = workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	jc.cache = controllercache.NewCache()
 	jc.errTasks = newRateLimitingQueue()
@@ -147,7 +147,7 @@ func (jc *jobController) Initialize(opt *framework.ControllerOption) error {
 
 	var i uint32
 	for i = 0; i < workerNum; i++ {
-		jc.queueList[i] = workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+		jc.jobQueues[i] = workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	}
 
 	jc.jobInformer = externalversions.NewSharedInformerFactory(jc.volcanoClient, 0).Batch().V1alpha1().Jobs()
@@ -290,14 +290,14 @@ func (jc *jobController) getWorkerQueue(key string) workqueue.RateLimitingInterf
 	_, _ = hashVal.Write([]byte(key))
 	val = hashVal.Sum32()
 
-	return jc.queueList[val%jc.numWorkers]
+	return jc.jobQueues[val%jc.numWorkers]
 }
 
 // processNextReq retrieves a callback from the `count`-th work-queue and process it.
 // `false` is returned only if the request cannot be retrieved.
 // Specifically, this function creates a bew state according to the request and calls the Execute function to update the job's status.
 func (jc *jobController) processNextReq(count uint32) bool {
-	queue := jc.queueList[count]
+	queue := jc.jobQueues[count]
 	obj, shutdown := queue.Get()
 	if shutdown {
 		klog.Errorf("Failed to pop item from queue")

@@ -16,6 +16,8 @@ limitations under the License.
 
 package gang
 
+// fully checked and understood
+
 import (
 	"fmt"
 	"github.com/hliangzhao/volcano/pkg/apis/scheduling"
@@ -45,6 +47,8 @@ func (gp *gangPlugin) Name() string {
 }
 
 func (gp *gangPlugin) OnSessionOpen(sess *framework.Session) {
+	// validJobFn checks the input obj (a job) is valid to run or not.
+	// It is valid only when the min-available is satisfied.
 	validJobFn := func(obj interface{}) *apis.ValidateResult {
 		job, ok := obj.(*apis.JobInfo)
 		if !ok {
@@ -76,6 +80,8 @@ func (gp *gangPlugin) OnSessionOpen(sess *framework.Session) {
 	}
 	sess.AddJobValidFn(gp.Name(), validJobFn)
 
+	// preemptableFn get the victims of preemption. The job that each victim task belongs to should
+	// be Gang-ready.
 	preemptableFn := func(preemptor *apis.TaskInfo, preemptees []*apis.TaskInfo) ([]*apis.TaskInfo, int) {
 		var victims []*apis.TaskInfo
 		jobOccupiedMap := map[apis.JobID]int32{}
@@ -89,7 +95,7 @@ func (gp *gangPlugin) OnSessionOpen(sess *framework.Session) {
 				jobOccupiedMap[job.UID]--
 				victims = append(victims, preemptee)
 			} else {
-				klog.V(4).Infof("Can not preempt task <%v/%v> because job %s ready num(%d) <= MinAvailable(%d) for gang-scheduling",
+				klog.V(4).Infof("Cannot preempt task <%v/%v> because job %s ready num(%d) <= MinAvailable(%d) for gang-scheduling",
 					preemptee.Namespace, preemptee.Name, job.Name, jobOccupiedMap[job.UID], job.MinAvailable)
 			}
 		}
@@ -101,6 +107,7 @@ func (gp *gangPlugin) OnSessionOpen(sess *framework.Session) {
 	sess.AddReclaimableFn(gp.Name(), preemptableFn)
 	sess.AddPreemptableFn(gp.Name(), preemptableFn)
 
+	// jobOrderFn returns the order of the input jobs. A job has higher order if it is Gang-ready.
 	jobOrderFn := func(l, r interface{}) int {
 		lv := l.(*apis.JobInfo)
 		rv := r.(*apis.JobInfo)
@@ -130,6 +137,7 @@ func (gp *gangPlugin) OnSessionOpen(sess *framework.Session) {
 		return false
 	})
 
+	// pipelinedFn permits the input obj (a job) to be pipelined only when the pipelined tasks meet the min-available.
 	pipelinedFn := func(obj interface{}) int {
 		ji := obj.(*apis.JobInfo)
 		occupied := ji.WaitingTaskNum() + ji.ReadyTaskNum()
@@ -140,6 +148,7 @@ func (gp *gangPlugin) OnSessionOpen(sess *framework.Session) {
 	}
 	sess.AddJobPipelinedFn(gp.Name(), pipelinedFn)
 
+	// jobStarvingFn checks whether the input obj (a job) is starving.
 	jobStarvingFn := func(obj interface{}) bool {
 		ji := obj.(*apis.JobInfo)
 		occupied := ji.WaitingTaskNum() + ji.ReadyTaskNum()
@@ -151,6 +160,8 @@ func (gp *gangPlugin) OnSessionOpen(sess *framework.Session) {
 	sess.AddJobStarvingFns(gp.Name(), jobStarvingFn)
 }
 
+// OnSessionClose of gangPlugin will collect the unready task number and the un-scheduled job number in this session,
+// and send them to the metric server.
 func (gp *gangPlugin) OnSessionClose(sess *framework.Session) {
 	var unReadyTaskCount int32
 	var unScheduleJobCount int

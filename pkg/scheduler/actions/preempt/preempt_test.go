@@ -17,6 +17,7 @@ limitations under the License.
 package preempt
 
 import (
+	`github.com/hliangzhao/volcano/cmd/scheduler/app/options`
 	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"
 	api "github.com/hliangzhao/volcano/pkg/scheduler/apis"
 	"github.com/hliangzhao/volcano/pkg/scheduler/cache"
@@ -33,17 +34,17 @@ import (
 	"time"
 )
 
-// TODO: test not passed
+// TODO: just copied.
+//  Passed.
 
 func TestPreemption(t *testing.T) {
 	framework.RegisterPluginBuilder("conformance", conformance.New)
 	framework.RegisterPluginBuilder("gang", gang.New)
-	// TODO: cmd/scheduler/app not implemented
-	// options.ServerOpts = &options.ServerOption{
-	// 	MinNodesToFind:             100,
-	// 	MinPercentageOfNodesToFind: 5,
-	// 	PercentageOfNodesToFind:    100,
-	// }
+	options.ServerOpts = &options.ServerOption{
+		MinNodesToFind:             100,
+		MinPercentageOfNodesToFind: 5,
+		PercentageOfNodesToFind:    100,
+	}
 	defer framework.CleanupPluginBuilders()
 
 	tests := []struct {

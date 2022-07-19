@@ -16,6 +16,8 @@ limitations under the License.
 
 package enqueue
 
+// fully checked and understood
+
 import (
 	"github.com/hliangzhao/volcano/pkg/apis/scheduling"
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
@@ -42,29 +44,32 @@ func (enqueue *Action) Name() string {
 
 func (enqueue *Action) Initialize() {}
 
+// Execute of Enqueue will get an involved queue resource from sess.Jobs firstly,
+// and then choose the job with the highest priority in that queue, enqueue it.
 func (enqueue *Action) Execute(sess *framework.Session) {
 	klog.V(3).Infof("Enter Enqueue ...")
 	defer klog.V(3).Infof("Leaving Enqueue ...")
 
-	queues := utils.NewPriorityQueue(sess.QueueOrderFn)
+	// set the following three objects based on sess.Jobs
+	pqForQueues := utils.NewPriorityQueue(sess.QueueOrderFn)
 	queueMap := map[apis.QueueID]*apis.QueueInfo{}
 	jobsMap := map[apis.QueueID]*utils.PriorityQueue{}
-
 	for _, job := range sess.Jobs {
 		// set schedule start time
 		if job.ScheduleStartTimestamp.IsZero() {
 			sess.Jobs[job.UID].ScheduleStartTimestamp = metav1.Time{Time: time.Now()}
 		}
-		// the CRD queue for this job not found, create it, and add it to queueMap and queues
+		// the CRD queue resource for this job not found, sht. wrong happens
 		if queue, found := sess.Queues[job.Queue]; !found {
 			klog.Errorf("Failed to find Queue <%s> for Job <%s/%s>",
 				job.Queue, job.Namespace, job.Name)
 			continue
 		} else if _, existed := queueMap[queue.UID]; !existed {
+			// the CRD queue resource exists but in queueMap
 			klog.V(3).Infof("Added Queue <%s> for Job <%s/%s>",
 				queue.Name, job.Namespace, job.Name)
 			queueMap[queue.UID] = queue
-			queues.Push(queue)
+			pqForQueues.Push(queue)
 		}
 
 		// if this job is pending, add it to jobsMap
@@ -79,10 +84,12 @@ func (enqueue *Action) Execute(sess *framework.Session) {
 
 	klog.V(3).Infof("Try to enqueue PodGroup to %d Queues", len(jobsMap))
 	for {
-		if queues.Empty() {
+		if pqForQueues.Empty() {
 			break
 		}
-		queue := queues.Pop().(*apis.QueueInfo)
+		// get a queue resource
+		queue := pqForQueues.Pop().(*apis.QueueInfo)
+		// get the jobs that put into this queue
 		jobs, found := jobsMap[queue.UID]
 		if !found || jobs.Empty() {
 			continue
@@ -97,7 +104,7 @@ func (enqueue *Action) Execute(sess *framework.Session) {
 		}
 
 		// Added Queue back until no job in Queue.
-		queues.Push(queue)
+		pqForQueues.Push(queue)
 	}
 }
 

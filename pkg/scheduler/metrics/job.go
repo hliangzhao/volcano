@@ -16,6 +16,8 @@ limitations under the License.
 
 package metrics
 
+// fully checked and understood
+
 import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -51,7 +53,7 @@ func RegisterJobRetries(jobID string) {
 	jobRetryCount.WithLabelValues(jobID).Inc()
 }
 
-// DeleteJobShare delete jobShare for one job
+// DeleteJobShare delete jobShare for one job.
 func DeleteJobShare(jobNs, jobID string) {
 	jobShare.DeleteLabelValues(jobNs, jobID)
 }

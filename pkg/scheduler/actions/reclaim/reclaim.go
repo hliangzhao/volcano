@@ -39,7 +39,6 @@ func (reclaim *Action) Execute(sess *framework.Session) {
 	klog.V(3).Infof("Enter Reclaim ...")
 	defer klog.V(3).Infof("Leaving Reclaim ...")
 
-	// TODO: the following code is repeated
 	queues := utils.NewPriorityQueue(sess.QueueOrderFn)
 	queueMap := map[apis.QueueID]*apis.QueueInfo{}
 
@@ -67,7 +66,7 @@ func (reclaim *Action) Execute(sess *framework.Session) {
 			klog.V(4).Infof("Added Queue <%s> for Job <%s/%s>",
 				queue.Name, job.Namespace, job.Name)
 			queueMap[queue.UID] = queue
-			queues.Push(queues)
+			queues.Push(queue)
 		}
 
 		if len(job.TaskStatusIndex[apis.Pending]) != 0 {

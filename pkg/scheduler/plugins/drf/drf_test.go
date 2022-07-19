@@ -37,7 +37,8 @@ import (
 	"testing"
 )
 
-// TODO: test not passed
+// TODO: check the test implementation.
+//  Test passed.
 
 func makePods(num int, cpu, mem, podGroupName string) []*corev1.Pod {
 	var pods []*corev1.Pod

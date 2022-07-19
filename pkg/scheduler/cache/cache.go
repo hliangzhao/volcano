@@ -580,7 +580,7 @@ func (sc *SchedulerCache) processReSyncTask() {
 	}
 }
 
-// reSyncTask puts task to the errTasks work-queue.
+// reSyncTask adds task to the errTasks work-queue.
 func (sc *SchedulerCache) reSyncTask(task *apis.TaskInfo) {
 	sc.errTasks.AddRateLimited(task)
 }

@@ -40,6 +40,7 @@ func (pp *priorityPlugin) Name() string {
 }
 
 func (pp *priorityPlugin) OnSessionOpen(sess *framework.Session) {
+	// taskOrderFn order task by their priority directly
 	taskOrderFn := func(l, r interface{}) int {
 		lv := l.(*apis.TaskInfo)
 		rv := l.(*apis.TaskInfo)
@@ -57,6 +58,7 @@ func (pp *priorityPlugin) OnSessionOpen(sess *framework.Session) {
 	}
 	sess.AddTaskOrderFn(pp.Name(), taskOrderFn)
 
+	// jobOrderFn order job by their priority directly
 	jobOrderFn := func(l, r interface{}) int {
 		lv := l.(*apis.JobInfo)
 		rv := r.(*apis.JobInfo)

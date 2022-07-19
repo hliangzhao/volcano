@@ -16,6 +16,8 @@ limitations under the License.
 
 package allocate
 
+// fully checked and understood
+
 import (
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
 	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
@@ -43,21 +45,21 @@ func (alloc *Action) Name() string {
 
 func (alloc *Action) Initialize() {}
 
+// Execute of Allocate will do the following things:
+// 1. Pick a namespace named N (using sess.NamespaceOrderFn);
+// 2. Pick a queue named Q from N (using sess.QueueOrderFn);
+// 3. Pick a job named J from Q (using sess.JobOrderFn);
+// 4. Pick a task T from J (using sess.TaskOrderFn);
+// 5. Use predicateFn to filter out node that T can not be allocated on;
+// 6. Use sess.NodeOrderFn to judge the best node and assign it to T.
 func (alloc *Action) Execute(sess *framework.Session) {
 	klog.V(3).Infof("Enter Allocate ...")
 	defer klog.V(3).Infof("Leaving Allocate ...")
 
-	// the allocation of node for pod haves many stages:
-	// 1. pick a namespace named N (using sess.NamespaceOrderFn)
-	// 2. pick a queue named Q from N (using sess.QueueOrderFn)
-	// 3. pick a job named J from Q (using sess.JobOrderFn)
-	// 4. pick a task T from J (using sess.TaskOrderFn)
-	// 5. use predicateFn to filter out node that T can not be allocated on
-	// 6. use sess.NodeOrderFn to judge the best node and assign it to T
-
 	namespaces := utils.NewPriorityQueue(sess.NamespaceOrderFn)
 
-	// jobsMap is used to find the job with the highest priority in given queue and namespace
+	// jobsMap is used to find the job with the highest priority in given namespace and queue
+	// {namespace-name: {queue-id: priority queue that stores jobs}}
 	jobsMap := map[apis.NamespaceName]map[apis.QueueID]*utils.PriorityQueue{}
 
 	for _, job := range sess.Jobs {
@@ -133,10 +135,11 @@ func (alloc *Action) Execute(sess *framework.Session) {
 			break
 		}
 
+		// pick a namespace
 		namespace := namespaces.Pop().(apis.NamespaceName)
 		queuesInNamespace := jobsMap[namespace]
 
-		// pick queue for given namespace
+		// pick a queue for given namespace
 		// TODO: This block use an algorithm with time complex O(n).
 		//  But at least PriorityQueue could not be used here,
 		//  because the allocation of job would change the priority of queue among all namespaces,
@@ -145,6 +148,7 @@ func (alloc *Action) Execute(sess *framework.Session) {
 		for queueID := range queuesInNamespace {
 			currentQueue := sess.Queues[queueID]
 			// TODO: currentQueue should not be nil. The judgement should be moved to here.
+			// overused queue cannot be chosen for allocation
 			if sess.Overused(currentQueue) {
 				klog.V(3).Infof("Namespace <%s> Queue <%s> is overused, ignore it.", namespace, currentQueue.Name)
 				delete(queuesInNamespace, queueID)
@@ -166,8 +170,9 @@ func (alloc *Action) Execute(sess *framework.Session) {
 		// now we have a non-nil apis.QueueInfo now. We can allocate resources to the jobs in it now!
 		klog.V(3).Infof("Try to allocate resource to Jobs in Namespace <%s> Queue <%v>", namespace, queue.Name)
 
+		// get the jobs in this queue
 		jobs, found := queuesInNamespace[queue.UID]
-		// TODO: why judge again here?
+		// TODO: Here we check whether it is empty again. Actually this is not necessary
 		if !found || jobs.Empty() {
 			delete(queuesInNamespace, queue.UID)
 			namespaces.Push(namespace)
@@ -185,12 +190,12 @@ func (alloc *Action) Execute(sess *framework.Session) {
 			nodes = unlockedNodes
 		}
 
-		// note that hte allocation is happened to each pending task of this job
+		// note that the allocation is happened to each pending task of this job
 		// thus, we should get pending tasks in that job first
 		if _, found = pendingTasks[job.UID]; !found {
 			tasks := utils.NewPriorityQueue(sess.TaskOrderFn)
 			for _, task := range job.TaskStatusIndex[apis.Pending] {
-				// Skip BestEffort task in 'allocate' action.
+				// Skip BestEffort task in `allocate` action.
 				if task.ResReq.IsEmpty() {
 					klog.V(4).Infof("Task <%v/%v> is BestEffort task, skip it.",
 						task.Namespace, task.Name)
@@ -263,6 +268,7 @@ func (alloc *Action) Execute(sess *framework.Session) {
 			if task.InitResReq.LessEqual(node.Idle, apis.Zero) {
 				klog.V(3).Infof("Binding Task <%v/%v> to node <%v>",
 					task.Namespace, task.Name, node.Name)
+				// construct a statement to commit the Allocation
 				if err := stmt.Allocate(task, node); err != nil {
 					klog.Errorf("Failed to bind Task %v on %v in Session %v, err: %v",
 						task.UID, node.Name, sess.UID, err)
@@ -280,9 +286,9 @@ func (alloc *Action) Execute(sess *framework.Session) {
 
 				// Allocate releasing resource to the task if any.
 				if task.InitResReq.LessEqual(node.FutureIdle(), apis.Zero) {
-					// TODO: here we know the difference between Pending and Pipelined
 					klog.V(3).Infof("Pipelining Task <%v/%v> to node <%v> for <%v> on <%v>",
 						task.Namespace, task.Name, node.Name, task.InitResReq, node.Releasing)
+					// construct a statement to commit the Pipeline
 					if err := stmt.Pipeline(task, node.Name); err != nil {
 						klog.Errorf("Failed to pipeline Task %v on %v in Session %v for %v.",
 							task.UID, node.Name, sess.UID, err)

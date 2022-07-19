@@ -18,6 +18,9 @@ package apis
 
 // fully checked and understood
 
+/* No more wrapper is needed for Pod. However, we need some auxiliary functions to extract the
+resource request info from the pod Spec or annotations. */
+
 import (
 	"fmt"
 	schedulingv1alpha1 "github.com/hliangzhao/volcano/pkg/apis/scheduling/v1alpha1"

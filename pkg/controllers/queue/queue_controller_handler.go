@@ -28,7 +28,7 @@ import (
 
 // enqueue pushes an request into the work-queue of the queueController.
 func (qc *queueController) enqueue(req *controllerapis.Request) {
-	qc.queue.Add(req)
+	qc.queueQueue.Add(req)
 }
 
 // addQueue adds an obj (a queue actually) to the work-queue of the queueController.

@@ -132,7 +132,7 @@ func (f *Framework) Extenders() []k8sframework.Extender {
 }
 
 func (f *Framework) Parallelizer() parallelize.Parallelizer {
-	panic("not implemented")
+	return parallelize.NewParallelizer(16)
 }
 
 // SharedInformerFactory returns a shared informer factory.

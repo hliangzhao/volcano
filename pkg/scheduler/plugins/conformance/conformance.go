@@ -16,6 +16,8 @@ limitations under the License.
 
 package conformance
 
+// fully checked and understood
+
 import (
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
 	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
@@ -39,8 +41,10 @@ func (cp *conformancePlugin) Name() string {
 	return PluginName
 }
 
+// OnSessionOpen of conformancePlugin adds a evictableFn to sess.
+// Specifically, evictableFn gets the victim tasks from the task list `evictees` by getting rid of the critical pods.
 func (cp *conformancePlugin) OnSessionOpen(sess *framework.Session) {
-	// evictableFn gets the victim tasks
+	// evictableFn gets the victim tasks from the task list `evictees`
 	evictableFn := func(evictor *apis.TaskInfo, evictees []*apis.TaskInfo) ([]*apis.TaskInfo, int) {
 		var victims []*apis.TaskInfo
 		for _, evictee := range evictees {

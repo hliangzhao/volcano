@@ -25,13 +25,6 @@ import (
 
 var controllers = map[string]Controller{}
 
-// ForeachController executes fn for each controller.
-func ForeachController(fn func(controller Controller)) {
-	for _, controller := range controllers {
-		fn(controller)
-	}
-}
-
 // RegisterController add controller to the global variable controllers.
 func RegisterController(controller Controller) error {
 	if controller == nil {
@@ -44,4 +37,11 @@ func RegisterController(controller Controller) error {
 	klog.V(3).Infof("Controller <%s> is registered.", controller.Name())
 	controllers[controller.Name()] = controller
 	return nil
+}
+
+// ForeachController executes fn for each controller.
+func ForeachController(fn func(controller Controller)) {
+	for _, controller := range controllers {
+		fn(controller)
+	}
 }

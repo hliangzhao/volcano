@@ -16,7 +16,8 @@ limitations under the License.
 
 package predicates
 
-// TODO: test not passed
+// TODO: check the test implementation.
+//  Passed.
 
 import (
 	"github.com/agiledragon/gomonkey/v2"

@@ -40,8 +40,6 @@ func init() {
 	_ = framework.RegisterController(&gcController{})
 }
 
-// TODO: Add more resource types that could be processed by gc-controller.
-
 // gcController runs reflectors to watch for changes of managed API
 // objects. Currently, it only watches Jobs. Triggered by Job creation
 // and updates, it enqueues Jobs that have non-nil `.spec.ttlSecondsAfterFinished`
@@ -57,6 +55,9 @@ type gcController struct {
 	jobInformer batchinformerv1alpha1.JobInformer
 	jobLister   batchlisterv1alpha1.JobLister
 	jobSynced   func() bool
+
+	// TODO: Add more resource types that could be processed by gc-controller.
+	//  For example, Queue and Command?
 
 	queue workqueue.RateLimitingInterface
 }

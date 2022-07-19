@@ -16,18 +16,24 @@ limitations under the License.
 
 package extender
 
+// fully checked and understood
+
+// TODO: this plugin delegates the executing of predicate, taskOrder, nodeOrder, etc. to an out-side server.
+//  My RL-based agent could be implemented as an server for handling these requests.
+//  Check whether official server-side code exist!
+
 import (
-	"bytes"
+	`bytes`
 	"errors"
-	"fmt"
-	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
-	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
-	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/utils"
+	`fmt`
+	`github.com/hliangzhao/volcano/pkg/scheduler/apis`
+	`github.com/hliangzhao/volcano/pkg/scheduler/framework`
+	`github.com/hliangzhao/volcano/pkg/scheduler/plugins/utils`
 	"gopkg.in/square/go-jose.v2/json"
-	"k8s.io/klog/v2"
-	"net/http"
-	"strings"
-	"time"
+	`k8s.io/klog/v2`
+	`net/http`
+	`strings`
+	`time`
 )
 
 const (
@@ -65,33 +71,33 @@ type extenderPlugin struct {
 	config *extenderConfig
 }
 
+// parseExtenderConfig parses the config of extenderPlugin.
+// The arguments of the plugin looks like:
+// actions: "reclaim, allocate, backfill, preempt"
+// tiers:
+// - plugins:
+//  - name: priority
+//  - name: gang
+//  - name: conformance
+// - plugins:
+//  - name: drf
+//  - name: predicates
+//  - name: extender
+//    arguments:
+// 	   extender.urlPrefix: http://127.0.0.1
+// 	   extender.httpTimeout: 100ms
+// 	   extender.onSessionOpenVerb: onSessionOpen
+// 	   extender.onSessionCloseVerb: onSessionClose
+// 	   extender.predicateVerb: predicate
+// 	   extender.prioritizeVerb: prioritize
+// 	   extender.preemptableVerb: preemptable
+// 	   extender.reclaimableVerb: reclaimable
+// 	   extender.queueOverusedVerb: queueOverused
+// 	   extender.jobEnqueuableVerb: jobEnqueueable
+// 	   extender.ignorable: true
+//  - name: proportion
+//  - name: nodeorder
 func parseExtenderConfig(args framework.Arguments) *extenderConfig {
-	/*
-		   actions: "reclaim, allocate, backfill, preempt"
-		   tiers:
-		   - plugins:
-		     - name: priority
-		     - name: gang
-		     - name: conformance
-		   - plugins:
-		     - name: drf
-		     - name: predicates
-			 - name: extender
-		       arguments:
-				   extender.urlPrefix: http://127.0.0.1
-				   extender.httpTimeout: 100ms
-				   extender.onSessionOpenVerb: onSessionOpen
-				   extender.onSessionCloseVerb: onSessionClose
-				   extender.predicateVerb: predicate
-				   extender.prioritizeVerb: prioritize
-				   extender.preemptableVerb: preemptable
-				   extender.reclaimableVerb: reclaimable
-				   extender.queueOverusedVerb: queueOverused
-				   extender.jobEnqueuableVerb: jobEnqueueable
-				   extender.ignorable: true
-		     - name: proportion
-		     - name: nodeorder
-	*/
 	ec := &extenderConfig{}
 	ec.urlPrefix, _ = args[URLPrefix].(string)
 	ec.onSessionOpenVerb, _ = args[OnSessionOpenVerb].(string)
@@ -105,8 +111,8 @@ func parseExtenderConfig(args framework.Arguments) *extenderConfig {
 	args.GetBool(&ec.ignorable, Ignorable)
 
 	ec.httpTimeout = time.Second
-	if hTTPTimeout, _ := args[HTTPTimeout].(string); hTTPTimeout != "" {
-		if timeoutDuration, err := time.ParseDuration(hTTPTimeout); err != nil {
+	if httpTimeout, _ := args[HTTPTimeout].(string); httpTimeout != "" {
+		if timeoutDuration, err := time.ParseDuration(httpTimeout); err != nil {
 			ec.httpTimeout = timeoutDuration
 		}
 	}
@@ -128,6 +134,7 @@ func (ep *extenderPlugin) Name() string {
 }
 
 func (ep *extenderPlugin) OnSessionOpen(sess *framework.Session) {
+	// firstly, send the session open POST to the extender server with the jobs, nodes, queues of current session
 	if ep.config.onSessionOpenVerb != "" {
 		err := ep.send(ep.config.onSessionOpenVerb, &OnSessionOpenRequest{
 			Jobs:           sess.Jobs,
@@ -145,6 +152,9 @@ func (ep *extenderPlugin) OnSessionOpen(sess *framework.Session) {
 	}
 
 	if ep.config.predicateVerb != "" {
+		// the predicate function will check whether the node is suitable for the task or not
+		// the check is delegated to the server outside
+		// all the following functions are the same
 		sess.AddPredicateFn(ep.Name(), func(task *apis.TaskInfo, node *apis.NodeInfo) error {
 			resp := &PredicateResponse{}
 			err := ep.send(ep.config.predicateVerb, &PredicateRequest{Task: task, Node: node}, resp)
@@ -252,6 +262,7 @@ func (ep *extenderPlugin) OnSessionOpen(sess *framework.Session) {
 	}
 }
 
+// OnSessionClose of extenderPlugin will send a http POST (represent close the session) to the url.
 func (ep *extenderPlugin) OnSessionClose(sess *framework.Session) {
 	if ep.config.onSessionCloseVerb != "" {
 		if err := ep.send(ep.config.onSessionCloseVerb, &OnSessionCloseRequest{}, nil); err != nil {
@@ -260,18 +271,21 @@ func (ep *extenderPlugin) OnSessionClose(sess *framework.Session) {
 	}
 }
 
+// send will send a http POST request to the configurated url and get the result of it.
 func (ep *extenderPlugin) send(act string, args interface{}, result interface{}) error {
+	// send a http POST request to the configurated url
 	out, err := json.Marshal(args)
 	if err != nil {
 		return err
 	}
-
 	url := strings.TrimRight(ep.config.urlPrefix, "/") + "/" + act
 	req, err := http.NewRequest("POST", url, bytes.NewReader(out))
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
+
+	// we hope the response status is ok
 	response, err := ep.client.Do(req)
 	if err != nil {
 		return err
@@ -279,11 +293,11 @@ func (ep *extenderPlugin) send(act string, args interface{}, result interface{})
 	defer func() {
 		_ = response.Body.Close()
 	}()
-
 	if response.StatusCode != http.StatusOK {
 		return fmt.Errorf("failed %v with extender at URL %v, code %v", act, url, response.StatusCode)
 	}
 
+	// decode the return result of the http POST
 	if result != nil {
 		return json.NewDecoder(response.Body).Decode(result)
 	}

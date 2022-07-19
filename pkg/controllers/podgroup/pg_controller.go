@@ -53,7 +53,7 @@ type pgController struct {
 	pgSynced  func() bool
 
 	// work queue
-	queue workqueue.RateLimitingInterface
+	podQueue workqueue.RateLimitingInterface
 
 	// schedulers
 	schedulerNames []string
@@ -67,7 +67,7 @@ func (pgC *pgController) Initialize(opt *framework.ControllerOption) error {
 	pgC.kubeClient = opt.KubeClient
 	pgC.volcanoClient = opt.VolcanoClient
 
-	pgC.queue = workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+	pgC.podQueue = workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
 	pgC.schedulerNames = make([]string, len(opt.SchedulerNames))
 	copy(pgC.schedulerNames, opt.SchedulerNames)
@@ -116,13 +116,13 @@ func (pgC *pgController) worker() {
 // `false` is returned only if the request cannot be retrieved.
 // Specifically, this func retrieves a pod from work-queue and creates a corresponding podgroup resource for it if not exist.
 func (pgC *pgController) processNextReq() bool {
-	obj, shutdown := pgC.queue.Get()
+	obj, shutdown := pgC.podQueue.Get()
 	if shutdown {
-		klog.Errorf("Failed to retrieve callback from work-queue")
+		klog.Errorf("Failed to retrieve callback from work-podQueue")
 		return false
 	}
 	req := obj.(podRequest)
-	defer pgC.queue.Done(req)
+	defer pgC.podQueue.Done(req)
 
 	pod, err := pgC.podLister.Pods(req.podNamespace).Get(req.podName)
 	if err != nil {
@@ -142,11 +142,11 @@ func (pgC *pgController) processNextReq() bool {
 	// now we add this pod to an existing podgroup or a newly created podgroup
 	if err := pgC.createNormalPodPGIfNotExist(pod); err != nil {
 		klog.Errorf("Failed to handle pod <%s/%s>: %v", pod.Namespace, pod.Name, err)
-		pgC.queue.AddRateLimited(req)
+		pgC.podQueue.AddRateLimited(req)
 		return true
 	}
 
-	pgC.queue.Forget(req)
+	pgC.podQueue.Forget(req)
 	return true
 }
 

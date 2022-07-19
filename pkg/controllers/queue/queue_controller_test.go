@@ -71,8 +71,8 @@ func TestAddQueue(t *testing.T) {
 
 		c.addQueue(testcase.queue)
 
-		if testcase.ExpectValue != c.queue.Len() {
-			t.Errorf("case %d (%s): expected: %v, got %v ", i, testcase.Name, testcase.ExpectValue, c.queue.Len())
+		if testcase.ExpectValue != c.queueQueue.Len() {
+			t.Errorf("case %d (%s): expected: %v, got %v ", i, testcase.Name, testcase.ExpectValue, c.queueQueue.Len())
 		}
 	}
 }
@@ -138,8 +138,8 @@ func TestAddPodGroup(t *testing.T) {
 
 		c.addPodgroup(testcase.podGroup)
 
-		if testcase.ExpectValue != c.queue.Len() {
-			t.Errorf("case %d (%s): expected: %v, got %v ", i, testcase.Name, testcase.ExpectValue, c.queue.Len())
+		if testcase.ExpectValue != c.queueQueue.Len() {
+			t.Errorf("case %d (%s): expected: %v, got %v ", i, testcase.Name, testcase.ExpectValue, c.queueQueue.Len())
 		}
 		if testcase.ExpectValue != len(c.podgroups[testcase.podGroup.Spec.Queue]) {
 			t.Errorf("case %d (%s): expected: %v, got %v ", i, testcase.Name, testcase.ExpectValue, len(c.podgroups[testcase.podGroup.Spec.Queue]))
@@ -229,8 +229,8 @@ func TestUpdatePodGroup(t *testing.T) {
 
 		c.updatePodgroup(testcase.podGroupOld, testcase.podGroupNew)
 
-		if testcase.ExpectValue != c.queue.Len() {
-			t.Errorf("case %d (%s): expected: %v, got %v ", i, testcase.Name, testcase.ExpectValue, c.queue.Len())
+		if testcase.ExpectValue != c.queueQueue.Len() {
+			t.Errorf("case %d (%s): expected: %v, got %v ", i, testcase.Name, testcase.ExpectValue, c.queueQueue.Len())
 		}
 	}
 }
@@ -284,7 +284,7 @@ func TestSyncQueue(t *testing.T) {
 		err := c.syncQueue(testcase.queue, nil)
 		item, _ := c.volcanoClient.SchedulingV1alpha1().Queues().Get(context.TODO(), testcase.queue.Name, metav1.GetOptions{})
 		if err != nil && testcase.ExpectValue != item.Status.Pending {
-			t.Errorf("case %d (%s): expected: %v, got %v ", i, testcase.Name, testcase.ExpectValue, c.queue.Len())
+			t.Errorf("case %d (%s): expected: %v, got %v ", i, testcase.Name, testcase.ExpectValue, c.queueQueue.Len())
 		}
 	}
 
@@ -303,11 +303,11 @@ func TestProcessNextWorkItem(t *testing.T) {
 
 	for i, testcase := range testCases {
 		c := newFakeController()
-		c.queue.Add("test")
+		c.queueQueue.Add("test")
 		bVal := c.processNextReq()
 		fmt.Println("The value of boolean is ", bVal)
-		if c.queue.Len() != 0 {
-			t.Errorf("case %d (%s): expected: %v, got %v ", i, testcase.Name, testcase.ExpectValue, c.queue.Len())
+		if c.queueQueue.Len() != 0 {
+			t.Errorf("case %d (%s): expected: %v, got %v ", i, testcase.Name, testcase.ExpectValue, c.queueQueue.Len())
 		}
 	}
 }

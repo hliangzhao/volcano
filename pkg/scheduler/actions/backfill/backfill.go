@@ -16,6 +16,8 @@ limitations under the License.
 
 package backfill
 
+// fully checked and understood
+
 import (
 	"github.com/hliangzhao/volcano/pkg/scheduler/apis"
 	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
@@ -39,22 +41,25 @@ func (backfill *Action) Name() string {
 
 func (backfill *Action) Initialize() {}
 
+// Execute of Backfill will get the non-pending and non-valid jobs firstly, then it
+// tries to allocate resources to the pending tasks of each job as far as possible.
 func (backfill *Action) Execute(sess *framework.Session) {
 	klog.V(3).Infof("Enter Backfill ...")
 	defer klog.V(3).Infof("Leaving Backfill ...")
 
 	// TODO: When backfill, it's also need to balance between Queues.
 	for _, job := range sess.Jobs {
+		// filter out non-pending and non-valid jobs
 		if job.IsPending() {
 			continue
 		}
-
 		if valid := sess.JobValid(job); valid != nil && !valid.Pass {
 			klog.V(4).Infof("Job <%s/%s> Queue <%s> skip backfill, reason: %v, message %v",
 				job.Namespace, job.Name, job.Queue, valid.Reason, valid.Message)
 			continue
 		}
 
+		// get the pending task of the job
 		for _, task := range job.TaskStatusIndex[apis.Pending] {
 			if task.InitResReq.IsEmpty() {
 				allocated := false
@@ -79,6 +84,7 @@ func (backfill *Action) Execute(sess *framework.Session) {
 						continue
 					}
 
+					// update metric collection
 					metrics.UpdateE2eSchedulingDurationByJob(
 						job.Name,
 						string(job.Queue),

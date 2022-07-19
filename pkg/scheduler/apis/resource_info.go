@@ -53,13 +53,16 @@ type Resource struct {
 	MilliCPU float64 // CPU usage
 	Memory   float64 // Memory usage
 
-	// // resources other than CPU and Mem (e.g., Extended, Hugepages, Native and AttachableVolume resources)
+	// resources other than CPU and Mem (e.g., Extended, Hugepages, Native and AttachableVolume resources)
 	ScalarResources map[corev1.ResourceName]float64
 
 	// MaxTaskNum is only used by predicates; it should NOT
 	// be accounted in other operators, e.g. Add.
 	MaxTaskNum int
 }
+
+// ResourceNameList collects resource names.
+type ResourceNameList []corev1.ResourceName
 
 // EmptyResource returns an empty Resource instance.
 func EmptyResource() *Resource {
@@ -159,9 +162,6 @@ func (r *Resource) String() string {
 	}
 	return str
 }
-
-// ResourceNameList collects resource names.
-type ResourceNameList []corev1.ResourceName
 
 // ResourceNames collects all used resource names in r.
 func (r *Resource) ResourceNames() ResourceNameList {
@@ -535,8 +535,7 @@ func (r *Resource) Diff(rr *Resource, defaultVal DimensionDefaultValue) (*Resour
 }
 
 // MinDimensionResource is used to reset the resource dimension of r which is less than rr's.
-// e.g r is <cpu 2000.00, memory 4047845376.00, hugepages-2Mi 0.00, hugepages-1Gi 0.00>,
-// rr is <cpu 3000.00, memory 1000.00>,
+// e.g r is <cpu 2000.00, memory 4047845376.00, hugepages-2Mi 0.00, hugepages-1Gi 0.00>, rr is <cpu 3000.00, memory 1000.00>,
 // return <cpu 2000.00, memory 1000.00, hugepages-2Mi 0.00, hugepages-1Gi 0.00>.
 // @param defaultVal is the default value ('Zero' or 'Infinity') for resource dimension not defined in ScalarResources.
 func (r *Resource) MinDimensionResource(rr *Resource, defaultVal DimensionDefaultValue) *Resource {

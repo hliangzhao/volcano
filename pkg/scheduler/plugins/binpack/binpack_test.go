@@ -32,8 +32,8 @@ import (
 	"testing"
 )
 
-// TODO: just copied.
-//  Passed.
+// TODO: check the test implementation.
+//  Test passed.
 
 const (
 	eps = 1e-8

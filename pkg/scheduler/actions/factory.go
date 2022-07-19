@@ -16,6 +16,8 @@ limitations under the License.
 
 package actions
 
+// fully checked and understood
+
 import (
 	"github.com/hliangzhao/volcano/pkg/scheduler/actions/allocate"
 	"github.com/hliangzhao/volcano/pkg/scheduler/actions/backfill"

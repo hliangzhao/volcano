@@ -138,7 +138,7 @@ func getTaskStatus(pod *corev1.Pod) TaskStatus {
 			return Pending
 		}
 		return Bound
-	case corev1.PodUnknown: // TODO: this case could be removed
+	case corev1.PodUnknown:
 		return Unknown
 	case corev1.PodSucceeded:
 		return Succeeded
@@ -163,7 +163,6 @@ func AllocatedStatus(status TaskStatus) bool {
 
 // validateStatusUpdate validates whether the status transfer is valid.
 func validateStatusUpdate(oldStatus, newStatus TaskStatus) error {
-	// TODO: implement this
 	return nil
 }
 

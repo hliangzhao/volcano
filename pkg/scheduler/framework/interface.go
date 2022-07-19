@@ -18,6 +18,10 @@ package framework
 
 // fully checked and understood
 
+// This file defines two interfaces, Action and Plugin.
+// A legal Action should have the `Initialize`, `Execute`, and `UnInitialize` functions.
+// A legal Plugin should have the `OnSessionOpen` and `OnSessionClose` functions.
+
 // Action is the action interface. Typical actions including enqueue, allocate, backfill, etc.
 type Action interface {
 	Name() string

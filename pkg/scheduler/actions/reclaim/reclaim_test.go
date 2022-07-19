@@ -34,7 +34,8 @@ import (
 	"time"
 )
 
-// TODO: test not passed
+// TODO: Check the test implementation.
+//  Passed.
 
 func TestReclaim(t *testing.T) {
 	framework.RegisterPluginBuilder("conformance", conformance.New)

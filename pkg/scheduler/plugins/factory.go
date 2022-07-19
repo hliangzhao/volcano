@@ -16,6 +16,8 @@ limitations under the License.
 
 package plugins
 
+// fully checked and understood
+
 import (
 	"github.com/hliangzhao/volcano/pkg/scheduler/framework"
 	"github.com/hliangzhao/volcano/pkg/scheduler/plugins/binpack"
